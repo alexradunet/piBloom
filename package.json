@@ -12,12 +12,14 @@
   "peerDependencies": {
     "@mariozechner/pi-ai": "*",
     "@mariozechner/pi-coding-agent": "*",
-    "@sinclair/typebox": "*"
+    "@sinclair/typebox": "*",
+    "front-matter": "*"
   },
   "devDependencies": {
     "@mariozechner/pi-ai": "^0.55.4",
     "@mariozechner/pi-coding-agent": "^0.55.4",
     "@sinclair/typebox": "^0.34.0",
+    "front-matter": "^4.0.2",
     "typescript": "^5.7.0"
   },
   "scripts": {

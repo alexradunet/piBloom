@@ -2,8 +2,9 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { type ExtensionAPI, truncateHead } from "@mariozechner/pi-coding-agent";
+import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import { Type } from "@sinclair/typebox";
+import { truncate } from "./shared.js";
 
 function getGardenDir(): string {
 	return process.env.BLOOM_GARDEN_DIR ?? path.join(os.homedir(), "Garden");
@@ -115,16 +116,8 @@ function seedBlueprints(gardenDir: string, packageDir: string): void {
 }
 
 function countFiles(dir: string): number {
-	let count = 0;
 	if (!fs.existsSync(dir)) return 0;
-	for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-		if (entry.isDirectory()) {
-			count += countFiles(path.join(dir, entry.name));
-		} else if (entry.name.endsWith(".md")) {
-			count++;
-		}
-	}
-	return count;
+	return fs.globSync("**/*.md", { cwd: dir }).length;
 }
 
 export default function (pi: ExtensionAPI) {
@@ -172,9 +165,7 @@ export default function (pi: ExtensionAPI) {
 			}
 
 			return {
-				content: [
-					{ type: "text" as const, text: truncateHead(lines.join("\n"), { maxLines: 2000, maxBytes: 50000 }).content },
-				],
+				content: [{ type: "text" as const, text: truncate(lines.join("\n")) }],
 				details: {},
 			};
 		},

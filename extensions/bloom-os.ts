@@ -1,8 +1,9 @@
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { StringEnum } from "@mariozechner/pi-ai";
-import { type ExtensionAPI, truncateHead } from "@mariozechner/pi-coding-agent";
+import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import { Type } from "@sinclair/typebox";
+import { errorResult, truncate } from "./shared.js";
 
 const execAsync = promisify(execFile);
 
@@ -29,18 +30,6 @@ function guardBloom(name: string): string | null {
 		return `Security error: only bloom-* names are permitted, got "${name}"`;
 	}
 	return null;
-}
-
-function truncate(text: string): string {
-	return truncateHead(text, { maxLines: 2000, maxBytes: 50000 }).content;
-}
-
-function errorResult(message: string) {
-	return {
-		content: [{ type: "text" as const, text: message }],
-		details: {},
-		isError: true,
-	};
 }
 
 export default function (pi: ExtensionAPI) {

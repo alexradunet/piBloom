@@ -1,54 +1,17 @@
 import fs from "node:fs";
-import os from "node:os";
+import { createRequire } from "node:module";
 import path from "node:path";
 import { StringEnum } from "@mariozechner/pi-ai";
-import { type ExtensionAPI, truncateHead } from "@mariozechner/pi-coding-agent";
+import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import { Type } from "@sinclair/typebox";
+import type { FrontMatterResult } from "front-matter";
+import { errorResult, getGardenDir, truncate } from "./shared.js";
+
+const require = createRequire(import.meta.url);
+const fm: <T>(str: string) => FrontMatterResult<T> = require("front-matter");
 
 function nowIso(): string {
 	return new Date().toISOString().replace(/\.\d{3}Z$/, "Z");
-}
-
-function parseFrontmatter(raw: string): {
-	data: Record<string, unknown>;
-	content: string;
-} {
-	if (!raw.startsWith("---\n")) return { data: {}, content: raw };
-	const end = raw.indexOf("\n---\n", 4);
-	if (end === -1) return { data: {}, content: raw };
-	const yaml = raw.slice(4, end);
-	const content = raw.slice(end + 5);
-	const data: Record<string, unknown> = {};
-	let currentKey: string | null = null;
-	let currentArray: string[] | null = null;
-	for (const line of yaml.split("\n")) {
-		if (line.startsWith("  - ") && currentKey && currentArray) {
-			currentArray.push(line.slice(4).trim());
-			continue;
-		}
-		if (currentKey && currentArray) {
-			data[currentKey] = currentArray;
-			currentKey = null;
-			currentArray = null;
-		}
-		const colon = line.indexOf(":");
-		if (colon === -1) continue;
-		const key = line.slice(0, colon).trim();
-		const val = line.slice(colon + 1).trim();
-		if (val === "") {
-			currentKey = key;
-			currentArray = [];
-		} else if (val.includes(",")) {
-			data[key] = val
-				.split(",")
-				.map((s) => s.trim())
-				.filter(Boolean);
-		} else {
-			data[key] = val;
-		}
-	}
-	if (currentKey && currentArray) data[currentKey] = currentArray;
-	return { data, content };
 }
 
 function stringifyFrontmatter(data: Record<string, unknown>, content: string): string {
@@ -86,24 +49,15 @@ const index: Map<string, IndexEntry> = new Map();
 
 const PARA_DIRS = ["Inbox", "Projects", "Areas", "Resources", "Archive"];
 
-function getGardenDir(): string {
-	return process.env._BLOOM_GARDEN_RESOLVED ?? process.env.BLOOM_GARDEN_DIR ?? path.join(os.homedir(), "Garden");
-}
-
 function buildIndex(gardenDir: string): void {
 	index.clear();
 	for (const paraDir of PARA_DIRS) {
-		scanDir(path.join(gardenDir, paraDir));
-	}
-}
-
-function scanDir(dir: string): void {
-	if (!fs.existsSync(dir)) return;
-	for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-		if (entry.isDirectory()) {
-			scanDir(path.join(dir, entry.name));
-		} else if (entry.name.endsWith(".md") && !entry.name.endsWith(".pi.md")) {
-			indexFile(path.join(dir, entry.name));
+		const dir = path.join(gardenDir, paraDir);
+		if (!fs.existsSync(dir)) continue;
+		const files = fs.globSync("**/*.md", { cwd: dir });
+		for (const file of files) {
+			if (file.endsWith(".pi.md")) continue;
+			indexFile(path.join(dir, file));
 		}
 	}
 }
@@ -111,17 +65,17 @@ function scanDir(dir: string): void {
 function indexFile(filepath: string): void {
 	try {
 		const raw = fs.readFileSync(filepath, "utf-8");
-		const { data } = parseFrontmatter(raw);
-		if (!data.type) return;
-		const type = String(data.type);
-		const slug = String(data.slug ?? path.basename(filepath, ".md"));
+		const { attributes } = fm<Record<string, unknown>>(raw);
+		if (!attributes.type) return;
+		const type = String(attributes.type);
+		const slug = String(attributes.slug ?? path.basename(filepath, ".md"));
 		const ref = `${type}/${slug}`;
 		index.set(ref, {
 			ref,
 			path: filepath,
-			title: data.title as string | undefined,
-			project: data.project as string | undefined,
-			area: data.area as string | undefined,
+			title: attributes.title as string | undefined,
+			project: attributes.project as string | undefined,
+			area: attributes.area as string | undefined,
 			type,
 			slug,
 		});
@@ -136,6 +90,18 @@ function resolveCreatePath(gardenDir: string, slug: string, fields: Record<strin
 	return path.join(gardenDir, "Inbox", `${slug}.md`);
 }
 
+function findFileByName(dir: string, filename: string, type: string): string | null {
+	if (!fs.existsSync(dir)) return null;
+	const matches = fs.globSync(`**/${filename}`, { cwd: dir });
+	for (const match of matches) {
+		const filepath = path.join(dir, match);
+		const raw = fs.readFileSync(filepath, "utf-8");
+		const { attributes } = fm<Record<string, unknown>>(raw);
+		if (String(attributes.type ?? "") === type) return filepath;
+	}
+	return null;
+}
+
 function findObject(gardenDir: string, type: string, slug: string): string | null {
 	const ref = `${type}/${slug}`;
 	const entry = index.get(ref);
@@ -143,7 +109,7 @@ function findObject(gardenDir: string, type: string, slug: string): string | nul
 
 	const filename = `${slug}.md`;
 	for (const paraDir of PARA_DIRS) {
-		const found = scanForFile(path.join(gardenDir, paraDir), filename, type);
+		const found = findFileByName(path.join(gardenDir, paraDir), filename, type);
 		if (found) {
 			indexFile(found);
 			return found;
@@ -152,48 +118,9 @@ function findObject(gardenDir: string, type: string, slug: string): string | nul
 	return null;
 }
 
-function scanForFile(dir: string, filename: string, type: string): string | null {
-	if (!fs.existsSync(dir)) return null;
-	for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-		if (entry.isDirectory()) {
-			const found = scanForFile(path.join(dir, entry.name), filename, type);
-			if (found) return found;
-		} else if (entry.name === filename) {
-			const filepath = path.join(dir, entry.name);
-			const raw = fs.readFileSync(filepath, "utf-8");
-			const { data } = parseFrontmatter(raw);
-			if (String(data.type ?? "") === type) return filepath;
-		}
-	}
-	return null;
-}
-
-function walkFiles(dir: string, callback: (filepath: string, raw: string) => void): void {
-	if (!fs.existsSync(dir)) return;
-	for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-		if (entry.isDirectory()) {
-			walkFiles(path.join(dir, entry.name), callback);
-		} else if (entry.name.endsWith(".md")) {
-			const filepath = path.join(dir, entry.name);
-			try {
-				callback(filepath, fs.readFileSync(filepath, "utf-8"));
-			} catch {
-				// Skip unreadable files
-			}
-		}
-	}
-}
-
-function truncate(text: string): string {
-	return truncateHead(text, { maxLines: 2000, maxBytes: 50000 }).content;
-}
-
-function errorResult(message: string) {
-	return {
-		content: [{ type: "text" as const, text: message }],
-		details: {},
-		isError: true,
-	};
+function walkMdFiles(dir: string): string[] {
+	if (!fs.existsSync(dir)) return [];
+	return fs.globSync("**/*.md", { cwd: dir }).map((f) => path.join(dir, f));
 }
 
 export default function (pi: ExtensionAPI) {
@@ -332,15 +259,20 @@ export default function (pi: ExtensionAPI) {
 
 			for (const paraDir of PARA_DIRS) {
 				if (signal?.aborted) break;
-				walkFiles(path.join(gardenDir, paraDir), (filepath, raw) => {
-					if (!raw.includes(params.pattern)) return;
-					const { data } = parseFrontmatter(raw);
-					const type = String(data.type ?? "note");
-					const slug = String(data.slug ?? path.basename(filepath, ".md"));
-					const ref = `${type}/${slug}`;
-					const title = data.title ? ` \u2014 ${data.title}` : "";
-					matches.push(`${ref}${title}`);
-				});
+				for (const filepath of walkMdFiles(path.join(gardenDir, paraDir))) {
+					try {
+						const raw = fs.readFileSync(filepath, "utf-8");
+						if (!raw.includes(params.pattern)) continue;
+						const { attributes } = fm<Record<string, unknown>>(raw);
+						const type = String(attributes.type ?? "note");
+						const slug = String(attributes.slug ?? path.basename(filepath, ".md"));
+						const ref = `${type}/${slug}`;
+						const title = attributes.title ? ` \u2014 ${attributes.title}` : "";
+						matches.push(`${ref}${title}`);
+					} catch {
+						// Skip unreadable files
+					}
+				}
 			}
 
 			const text = matches.length > 0 ? matches.join("\n") : "No matches found";
@@ -377,12 +309,12 @@ export default function (pi: ExtensionAPI) {
 
 			function addLink(fp: string, linkRef: string): void {
 				const raw = fs.readFileSync(fp, "utf-8");
-				const { data, content } = parseFrontmatter(raw);
-				const links: string[] = Array.isArray(data.links) ? [...(data.links as string[])] : [];
+				const { attributes, body } = fm<Record<string, unknown>>(raw);
+				const links: string[] = Array.isArray(attributes.links) ? [...(attributes.links as string[])] : [];
 				if (!links.includes(linkRef)) {
 					links.push(linkRef);
-					data.links = links;
-					fs.writeFileSync(fp, stringifyFrontmatter(data, content));
+					attributes.links = links;
+					fs.writeFileSync(fp, stringifyFrontmatter(attributes, body));
 				}
 			}
 
@@ -427,32 +359,37 @@ export default function (pi: ExtensionAPI) {
 
 			for (const dir of dirsToSearch) {
 				if (signal?.aborted) break;
-				walkFiles(dir, (_filepath, raw) => {
-					const { data } = parseFrontmatter(raw);
-					const type = String(data.type ?? "note");
-					if (params.type && type !== params.type) return;
+				for (const filepath of walkMdFiles(dir)) {
+					try {
+						const raw = fs.readFileSync(filepath, "utf-8");
+						const { attributes } = fm<Record<string, unknown>>(raw);
+						const type = String(attributes.type ?? "note");
+						if (params.type && type !== params.type) continue;
 
-					let match = true;
-					for (const [key, val] of Object.entries(filters)) {
-						if (key === "tag") {
-							const tags = Array.isArray(data.tags) ? data.tags : [];
-							if (!(tags as string[]).includes(val)) {
-								match = false;
-								break;
-							}
-						} else {
-							if (String(data[key] ?? "") !== val) {
-								match = false;
-								break;
+						let match = true;
+						for (const [key, val] of Object.entries(filters)) {
+							if (key === "tag") {
+								const tags = Array.isArray(attributes.tags) ? attributes.tags : [];
+								if (!(tags as string[]).includes(val)) {
+									match = false;
+									break;
+								}
+							} else {
+								if (String(attributes[key] ?? "") !== val) {
+									match = false;
+									break;
+								}
 							}
 						}
-					}
-					if (!match) return;
+						if (!match) continue;
 
-					const slug = String(data.slug ?? "unknown");
-					const title = data.title ? ` \u2014 ${data.title}` : "";
-					results.push(`${type}/${slug}${title}`);
-				});
+						const slug = String(attributes.slug ?? "unknown");
+						const title = attributes.title ? ` \u2014 ${attributes.title}` : "";
+						results.push(`${type}/${slug}${title}`);
+					} catch {
+						// Skip unreadable files
+					}
+				}
 			}
 
 			const text = results.length > 0 ? results.join("\n") : "No objects found";
@@ -482,22 +419,22 @@ export default function (pi: ExtensionAPI) {
 			if (!oldPath) return errorResult(`object not found: ${params.type}/${params.slug}`);
 
 			const raw = fs.readFileSync(oldPath, "utf-8");
-			const { data, content } = parseFrontmatter(raw);
+			const { attributes, body } = fm<Record<string, unknown>>(raw);
 
 			if (params.archive) {
-				delete data.project;
-				delete data.area;
+				delete attributes.project;
+				delete attributes.area;
 			} else if (params.project) {
-				data.project = params.project;
-				delete data.area;
+				attributes.project = params.project;
+				delete attributes.area;
 			} else if (params.area) {
-				data.area = params.area;
-				delete data.project;
+				attributes.area = params.area;
+				delete attributes.project;
 			} else {
-				delete data.project;
-				delete data.area;
+				delete attributes.project;
+				delete attributes.area;
 			}
-			data.modified = nowIso();
+			attributes.modified = nowIso();
 
 			let newPath: string;
 			if (params.archive) {
@@ -511,14 +448,14 @@ export default function (pi: ExtensionAPI) {
 			}
 
 			fs.mkdirSync(path.dirname(newPath), { recursive: true });
-			fs.writeFileSync(newPath, stringifyFrontmatter(data, content));
+			fs.writeFileSync(newPath, stringifyFrontmatter(attributes, body));
 			fs.unlinkSync(oldPath);
 
 			const ref = `${params.type}/${params.slug}`;
 			index.set(ref, {
 				ref,
 				path: newPath,
-				title: data.title as string | undefined,
+				title: attributes.title as string | undefined,
 				project: params.project,
 				area: params.area,
 				type: params.type,

@@ -1,8 +1,8 @@
 import { existsSync, readFileSync } from "node:fs";
-import { homedir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
+import { getGardenDir } from "./shared.js";
 
 const DANGEROUS_PATTERNS: Array<{ pattern: RegExp; label: string }> = [
 	{ pattern: /\brm\s+-rf\s+\//, label: "rm -rf /" },
@@ -14,7 +14,7 @@ const DANGEROUS_PATTERNS: Array<{ pattern: RegExp; label: string }> = [
 ];
 
 function loadPersona(): string {
-	const gardenDir = process.env._BLOOM_GARDEN_RESOLVED ?? process.env.BLOOM_GARDEN_DIR ?? join(homedir(), "Garden");
+	const gardenDir = getGardenDir();
 	const vaultDir = join(gardenDir, "Bloom", "Persona");
 	const dir = existsSync(join(vaultDir, "SOUL.md")) ? vaultDir : join(fileURLToPath(import.meta.url), "../../persona");
 	const layers: Array<[string, string]> = [
