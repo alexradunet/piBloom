@@ -4,3 +4,4 @@ dist/
 .omc/
 os/output/
 .worktrees/
+os/bib-config.toml

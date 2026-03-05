@@ -1,0 +1,11 @@
+# Bloom OS — bootc-image-builder user configuration
+# Copy this file to bib-config.toml and fill in your SSH key.
+# NEVER commit bib-config.toml — it is gitignored.
+
+[customizations]
+
+[[customizations.user]]
+name = "bloom"
+# SSH key only — no password auth. Paste your public key below.
+key = "ssh-ed25519 AAAA... you@host"
+groups = ["wheel"]

@@ -1,6 +1,8 @@
 ---
 name: tailscale
+version: 0.1.0
 description: Secure mesh networking via Tailscale — zero-config VPN for accessing Bloom remotely
+image: docker.io/tailscale/tailscale:latest
 ---
 
 # Tailscale Service

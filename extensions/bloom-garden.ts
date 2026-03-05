@@ -28,6 +28,7 @@ const GARDEN_DIRS = [
 	"Bloom/Persona",
 	"Bloom/Skills",
 	"Bloom/Evolutions",
+	"Bloom/audit",
 ];
 
 const PERSONA_FILES = ["SOUL.md", "BODY.md", "FACULTY.md", "SKILL.md"];
@@ -105,6 +106,15 @@ function seedBlueprints(gardenDir: string, packageDir: string): void {
 			seedFile(src, dest, key, version, versions);
 		}
 	}
+
+	// Seed guardrails policy
+	seedFile(
+		path.join(packageDir, "guardrails.yaml"),
+		path.join(gardenDir, "Bloom", "guardrails.yaml"),
+		"guardrails.yaml",
+		version,
+		versions,
+	);
 
 	versions.packageVersion = version;
 	writeBlueprintVersions(gardenDir, versions);

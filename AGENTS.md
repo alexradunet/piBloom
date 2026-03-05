@@ -21,11 +21,13 @@ Always prefer the lightest option. See `docs/service-architecture.md` for detail
 | Extension | Purpose | LOC |
 |-----------|---------|-----|
 | `bloom-persona` | Identity injection, safety guardrails, compaction guidance | ~73 |
+| `bloom-audit` | Tool-call audit trail, retention, and review tooling | ~180 |
 | `bloom-os` | bootc, Podman, systemd management tools | ~212 |
+| `bloom-services` | Service lifecycle tooling (scaffold, publish, install, test) | ~420 |
 | `bloom-objects` | Flat-file object store (YAML frontmatter + Markdown) | ~330 |
 | `bloom-journal` | Daily journal entries (user + AI) | ~90 |
 | `bloom-garden` | Garden vault, blueprint seeding, skill creation, persona evolution | ~310 |
-| `bloom-channels` | Channel bridge TCP server, WhatsApp command | ~193 |
+| `bloom-channels` | Channel bridge Unix socket server, WhatsApp command | ~193 |
 | `bloom-topics` | Topic management, /topic command, topic guidance | ~140 |
 
 ## Skills
@@ -64,5 +66,5 @@ pi install /path/to/bloom
 
 Or for development:
 ```bash
-pi -e ./extensions/bloom-persona.ts -e ./extensions/bloom-os.ts -e ./extensions/bloom-objects.ts -e ./extensions/bloom-journal.ts -e ./extensions/bloom-garden.ts -e ./extensions/bloom-channels.ts -e ./extensions/bloom-topics.ts
+pi -e ./extensions/bloom-persona.ts -e ./extensions/bloom-audit.ts -e ./extensions/bloom-os.ts -e ./extensions/bloom-services.ts -e ./extensions/bloom-objects.ts -e ./extensions/bloom-journal.ts -e ./extensions/bloom-garden.ts -e ./extensions/bloom-channels.ts -e ./extensions/bloom-topics.ts
 ```

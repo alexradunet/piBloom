@@ -1,13 +1,14 @@
 import { makeWASocket, useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion, downloadMediaMessage } from "baileys";
+import { createServer as createHttpServer } from "node:http";
 import { createConnection, type Socket } from "node:net";
 import { writeFile, mkdir } from "node:fs/promises";
-import { randomBytes } from "node:crypto";
-import { Boom } from "@hapi/boom";
+import { randomBytes, randomUUID } from "node:crypto";
+import type { Boom } from "@hapi/boom";
 
 const AUTH_DIR = process.env.BLOOM_AUTH_DIR ?? "/data/auth";
-const CHANNELS_HOST = process.env.BLOOM_CHANNELS_HOST ?? "127.0.0.1";
-const CHANNELS_PORT = Number(process.env.BLOOM_CHANNELS_PORT ?? "18800");
+const CHANNELS_SOCKET = process.env.BLOOM_CHANNELS_SOCKET ?? "/run/bloom/channels.sock";
 const MEDIA_DIR = process.env.BLOOM_MEDIA_DIR ?? "/media/bloom";
+const CHANNEL_TOKEN = process.env.BLOOM_CHANNEL_TOKEN ?? "";
 
 const RECONNECT_BASE_MS = 2_000;
 const RECONNECT_MAX_MS = 30_000;
@@ -44,9 +45,29 @@ let channelSocket: Socket | null = null;
 let tcpBuffer = "";
 let tcpReconnectDelay = RECONNECT_BASE_MS;
 let shuttingDown = false;
+let waConnected = false;
 
 // Track last WhatsApp socket so TCP layer can forward responses
 let currentWaSock: ReturnType<typeof makeWASocket> | null = null;
+
+// --- Health check HTTP server ---
+
+const HEALTH_PORT = Number(process.env.BLOOM_HEALTH_PORT ?? "18801");
+
+const healthServer = createHttpServer((req, res) => {
+	if (req.url === "/health") {
+		const healthy = waConnected && channelSocket?.writable === true;
+		res.writeHead(healthy ? 200 : 503, { "Content-Type": "application/json" });
+		res.end(JSON.stringify({ wa: waConnected, channel: channelSocket?.writable === true }));
+	} else {
+		res.writeHead(404);
+		res.end();
+	}
+});
+
+healthServer.listen(HEALTH_PORT, "0.0.0.0", () => {
+	console.log(`[health] listening on :${HEALTH_PORT}`);
+});
 
 // --- WhatsApp ---
 
@@ -79,12 +100,14 @@ async function startWhatsApp(): Promise<void> {
 
 		if (connection === "open") {
 			console.log("[wa] connected.");
+			waConnected = true;
 			// Reset TCP reconnect delay on fresh WA connection
 			tcpReconnectDelay = RECONNECT_BASE_MS;
 			connectToChannels(sock);
 		}
 
 		if (connection === "close") {
+			waConnected = false;
 			const statusCode = (lastDisconnect?.error as Boom | undefined)?.output?.statusCode;
 			const reason = statusCode ?? "unknown";
 			console.log(`[wa] connection closed (reason: ${reason})`);
@@ -125,6 +148,7 @@ async function startWhatsApp(): Promise<void> {
 				console.log(`[wa] message from ${from}: ${text.slice(0, 80)}`);
 				sendToChannels({
 					type: "message",
+					id: randomUUID(),
 					channel: "whatsapp",
 					from,
 					text,
@@ -177,6 +201,7 @@ async function handleMediaMessage(
 		console.error(`[wa] media download failed:`, (err as Error).message);
 		sendToChannels({
 			type: "message",
+			id: randomUUID(),
 			channel: "whatsapp",
 			from,
 			text: `[${kind} message — download failed]`,
@@ -187,6 +212,7 @@ async function handleMediaMessage(
 
 	sendToChannels({
 		type: "message",
+		id: randomUUID(),
 		channel: "whatsapp",
 		from,
 		timestamp,
@@ -222,14 +248,15 @@ function makeLogger() {
 function connectToChannels(waSock: ReturnType<typeof makeWASocket>): void {
 	if (shuttingDown) return;
 
-	console.log(`[tcp] connecting to ${CHANNELS_HOST}:${CHANNELS_PORT}...`);
+	console.log(`[tcp] connecting to ${CHANNELS_SOCKET}...`);
 
-	const sock = createConnection({ host: CHANNELS_HOST, port: CHANNELS_PORT }, () => {
+	const sock = createConnection({ path: CHANNELS_SOCKET }, () => {
 		console.log("[tcp] connected to bloom-channels.");
 		tcpReconnectDelay = RECONNECT_BASE_MS;
 
-		const registration = JSON.stringify({ type: "register", channel: "whatsapp" });
-		sock.write(`${registration}\n`);
+		const registration: Record<string, string> = { type: "register", channel: "whatsapp" };
+		if (CHANNEL_TOKEN) registration.token = CHANNEL_TOKEN;
+		sock.write(`${JSON.stringify(registration)}\n`);
 	});
 
 	sock.setEncoding("utf8");
@@ -322,8 +349,16 @@ function handleChannelMessage(
 		return;
 	}
 
+	// Respond to pings from the channel server
+	if (type === "ping") {
+		if (channelSocket?.writable) {
+			channelSocket.write(`${JSON.stringify({ type: "pong" })}\n`);
+		}
+		return;
+	}
+
 	// Acknowledge known control messages silently
-	if (type === "registered" || type === "ping" || type === "pong") {
+	if (type === "registered" || type === "pong" || type === "status") {
 		return;
 	}
 
@@ -336,6 +371,8 @@ function shutdown(signal: string): void {
 	if (shuttingDown) return;
 	shuttingDown = true;
 	console.log(`[bloom-whatsapp] received ${signal}, shutting down...`);
+
+	healthServer.close();
 
 	if (channelSocket) {
 		channelSocket.destroy();

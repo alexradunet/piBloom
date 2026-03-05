@@ -1,0 +1,43 @@
+# Bloom Guardrails Policy
+# This file defines safety rules for Pi tool execution.
+# Customize in ~/Garden/Bloom/guardrails.yaml (seeded from defaults).
+
+rules:
+  # Block dangerous bash commands
+  - tool: bash
+    action: block
+    patterns:
+      - pattern: '\brm\s+-rf\s+\/'
+        label: "rm -rf /"
+      - pattern: '\bmkfs\b'
+        label: "mkfs (filesystem format)"
+      - pattern: '\bdd\b.*\bof=\/dev\/'
+        label: "dd to device"
+      - pattern: ':\(\)\s*\{'
+        label: "fork bomb"
+      - pattern: '\bshutdown\b'
+        label: "shutdown"
+      - pattern: '\breboot\b'
+        label: "reboot"
+      - pattern: '\bgit\s+push\s+--force'
+        label: "git force-push"
+      - pattern: '\bgit\s+push\b.*\bmain\b'
+        label: "git push to main"
+      - pattern: '\beval\b'
+        label: "eval"
+      - pattern: '`[^`]+`'
+        label: "backtick command substitution"
+      - pattern: '\$\([^)]+\)'
+        label: "$() command substitution"
+      - pattern: '\|\s*(bash|sh|zsh|dash)\b'
+        label: "pipe to shell"
+      - pattern: '\bcurl\b.*\|\s*(bash|sh)'
+        label: "curl pipe to shell"
+      - pattern: '\bwget\b.*\|\s*(bash|sh)'
+        label: "wget pipe to shell"
+      - pattern: '>\s*\/dev\/[sh]d[a-z]'
+        label: "write to block device"
+      - pattern: '\bchmod\s+[0-7]*777\b'
+        label: "chmod 777"
+      - pattern: '\bchown\s+.*\s+\/'
+        label: "chown root paths"

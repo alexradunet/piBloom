@@ -1,6 +1,8 @@
 ---
 name: whisper
+version: 0.1.0
 description: Speech-to-text transcription via faster-whisper (OpenAI-compatible API)
+image: docker.io/fedirz/faster-whisper-server:latest-cpu
 ---
 
 # Whisper Service
@@ -30,6 +32,16 @@ Supported formats: wav, mp3, ogg, flac, m4a, webm
 ```bash
 curl -sf http://localhost:9000/health
 ```
+
+## Socket Activation
+
+Whisper is socket-activated via `bloom-whisper.socket`:
+
+```bash
+systemctl --user enable --now bloom-whisper.socket
+```
+
+The container starts on first request to `localhost:9000`.
 
 ## Notes
 

@@ -22,7 +22,8 @@ Bloom runs on **Fedora bootc 42** — an immutable, image-based OS:
 Use the registered bloom-os tools directly:
 
 - `bootc_status` — Show OS image status, pending updates, rollback availability
-- `bootc_update` — Check for or stage OS updates (requires user confirmation for staging)
+- `bootc_update` — Check for, download, or apply OS updates (supports staged workflow)
+- `bootc_rollback` — Rollback to previous OS image (requires user confirmation)
 - `container_status` — List running bloom-* containers with health status
 - `container_logs` — Show recent logs for a bloom service
 - `systemd_control` — Start/stop/restart/status of bloom systemd services

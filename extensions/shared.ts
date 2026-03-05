@@ -45,3 +45,32 @@ export function parseFrontmatter<T>(str: string): FrontMatterResult<T> {
 }
 
 export const PARA_DIRS = ["Inbox", "Projects", "Areas", "Resources", "Archive"];
+
+type LogLevel = "debug" | "info" | "warn" | "error";
+
+export function createLogger(component: string) {
+	function log(level: LogLevel, msg: string, extra?: Record<string, unknown>): void {
+		const entry: Record<string, unknown> = {
+			ts: new Date().toISOString(),
+			level,
+			component,
+			msg,
+			...extra,
+		};
+		const line = JSON.stringify(entry);
+		if (level === "error") {
+			console.error(line);
+		} else if (level === "warn") {
+			console.warn(line);
+		} else {
+			console.log(line);
+		}
+	}
+
+	return {
+		debug: (msg: string, extra?: Record<string, unknown>) => log("debug", msg, extra),
+		info: (msg: string, extra?: Record<string, unknown>) => log("info", msg, extra),
+		warn: (msg: string, extra?: Record<string, unknown>) => log("warn", msg, extra),
+		error: (msg: string, extra?: Record<string, unknown>) => log("error", msg, extra),
+	};
+}

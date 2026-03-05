@@ -14,24 +14,63 @@ Service packages are hosted at:
 ghcr.io/alexradunet/bloom-svc-{name}:latest
 ```
 
+## Lifecycle Tools
+
+Bloom exposes service lifecycle tools:
+
+- `service_scaffold` — create a new service package skeleton
+- `service_publish` — publish service package to OCI registry
+- `service_install` — install service package from OCI artifact
+- `service_test` — run a local smoke test on installed units
+
+## End-to-End Example (Scaffold → Test → Publish → Install)
+
+Use this sequence when creating a new service package:
+
+1. Scaffold package files:
+   - `service_scaffold(name="demo-api", description="Demo HTTP API", image="docker.io/library/nginx:stable", version="0.1.0", port=9080, container_port=80)`
+2. Smoke test locally:
+   - `service_test(name="demo-api", start_timeout_sec=120)`
+3. Publish immutable version:
+   - `service_publish(name="demo-api", version="0.1.0")`
+4. Install that exact version:
+   - `service_install(name="demo-api", version="0.1.0")`
+5. Verify result:
+   - `systemctl --user status bloom-demo-api`
+   - `manifest_show`
+
+For socket-activated services, scaffold with `socket_activated=true` and a `port`, then verify both units:
+- `systemctl --user status bloom-{name}.socket`
+- `systemctl --user status bloom-{name}`
+
+Reference packages:
+- `services/examples/demo-api/`
+- `services/examples/demo-socket-echo/`
+- `services/examples/README.md` (copy/paste quickstart commands)
+- `services/whisper/quadlet/` (production socket-activation reference)
+
 ## Install a Service
 
 ```bash
 mkdir -p /tmp/bloom-svc
 oras pull ghcr.io/alexradunet/bloom-svc-{name}:latest -o /tmp/bloom-svc/
-cp /tmp/bloom-svc/quadlet/*.container ~/.config/containers/systemd/
-cp /tmp/bloom-svc/quadlet/*.volume ~/.config/containers/systemd/ 2>/dev/null
+cp /tmp/bloom-svc/quadlet/* ~/.config/containers/systemd/
 mkdir -p ~/Garden/Bloom/Skills/{name}
 cp /tmp/bloom-svc/SKILL.md ~/Garden/Bloom/Skills/{name}/SKILL.md
 systemctl --user daemon-reload
-systemctl --user start bloom-{name}
+if [ -f ~/.config/containers/systemd/bloom-{name}.socket ]; then
+  systemctl --user enable --now bloom-{name}.socket
+else
+  systemctl --user enable --now bloom-{name}
+fi
 rm -rf /tmp/bloom-svc
 ```
 
 ## Remove a Service
 
 ```bash
-systemctl --user stop bloom-{name}
+systemctl --user disable --now bloom-{name}.socket 2>/dev/null || true
+systemctl --user disable --now bloom-{name} 2>/dev/null || true
 rm ~/.config/containers/systemd/bloom-{name}.*
 rm -rf ~/Garden/Bloom/Skills/{name}
 systemctl --user daemon-reload
@@ -47,6 +86,7 @@ ls ~/.config/containers/systemd/bloom-*.container
 
 ```bash
 systemctl --user status bloom-{name}
+systemctl --user status bloom-{name}.socket  # if socket-activated
 ```
 
 ## View Service Logs
@@ -61,10 +101,62 @@ journalctl --user -u bloom-{name} -n 50
 oras repo tags ghcr.io/alexradunet/bloom-svc-{name}
 ```
 
+## Backup and Restore (oras v1.3.0+)
+
+Backup a service package locally before making changes:
+
+```bash
+oras backup ghcr.io/alexradunet/bloom-svc-{name}:latest -o ~/Garden/Bloom/backups/
+```
+
+Restore a previously backed-up service:
+
+```bash
+oras restore ~/Garden/Bloom/backups/bloom-svc-{name}/ --to ghcr.io/alexradunet/bloom-svc-{name}:rollback
+```
+
+## Service Dependencies
+
+Services may depend on other components:
+
+| Service | Depends On | Handling |
+|---------|-----------|----------|
+| `whatsapp` | Pi channels server (`/run/bloom/channels.sock`) | Unix socket reconnect with exponential backoff |
+| `whisper` | None (standalone HTTP API) | — |
+| `tailscale` | Network stack (NET_ADMIN, /dev/net/tun) | Host network mode |
+
+Pi's channels server is a user-space interactive process, not a systemd service. Service bridges handle unavailability via reconnect logic.
+
+## Versioning
+
+Service SKILL.md files include `version` and `image` fields in their frontmatter:
+
+```yaml
+---
+name: whisper
+version: 0.1.0
+image: docker.io/fedirz/faster-whisper-server:latest-cpu
+---
+```
+
+OCI artifacts use semver tags: `ghcr.io/alexradunet/bloom-svc-whisper:0.1.0`
+
+### Check Installed Version
+
+The manifest at `~/Garden/Bloom/manifest.yaml` tracks installed service versions. Use `manifest_show` to view current state.
+
+### Pin a Service Version
+
+```bash
+oras pull ghcr.io/alexradunet/bloom-svc-{name}:0.1.0 -o /tmp/bloom-svc/
+```
+
+Then update the manifest with `manifest_set_service` to record the pinned version.
+
 ## Known Services
 
-| Name | Category | Description |
-|------|----------|-------------|
-| `whisper` | media | Speech-to-text transcription (faster-whisper, port 9000) |
-| `whatsapp` | communication | WhatsApp messaging bridge via Baileys |
-| `tailscale` | networking | Secure mesh VPN via Tailscale |
+| Name | Version | Category | Description |
+|------|---------|----------|-------------|
+| `whisper` | 0.1.0 | media | Speech-to-text transcription (faster-whisper, port 9000) |
+| `whatsapp` | 0.1.0 | communication | WhatsApp messaging bridge via Baileys |
+| `tailscale` | 0.1.0 | networking | Secure mesh VPN via Tailscale |

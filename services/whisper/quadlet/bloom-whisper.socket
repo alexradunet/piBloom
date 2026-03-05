@@ -1,0 +1,11 @@
+[Unit]
+Description=Bloom Whisper — Socket activation listener
+
+[Socket]
+ListenStream=127.0.0.1:9000
+Accept=no
+Service=bloom-whisper.service
+SocketMode=0660
+
+[Install]
+WantedBy=sockets.target

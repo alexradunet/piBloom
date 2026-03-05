@@ -1,0 +1,26 @@
+[Unit]
+Description=Bloom Demo API — Example service package
+After=network-online.target
+Wants=network-online.target
+
+[Container]
+Image=docker.io/mendhak/http-https-echo:31
+ContainerName=bloom-demo-api
+Network=bloom.network
+PublishPort=127.0.0.1:9080:8080
+Environment=HTTP_PORT=8080
+PodmanArgs=--memory=64m
+HealthCmd=curl -sf http://localhost:8080/ || exit 1
+HealthInterval=30s
+HealthRetries=3
+HealthTimeout=10s
+NoNewPrivileges=true
+LogDriver=journald
+
+[Service]
+Restart=on-failure
+RestartSec=10
+TimeoutStartSec=120
+
+[Install]
+WantedBy=default.target

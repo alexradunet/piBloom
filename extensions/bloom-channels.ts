@@ -1,4 +1,8 @@
+import { randomUUID } from "node:crypto";
+import { existsSync, readFileSync, unlinkSync } from "node:fs";
 import { createServer, type Server, type Socket } from "node:net";
+import os from "node:os";
+import { join } from "node:path";
 import type {
 	AgentEndEvent,
 	ExtensionAPI,
@@ -6,10 +10,18 @@ import type {
 	SessionShutdownEvent,
 	SessionStartEvent,
 } from "@mariozechner/pi-coding-agent";
+import { createLogger } from "./shared.js";
+
+const log = createLogger("bloom-channels");
 
 interface ChannelInfo {
 	socket: Socket;
 	connected: boolean;
+	missedPings: number;
+	pingTimer?: ReturnType<typeof setInterval>;
+	pendingCount: number;
+	rateBurst: number;
+	rateTimer?: ReturnType<typeof setInterval>;
 }
 
 interface ChannelContext {
@@ -27,19 +39,64 @@ interface MediaInfo {
 }
 
 interface IncomingMessage {
-	type: "register" | "message";
+	type: "register" | "message" | "pong";
+	id?: string;
 	channel: string;
+	token?: string;
 	from?: string;
 	text?: string;
 	timestamp?: number;
 	media?: MediaInfo;
 }
 
-const PORT = parseInt(process.env.BLOOM_CHANNELS_PORT ?? "18800", 10);
+const SOCKET_PATH = process.env.BLOOM_CHANNELS_SOCKET ?? "/run/bloom/channels.sock";
+const TOKEN_DIR = join(os.homedir(), ".config", "bloom", "channel-tokens");
+const PING_INTERVAL_MS = 30_000;
+const MAX_MISSED_PINGS = 3;
+const MAX_PENDING_PER_CHANNEL = 10;
+const RATE_LIMIT_PER_SEC = 1;
+const RATE_BURST = 5;
+
+function loadToken(channel: string): string | null {
+	try {
+		return readFileSync(join(TOKEN_DIR, channel), "utf-8").trim();
+	} catch {
+		return null;
+	}
+}
+
+/**
+ * Extract text from the last assistant message in a conversation.
+ * Handles multimodal responses (concatenates text parts, skips tool_use),
+ * empty responses (tool-only turns), and post-compaction message arrays.
+ */
+function extractResponseText(messages: AgentEndEvent["messages"]): string {
+	for (let i = messages.length - 1; i >= 0; i--) {
+		const msg = messages[i];
+		if (!("role" in msg) || msg.role !== "assistant") continue;
+
+		const content = (msg as { role: "assistant"; content: unknown }).content;
+
+		// Handle string content (post-compaction summaries)
+		if (typeof content === "string") return content;
+
+		// Handle array content blocks
+		if (Array.isArray(content)) {
+			const textParts = (content as Array<{ type: string; text?: string }>)
+				.filter((c) => c.type === "text" && c.text)
+				.map((c) => c.text as string);
+			if (textParts.length > 0) return textParts.join("\n\n");
+			// Tool-only turn — skip to previous assistant message
+			continue;
+		}
+	}
+	return "";
+}
 
 export default function (pi: ExtensionAPI) {
+	const channelTokens = new Map<string, string>();
 	const channels = new Map<string, ChannelInfo>();
-	let lastChannelContext: ChannelContext | null = null;
+	const pendingContexts = new Map<string, ChannelContext>();
 	let server: Server | null = null;
 	let lastCtx: ExtensionContext | null = null;
 
@@ -58,12 +115,33 @@ export default function (pi: ExtensionAPI) {
 	}
 
 	function removeChannel(name: string): void {
+		const info = channels.get(name);
+		if (info?.pingTimer) clearInterval(info.pingTimer);
+		if (info?.rateTimer) clearInterval(info.rateTimer);
 		channels.delete(name);
 		if (lastCtx) updateWidget(lastCtx);
 	}
 
 	function sendToSocket(socket: Socket, obj: object): void {
 		socket.write(`${JSON.stringify(obj)}\n`);
+	}
+
+	function startHeartbeat(name: string, info: ChannelInfo): void {
+		info.pingTimer = setInterval(() => {
+			info.missedPings++;
+			if (info.missedPings > MAX_MISSED_PINGS) {
+				log.warn("missed pings, disconnecting", { channel: name });
+				info.socket.destroy();
+				return;
+			}
+			sendToSocket(info.socket, { type: "ping" });
+		}, PING_INTERVAL_MS);
+	}
+
+	function startRateRefill(info: ChannelInfo): void {
+		info.rateTimer = setInterval(() => {
+			if (info.rateBurst < RATE_BURST) info.rateBurst++;
+		}, 1000 / RATE_LIMIT_PER_SEC);
 	}
 
 	function handleSocketData(socket: Socket, data: string): void {
@@ -75,20 +153,68 @@ export default function (pi: ExtensionAPI) {
 			try {
 				msg = JSON.parse(trimmed) as IncomingMessage;
 			} catch {
-				console.error("[bloom-channels] Failed to parse message:", trimmed);
+				log.error("failed to parse message", { raw: trimmed });
+				continue;
+			}
+
+			if (msg.type === "pong") {
+				for (const [, info] of channels) {
+					if (info.socket === socket) {
+						info.missedPings = 0;
+						break;
+					}
+				}
 				continue;
 			}
 
 			if (msg.type === "register") {
 				const name = msg.channel;
-				channels.set(name, { socket, connected: true });
+				const expectedToken = loadToken(name);
+				if (expectedToken && msg.token !== expectedToken) {
+					sendToSocket(socket, { type: "error", reason: "invalid token" });
+					log.warn("rejected registration: invalid token", { channel: name });
+					socket.destroy();
+					return;
+				}
+				if (expectedToken) {
+					channelTokens.set(name, expectedToken);
+				}
+				const info: ChannelInfo = { socket, connected: true, missedPings: 0, pendingCount: 0, rateBurst: RATE_BURST };
+				channels.set(name, info);
+				startHeartbeat(name, info);
+				startRateRefill(info);
 				sendToSocket(socket, { type: "status", connected: true });
 				if (lastCtx) updateWidget(lastCtx);
-				console.log(`[bloom-channels] Channel registered: ${name}`);
+				log.info("channel registered", { channel: name });
 			} else if (msg.type === "message") {
-				const from = msg.from ?? "unknown";
 				const channel = msg.channel;
-				lastChannelContext = { channel, from };
+				const channelInfo = channels.get(channel);
+
+				// Backpressure: check queue depth
+				if (channelInfo && channelInfo.pendingCount >= MAX_PENDING_PER_CHANNEL) {
+					const errorId = msg.id ?? randomUUID();
+					sendToSocket(socket, { type: "error", id: errorId, reason: "queue full" });
+					log.warn("queue full, rejecting message", { channel });
+					continue;
+				}
+
+				// Rate limiting
+				if (channelInfo && channelInfo.rateBurst <= 0) {
+					const errorId = msg.id ?? randomUUID();
+					sendToSocket(socket, { type: "error", id: errorId, reason: "rate limited" });
+					log.warn("rate limited", { channel });
+					continue;
+				}
+
+				if (channelInfo) {
+					channelInfo.rateBurst--;
+					channelInfo.pendingCount++;
+				}
+
+				const from = msg.from ?? "unknown";
+				const messageId = msg.id ?? randomUUID();
+
+				pendingContexts.set(messageId, { channel, from });
 
 				let prompt: string;
 				if (msg.media) {
@@ -101,6 +227,9 @@ export default function (pi: ExtensionAPI) {
 					prompt = `[${channel}: ${from}] ${msg.text ?? ""}`;
 				}
 
+				// Tag the prompt with the message ID for correlation
+				prompt = `[msgId:${messageId}] ${prompt}`;
+
 				if (lastCtx?.isIdle()) {
 					pi.sendUserMessage(prompt);
 				} else {
@@ -112,6 +241,16 @@ export default function (pi: ExtensionAPI) {
 
 	pi.on("session_start", (_event: SessionStartEvent, ctx: ExtensionContext) => {
 		lastCtx = ctx;
+
+		// Clean up stale socket file
+		if (existsSync(SOCKET_PATH)) {
+			try {
+				unlinkSync(SOCKET_PATH);
+			} catch {
+				log.error("could not remove stale socket", { path: SOCKET_PATH });
+			}
+		}
+
 		server = createServer((socket: Socket) => {
 			let buffer = "";
 
@@ -125,8 +264,7 @@ export default function (pi: ExtensionAPI) {
 			});
 
 			socket.on("error", (err: Error) => {
-				console.error("[bloom-channels] Socket error:", err.message);
-				// Remove any channel registered to this socket
+				log.error("socket error", { error: err.message });
 				for (const [name, info] of channels) {
 					if (info.socket === socket) {
 						removeChannel(name);
@@ -139,7 +277,7 @@ export default function (pi: ExtensionAPI) {
 				for (const [name, info] of channels) {
 					if (info.socket === socket) {
 						removeChannel(name);
-						console.log(`[bloom-channels] Channel disconnected: ${name}`);
+						log.info("channel disconnected", { channel: name });
 						break;
 					}
 				}
@@ -147,11 +285,11 @@ export default function (pi: ExtensionAPI) {
 		});
 
 		server.on("error", (err: Error) => {
-			console.error("[bloom-channels] Server error:", err.message);
+			log.error("server error", { error: err.message });
 		});
 
-		server.listen(PORT, "127.0.0.1", () => {
-			console.log(`[bloom-channels] Listening on localhost:${PORT}`);
+		server.listen(SOCKET_PATH, () => {
+			log.info("listening", { path: SOCKET_PATH });
 		});
 
 		updateWidget(ctx);
@@ -159,32 +297,44 @@ export default function (pi: ExtensionAPI) {
 
 	pi.on("agent_end", (event: AgentEndEvent, ctx: ExtensionContext) => {
 		lastCtx = ctx;
-		if (!lastChannelContext) return;
+		if (pendingContexts.size === 0) return;
 
-		const { channel, from } = lastChannelContext;
-		lastChannelContext = null;
-
-		const channelInfo = channels.get(channel);
-		if (!channelInfo) return;
-
-		// Find last assistant message and extract text
-		const messages = event.messages;
-		let responseText = "";
-		for (let i = messages.length - 1; i >= 0; i--) {
-			const msg = messages[i];
-			if ("role" in msg && msg.role === "assistant") {
-				const content = (msg as { role: "assistant"; content: { type: string; text?: string }[] }).content;
-				const textParts = content.filter((c) => c.type === "text" && c.text).map((c) => c.text as string);
-				responseText = textParts.join("");
+		// Find the message ID from the user prompt that triggered this agent turn
+		const userMessages = event.messages.filter(
+			(m) => "role" in m && m.role === "user",
+		);
+		let matchedId: string | undefined;
+		for (const um of userMessages) {
+			const content = (um as { role: "user"; content: unknown }).content;
+			const text = typeof content === "string" ? content : "";
+			const match = text.match(/\[msgId:([^\]]+)\]/);
+			if (match) {
+				matchedId = match[1];
 				break;
 			}
 		}
 
+		// Fall back to most recent pending context if no ID match
+		const contextId = matchedId ?? [...pendingContexts.keys()].pop();
+		if (!contextId) return;
+
+		const channelCtx = pendingContexts.get(contextId);
+		if (!channelCtx) return;
+		pendingContexts.delete(contextId);
+
+		// Decrement pending counter
+		const channelInfo = channels.get(channelCtx.channel);
+		if (!channelInfo) return;
+		channelInfo.pendingCount = Math.max(0, channelInfo.pendingCount - 1);
+
+		const responseText = extractResponseText(event.messages);
+
 		if (responseText) {
 			sendToSocket(channelInfo.socket, {
 				type: "response",
-				channel,
-				to: from,
+				id: contextId,
+				channel: channelCtx.channel,
+				to: channelCtx.from,
 				text: responseText,
 			});
 		}
@@ -195,10 +345,21 @@ export default function (pi: ExtensionAPI) {
 			server.close();
 			server = null;
 		}
+		// Clean up socket file
+		if (existsSync(SOCKET_PATH)) {
+			try {
+				unlinkSync(SOCKET_PATH);
+			} catch {
+				// Ignore cleanup errors
+			}
+		}
 		for (const [, info] of channels) {
+			if (info.pingTimer) clearInterval(info.pingTimer);
+			if (info.rateTimer) clearInterval(info.rateTimer);
 			info.socket.destroy();
 		}
 		channels.clear();
+		pendingContexts.clear();
 	});
 
 	pi.registerCommand("wa", {

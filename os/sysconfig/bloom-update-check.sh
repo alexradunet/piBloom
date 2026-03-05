@@ -16,16 +16,18 @@ else
     AVAILABLE=false
 fi
 
-# Preserve notified flag if status file already exists
+# Preserve notified and staged flags if status file already exists
 NOTIFIED=false
+STAGED=false
 if [ -f "$STATUS_FILE" ]; then
     PREV_NOTIFIED=$(jq -r '.notified // false' "$STATUS_FILE" 2>/dev/null || echo "false")
-    # Reset notified if this is a new update
+    PREV_STAGED=$(jq -r '.staged // false' "$STATUS_FILE" 2>/dev/null || echo "false")
     if [ "$AVAILABLE" = "true" ]; then
         NOTIFIED=$PREV_NOTIFIED
+        STAGED=$PREV_STAGED
     fi
 fi
 
 cat > "$STATUS_FILE" <<EOF
-{"checked": "$CHECKED", "available": $AVAILABLE, "version": "$VERSION", "notified": $NOTIFIED}
+{"checked": "$CHECKED", "available": $AVAILABLE, "version": "$VERSION", "notified": $NOTIFIED, "staged": $STAGED}
 EOF

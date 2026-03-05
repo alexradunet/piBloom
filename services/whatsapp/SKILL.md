@@ -1,11 +1,13 @@
 ---
 name: whatsapp
+version: 0.1.0
 description: WhatsApp messaging bridge via Baileys — connects WhatsApp to Bloom's channel system
+image: ghcr.io/alexradunet/bloom-whatsapp:latest
 ---
 
 # WhatsApp Bridge
 
-Connects WhatsApp to Bloom via the channel protocol (TCP :18800). Messages from WhatsApp users flow into Pi's session.
+Connects WhatsApp to Bloom via the channel protocol (Unix socket at `/run/bloom/channels.sock`). Messages from WhatsApp users flow into Pi's session.
 
 ## Setup
 

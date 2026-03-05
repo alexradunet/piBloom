@@ -1,12 +1,20 @@
 [Unit]
 Description=Bloom Whisper — Speech-to-text transcription
 After=network-online.target
+Wants=network-online.target
+# Start on first request via bloom-whisper.socket
+StopWhenUnneeded=true
 
 [Container]
 Image=docker.io/fedirz/faster-whisper-server:latest-cpu
 ContainerName=bloom-whisper
-Network=host
-PublishPort=127.0.0.1:9000:8000
+
+# Bridge network for isolation
+Network=bloom.network
+
+# Socket activation: preserve the listener fd passed by systemd
+PodmanArgs=--preserve-fds=1
+
 Environment=WHISPER__MODEL=Systran/faster-whisper-small
 Environment=WHISPER__INFERENCE_DEVICE=cpu
 Volume=bloom-whisper-models:/root/.cache/huggingface:Z
@@ -23,6 +31,4 @@ LogDriver=journald
 Restart=on-failure
 RestartSec=10
 TimeoutStartSec=600
-
-[Install]
-WantedBy=default.target
+TimeoutStopSec=30

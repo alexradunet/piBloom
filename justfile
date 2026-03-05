@@ -3,6 +3,7 @@
 image := "bloom-os:latest"
 output := "os/output"
 bib := "quay.io/centos-bootc/bootc-image-builder:latest"
+bib_config := "os/bib-config.toml"
 ovmf := "/usr/share/edk2/ovmf/OVMF_CODE.fd"
 ovmf_vars := "/usr/share/edk2/ovmf/OVMF_VARS.fd"
 registry := env("BLOOM_REGISTRY", "ghcr.io/alexradunet")
@@ -13,22 +14,22 @@ build:
 	podman build -f os/Containerfile -t {{ image }} .
 
 # Generate qcow2 disk image via bootc-image-builder
-qcow2: build
+qcow2: build _require-bib-config
 	mkdir -p {{ output }}
 	sudo podman run --rm -it --privileged --pull=newer \
 		--security-opt label=type:unconfined_t \
-		-v ./os/bib-config.toml:/config.toml:ro \
+		-v ./{{ bib_config }}:/config.toml:ro \
 		-v ./{{ output }}:/output \
 		-v /var/lib/containers/storage:/var/lib/containers/storage \
 		{{ bib }} \
 		--type qcow2 --local {{ image }}
 
 # Generate anaconda-iso installer via bootc-image-builder
-iso: build
+iso: build _require-bib-config
 	mkdir -p {{ output }}
 	sudo podman run --rm -it --privileged --pull=newer \
 		--security-opt label=type:unconfined_t \
-		-v ./os/bib-config.toml:/config.toml:ro \
+		-v ./{{ bib_config }}:/config.toml:ro \
 		-v ./{{ output }}:/output \
 		-v /var/lib/containers/storage:/var/lib/containers/storage \
 		{{ bib }} \
@@ -83,11 +84,11 @@ push-ghcr: build
 	podman push {{ remote_image }}
 
 # Generate ISO with GHCR target-imgref for OTA updates
-iso-production: build
+iso-production: build _require-bib-config
 	mkdir -p {{ output }}
 	sudo podman run --rm -it --privileged --pull=newer \
 		--security-opt label=type:unconfined_t \
-		-v ./os/bib-config.toml:/config.toml:ro \
+		-v ./{{ bib_config }}:/config.toml:ro \
 		-v ./{{ output }}:/output \
 		-v /var/lib/containers/storage:/var/lib/containers/storage \
 		{{ bib }} \
@@ -108,9 +109,20 @@ svc-install name:
 	cp /tmp/bloom-svc-{{ name }}/quadlet/* ~/.config/containers/systemd/
 	mkdir -p ~/Garden/Bloom/Skills/{{ name }}
 	cp /tmp/bloom-svc-{{ name }}/SKILL.md ~/Garden/Bloom/Skills/{{ name }}/SKILL.md
+	mkdir -p ~/.config/bloom/channel-tokens
+	@test -f ~/.config/bloom/channel-tokens/{{ name }} || (openssl rand -hex 32 > ~/.config/bloom/channel-tokens/{{ name }} && echo "BLOOM_CHANNEL_TOKEN=$(cat ~/.config/bloom/channel-tokens/{{ name }})" > ~/.config/bloom/channel-tokens/{{ name }}.env && echo "Generated channel token for {{ name }}")
 	systemctl --user daemon-reload
+	@if [ -f ~/.config/containers/systemd/bloom-{{ name }}.socket ]; then \
+		systemctl --user enable --now bloom-{{ name }}.socket; \
+	else \
+		systemctl --user enable --now bloom-{{ name }}; \
+	fi
 	rm -rf /tmp/bloom-svc-{{ name }}
 
 # Install host dependencies
 deps:
 	sudo dnf install -y just qemu-system-x86 edk2-ovmf
+
+# Guard: ensure bib-config.toml exists before image generation
+_require-bib-config:
+	@test -f {{ bib_config }} || (echo "Error: {{ bib_config }} not found. Copy os/bib-config.toml.example and add your SSH key." && exit 1)

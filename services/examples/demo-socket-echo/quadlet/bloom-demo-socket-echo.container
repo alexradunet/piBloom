@@ -1,0 +1,23 @@
+[Unit]
+Description=Bloom Demo Socket Echo — Socket-activated reference package
+After=network-online.target
+Wants=network-online.target
+# Start only when bloom-demo-socket-echo.socket receives traffic
+StopWhenUnneeded=true
+
+[Container]
+Image=docker.io/mendhak/http-https-echo:31
+ContainerName=bloom-demo-socket-echo
+Network=bloom.network
+
+# Socket-activation pattern reference (fd passed by systemd)
+PodmanArgs=--preserve-fds=1
+PodmanArgs=--memory=64m
+NoNewPrivileges=true
+LogDriver=journald
+
+[Service]
+Restart=on-failure
+RestartSec=10
+TimeoutStartSec=120
+TimeoutStopSec=30

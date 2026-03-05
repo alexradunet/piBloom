@@ -10,6 +10,7 @@ Each service package is a directory containing:
 services/{name}/
 ├── quadlet/
 │   ├── bloom-{name}.container    # Podman Quadlet container unit
+│   ├── bloom-{name}.socket       # Optional socket activation unit
 │   └── bloom-{name}-*.volume     # Optional volume definitions
 └── SKILL.md                      # Pi skill file (frontmatter + docs)
 ```
@@ -44,8 +45,45 @@ cp /tmp/bloom-svc/quadlet/* ~/.config/containers/systemd/
 mkdir -p ~/Garden/Bloom/Skills/{name}
 cp /tmp/bloom-svc/SKILL.md ~/Garden/Bloom/Skills/{name}/SKILL.md
 systemctl --user daemon-reload
-systemctl --user start bloom-{name}
+if [ -f ~/.config/containers/systemd/bloom-{name}.socket ]; then
+  systemctl --user enable --now bloom-{name}.socket
+else
+  systemctl --user enable --now bloom-{name}
+fi
 rm -rf /tmp/bloom-svc
+```
+
+## Worked Example Packages
+
+Reference packages are included at:
+
+| Path | Pattern | Notes |
+|------|---------|-------|
+| `services/examples/demo-api/` | Standard service (`PublishPort`) | Basic non-socket service package layout |
+| `services/examples/demo-socket-echo/` | Socket-activated (`.socket` + `.container`) | Reference wiring for on-demand activation |
+| `services/whisper/quadlet/` | Production socket-activated service | Real in-tree implementation |
+
+Use these as templates for frontmatter, Quadlet layout, health checks, and local install commands.
+
+Copy/paste quickstart commands are in `services/examples/README.md`.
+
+## End-to-End Lifecycle Example
+
+### Using Bloom tools
+
+1. `service_scaffold(name="demo-api", description="Demo HTTP API", image="docker.io/library/nginx:stable", version="0.1.0", port=9080, container_port=80)`
+2. `service_test(name="demo-api")`
+3. `service_publish(name="demo-api", version="0.1.0")`
+4. `service_install(name="demo-api", version="0.1.0")`
+5. Verify: `systemctl --user status bloom-demo-api` and `manifest_show`
+
+### Using shell commands
+
+```bash
+# scaffold manually under services/demo-api/
+just svc-push demo-api
+just svc-install demo-api
+systemctl --user status bloom-demo-api
 ```
 
 ## OCI Annotations
@@ -64,7 +102,7 @@ Each artifact carries standard annotations:
 ## Quadlet Conventions
 
 - Container name: `bloom-{name}`
-- Network: `host` (services communicate via localhost)
+- Network: prefer isolated Podman network (`bloom.network`); use host only when required (e.g., VPN)
 - Health checks: required (`HealthCmd`, `HealthInterval`, `HealthRetries`)
 - Logging: `LogDriver=journald`
 - Security: `NoNewPrivileges=true` minimum
