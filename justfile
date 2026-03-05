@@ -1,37 +1,39 @@
 # Bloom OS — build, test, and deploy
 
-image := "bloom-os:latest"
+image := env("BLOOM_IMAGE", "localhost/bloom-os:latest")
 output := "os/output"
 bib := "quay.io/centos-bootc/bootc-image-builder:latest"
 bib_config := "os/bib-config.toml"
+podman := env("BLOOM_PODMAN", "sudo podman")
+storage := env("BLOOM_STORAGE", "/var/lib/containers/storage")
 ovmf := "/usr/share/edk2/ovmf/OVMF_CODE.fd"
 ovmf_vars := "/usr/share/edk2/ovmf/OVMF_VARS.fd"
 registry := env("BLOOM_REGISTRY", "ghcr.io/alexradunet")
 remote_image := registry + "/bloom-os:latest"
 
-# Build the container image
+# Build the container image (rootful by default, so BIB can see it)
 build:
-	podman build -f os/Containerfile -t {{ image }} .
+	{{ podman }} build -f os/Containerfile -t {{ image }} .
 
 # Generate qcow2 disk image via bootc-image-builder
 qcow2: build _require-bib-config
 	mkdir -p {{ output }}
-	sudo podman run --rm -it --privileged --pull=newer \
+	{{ podman }} run --rm -it --privileged --pull=newer \
 		--security-opt label=type:unconfined_t \
 		-v ./{{ bib_config }}:/config.toml:ro \
 		-v ./{{ output }}:/output \
-		-v /var/lib/containers/storage:/var/lib/containers/storage \
+		-v {{ storage }}:/var/lib/containers/storage \
 		{{ bib }} \
 		--type qcow2 --local {{ image }}
 
 # Generate anaconda-iso installer via bootc-image-builder
 iso: build _require-bib-config
 	mkdir -p {{ output }}
-	sudo podman run --rm -it --privileged --pull=newer \
+	{{ podman }} run --rm -it --privileged --pull=newer \
 		--security-opt label=type:unconfined_t \
 		-v ./{{ bib_config }}:/config.toml:ro \
 		-v ./{{ output }}:/output \
-		-v /var/lib/containers/storage:/var/lib/containers/storage \
+		-v {{ storage }}:/var/lib/containers/storage \
 		{{ bib }} \
 		--type anaconda-iso --local {{ image }}
 
@@ -80,17 +82,17 @@ clean:
 
 # Push built image to GHCR
 push-ghcr: build
-	podman tag {{ image }} {{ remote_image }}
-	podman push {{ remote_image }}
+	{{ podman }} tag {{ image }} {{ remote_image }}
+	{{ podman }} push {{ remote_image }}
 
 # Generate ISO with GHCR target-imgref for OTA updates
 iso-production: build _require-bib-config
 	mkdir -p {{ output }}
-	sudo podman run --rm -it --privileged --pull=newer \
+	{{ podman }} run --rm -it --privileged --pull=newer \
 		--security-opt label=type:unconfined_t \
 		-v ./{{ bib_config }}:/config.toml:ro \
 		-v ./{{ output }}:/output \
-		-v /var/lib/containers/storage:/var/lib/containers/storage \
+		-v {{ storage }}:/var/lib/containers/storage \
 		{{ bib }} \
 		--type anaconda-iso --target-imgref {{ remote_image }} --local {{ image }}
 
@@ -121,7 +123,7 @@ svc-install name:
 
 # Install host dependencies
 deps:
-	sudo dnf install -y just qemu-system-x86 edk2-ovmf
+	sudo dnf install -y just podman qemu-system-x86 edk2-ovmf
 
 # Guard: ensure bib-config.toml exists before image generation
 _require-bib-config:

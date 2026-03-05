@@ -8,3 +8,8 @@ docs
 *.md
 !persona/**/*.md
 !skills/**/*.md
+
+# Keep OS build files in context explicitly (for CI/podman)
+!os/Containerfile
+!os/bootc/**
+!os/sysconfig/**
