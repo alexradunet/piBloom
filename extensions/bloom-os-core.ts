@@ -7,14 +7,6 @@ import { Type } from "@sinclair/typebox";
 import { runCommand } from "../lib/command.js";
 import { errorResult, requireConfirmation, truncate } from "../lib/shared.js";
 
-async function run(
-	cmd: string,
-	args: string[],
-	signal?: AbortSignal,
-): Promise<{ stdout: string; stderr: string; exitCode: number }> {
-	return runCommand(cmd, args, { signal });
-}
-
 function guardBloom(name: string): string | null {
 	if (!name.startsWith("bloom-")) {
 		return `Security error: only bloom-* names are permitted, got "${name}"`;
@@ -34,7 +26,7 @@ export default function (pi: ExtensionAPI) {
 		promptGuidelines: ["Use os_bootc_status when the user asks about OS version, update status, or system health"],
 		parameters: Type.Object({}),
 		async execute(_toolCallId, _params, signal) {
-			const result = await run("bootc", ["status"], signal);
+			const result = await runCommand("bootc", ["status"], { signal });
 			const text = truncate(result.exitCode === 0 ? result.stdout : `Error running bootc status:\n${result.stderr}`);
 			return {
 				content: [{ type: "text", text }],
@@ -83,7 +75,7 @@ export default function (pi: ExtensionAPI) {
 					fullArgs = ["bootc", "upgrade"];
 					break;
 			}
-			const result = await run(cmd, fullArgs, signal);
+			const result = await runCommand(cmd, fullArgs, { signal });
 			const text = truncate(result.exitCode === 0 ? result.stdout || "No output." : `Error:\n${result.stderr}`);
 			return {
 				content: [{ type: "text", text }],
@@ -106,7 +98,7 @@ export default function (pi: ExtensionAPI) {
 		async execute(_toolCallId, _params, signal, _onUpdate, ctx) {
 			const denied = await requireConfirmation(ctx, "Rollback to previous OS image via bootc rollback");
 			if (denied) return errorResult(denied);
-			const result = await run("sudo", ["bootc", "rollback"], signal);
+			const result = await runCommand("sudo", ["bootc", "rollback"], { signal });
 			const text = truncate(
 				result.exitCode === 0 ? result.stdout || "Rollback staged. Reboot to apply." : `Error:\n${result.stderr}`,
 			);
@@ -126,7 +118,7 @@ export default function (pi: ExtensionAPI) {
 		promptGuidelines: ["Use os_container_status to check running Bloom containers and their health"],
 		parameters: Type.Object({}),
 		async execute(_toolCallId, _params, signal) {
-			const result = await run("podman", ["ps", "--format", "json", "--filter", "name=bloom-"], signal);
+			const result = await runCommand("podman", ["ps", "--format", "json", "--filter", "name=bloom-"], { signal });
 			if (result.exitCode !== 0) {
 				return errorResult(`Error listing containers:\n${result.stderr}`);
 			}
@@ -174,7 +166,7 @@ export default function (pi: ExtensionAPI) {
 			if (guard) return errorResult(guard);
 			const n = String(params.lines ?? 50);
 			const unit = `${params.service}.service`;
-			const result = await run("journalctl", ["--user", "-u", unit, "--no-pager", "-n", n], signal);
+			const result = await runCommand("journalctl", ["--user", "-u", unit, "--no-pager", "-n", n], { signal });
 			const text = truncate(
 				result.exitCode === 0 ? result.stdout || "(no log output)" : `Error fetching logs:\n${result.stderr}`,
 			);
@@ -208,7 +200,7 @@ export default function (pi: ExtensionAPI) {
 				const denied = await requireConfirmation(ctx, `systemctl ${params.action} ${unit}`);
 				if (denied) return errorResult(denied);
 			}
-			const result = await run("systemctl", ["--user", params.action, unit], signal);
+			const result = await runCommand("systemctl", ["--user", params.action, unit], { signal });
 			const text = truncate(result.stdout || result.stderr || `systemctl --user ${params.action} ${unit} completed.`);
 			return {
 				content: [{ type: "text", text }],
@@ -235,11 +227,11 @@ export default function (pi: ExtensionAPI) {
 			const unit = `${params.quadlet_name}.service`;
 			const denied = await requireConfirmation(ctx, `Deploy container ${unit}`);
 			if (denied) return errorResult(denied);
-			const reload = await run("systemctl", ["--user", "daemon-reload"], signal);
+			const reload = await runCommand("systemctl", ["--user", "daemon-reload"], { signal });
 			if (reload.exitCode !== 0) {
 				return errorResult(`systemctl --user daemon-reload failed:\n${reload.stderr}`);
 			}
-			const start = await run("systemctl", ["--user", "start", unit], signal);
+			const start = await runCommand("systemctl", ["--user", "start", unit], { signal });
 			const text = truncate(
 				start.exitCode === 0 ? `Started ${unit} successfully.` : `Failed to start ${unit}:\n${start.stderr}`,
 			);
@@ -290,7 +282,7 @@ export default function (pi: ExtensionAPI) {
 			const delay = Math.max(1, Math.round(params.delay_minutes));
 			const denied = await requireConfirmation(ctx, `Schedule reboot in ${delay} minute(s)`);
 			if (denied) return errorResult(denied);
-			const result = await run("sudo", ["systemd-run", `--on-active=${delay}m`, "systemctl", "reboot"], signal);
+			const result = await runCommand("sudo", ["systemd-run", `--on-active=${delay}m`, "systemctl", "reboot"], { signal });
 			if (result.exitCode !== 0) {
 				return errorResult(`Failed to schedule reboot:\n${result.stderr}`);
 			}
@@ -314,7 +306,7 @@ export default function (pi: ExtensionAPI) {
 		async execute(_toolCallId, _params, signal) {
 			const sections: string[] = [];
 
-			const bootc = await run("bootc", ["status", "--format=json"], signal);
+			const bootc = await runCommand("bootc", ["status", "--format=json"], { signal });
 			if (bootc.exitCode === 0) {
 				try {
 					const status = JSON.parse(bootc.stdout) as {
@@ -329,7 +321,7 @@ export default function (pi: ExtensionAPI) {
 				sections.push("## OS Image\n(bootc status unavailable)");
 			}
 
-			const ps = await run("podman", ["ps", "--format", "json", "--filter", "name=bloom-"], signal);
+			const ps = await runCommand("podman", ["ps", "--format", "json", "--filter", "name=bloom-"], { signal });
 			if (ps.exitCode === 0) {
 				try {
 					const containers = JSON.parse(ps.stdout || "[]") as Array<{
@@ -351,14 +343,14 @@ export default function (pi: ExtensionAPI) {
 				}
 			}
 
-			const df = await run("df", ["-h", "/", "/var", "/home"], signal);
+			const df = await runCommand("df", ["-h", "/", "/var", "/home"], { signal });
 			if (df.exitCode === 0) {
 				sections.push(`## Disk Usage\n\`\`\`\n${df.stdout.trim()}\n\`\`\``);
 			}
 
-			const loadavg = await run("cat", ["/proc/loadavg"], signal);
-			const meminfo = await run("free", ["-h", "--si"], signal);
-			const uptime = await run("uptime", ["-p"], signal);
+			const loadavg = await runCommand("cat", ["/proc/loadavg"], { signal });
+			const meminfo = await runCommand("free", ["-h", "--si"], { signal });
+			const uptime = await runCommand("uptime", ["-p"], { signal });
 
 			const loadParts: string[] = [];
 			if (loadavg.exitCode === 0) {

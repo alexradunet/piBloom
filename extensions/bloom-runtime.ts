@@ -27,14 +27,6 @@ import { createLogger, errorResult, getGardenDir, requireConfirmation, truncate 
 
 const log = createLogger("bloom-runtime");
 
-async function run(
-	cmd: string,
-	args: string[],
-	signal?: AbortSignal,
-): Promise<{ stdout: string; stderr: string; exitCode: number }> {
-	return runCommand(cmd, args, { signal });
-}
-
 export default function (pi: ExtensionAPI) {
 	const gardenDir = getGardenDir();
 	const manifestPath = join(gardenDir, "Bloom", "manifest.yaml");
@@ -127,7 +119,7 @@ export default function (pi: ExtensionAPI) {
 
 		try {
 			let source: "oci" | "local" = "oci";
-			const pull = await run("oras", ["pull", ref, "-o", tempDir], signal);
+			const pull = await runCommand("oras", ["pull", ref, "-o", tempDir], { signal });
 			if (pull.exitCode !== 0) {
 				const localPackage = findLocalServicePackage(name);
 				if (!localPackage) {
@@ -207,7 +199,7 @@ export default function (pi: ExtensionAPI) {
 	}
 
 	async function detectRunningServices(signal?: AbortSignal): Promise<Map<string, { image: string; state: string }>> {
-		const result = await run("podman", ["ps", "-a", "--format", "json", "--filter", "name=bloom-"], signal);
+		const result = await runCommand("podman", ["ps", "-a", "--format", "json", "--filter", "name=bloom-"], { signal });
 		const detected = new Map<string, { image: string; state: string }>();
 		if (result.exitCode !== 0) return detected;
 		try {
@@ -290,7 +282,7 @@ export default function (pi: ExtensionAPI) {
 			const manifest = loadManifestState();
 			const running = await detectRunningServices(signal);
 
-			const bootcResult = await run("bootc", ["status", "--format=json"], signal);
+			const bootcResult = await runCommand("bootc", ["status", "--format=json"], { signal });
 			let osImage = manifest.os_image;
 			if (bootcResult.exitCode === 0) {
 				try {
@@ -503,7 +495,7 @@ export default function (pi: ExtensionAPI) {
 			}
 
 			if (needsReload && !dryRun) {
-				const reload = await run("systemctl", ["--user", "daemon-reload"], signal);
+				const reload = await runCommand("systemctl", ["--user", "daemon-reload"], { signal });
 				if (reload.exitCode !== 0) {
 					return errorResult(`runtime_manifest_apply: daemon-reload failed:\n${reload.stderr || reload.stdout}`);
 				}
@@ -534,7 +526,7 @@ export default function (pi: ExtensionAPI) {
 						continue;
 					}
 
-					const start = await run("systemctl", ["--user", "start", startTarget], signal);
+					const start = await runCommand("systemctl", ["--user", "start", startTarget], { signal });
 					if (start.exitCode !== 0) {
 						errors.push(`${name}: failed to start ${startTarget}: ${start.stderr || start.stdout}`);
 					} else {
@@ -551,8 +543,8 @@ export default function (pi: ExtensionAPI) {
 					continue;
 				}
 
-				await run("systemctl", ["--user", "stop", `${unit}.socket`], signal);
-				await run("systemctl", ["--user", "stop", `${unit}.service`], signal);
+				await runCommand("systemctl", ["--user", "stop", `${unit}.socket`], { signal });
+				await runCommand("systemctl", ["--user", "stop", `${unit}.service`], { signal });
 				stoppedCount += 1;
 				lines.push(`Stopped ${unit}`);
 			}

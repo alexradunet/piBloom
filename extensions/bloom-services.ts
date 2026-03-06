@@ -34,15 +34,6 @@ const defaultServiceRegistry =
 	process.env.BLOOM_SERVICE_REGISTRY?.trim() || process.env.BLOOM_REGISTRY?.trim() || "ghcr.io/pibloom";
 const defaultSourceRepo = process.env.BLOOM_SOURCE_REPO?.trim() || "https://github.com/pibloom/pi-bloom";
 
-async function run(
-	cmd: string,
-	args: string[],
-	signal?: AbortSignal,
-	cwd?: string,
-): Promise<{ stdout: string; stderr: string; exitCode: number }> {
-	return runCommand(cmd, args, { signal, cwd });
-}
-
 function sleep(ms: number): Promise<void> {
 	return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -53,13 +44,13 @@ function extractDigest(text: string): string | null {
 }
 
 async function resolveArtifactDigest(ref: string, signal?: AbortSignal): Promise<string | null> {
-	const resolve = await run("oras", ["resolve", ref], signal);
+	const resolve = await runCommand("oras", ["resolve", ref], { signal });
 	if (resolve.exitCode === 0) {
 		const digest = extractDigest(`${resolve.stdout}\n${resolve.stderr}`);
 		if (digest) return digest;
 	}
 
-	const descriptor = await run("oras", ["manifest", "fetch", "--descriptor", ref], signal);
+	const descriptor = await runCommand("oras", ["manifest", "fetch", "--descriptor", ref], { signal });
 	if (descriptor.exitCode === 0) {
 		const digest = extractDigest(`${descriptor.stdout}\n${descriptor.stderr}`);
 		if (digest) return digest;
@@ -237,7 +228,7 @@ export default function (pi: ExtensionAPI) {
 					...quadletFiles,
 					"SKILL.md:text/markdown",
 				];
-				const res = await run("oras", args, signal, serviceDir);
+				const res = await runCommand("oras", args, { signal, cwd: serviceDir });
 				if (res.exitCode !== 0) {
 					return errorResult(`Failed to publish ${ref}:\n${res.stderr}`);
 				}
@@ -336,7 +327,7 @@ export default function (pi: ExtensionAPI) {
 
 				let installSource: "oci" | "local" = "oci";
 				let sourceNote: string | null = null;
-				const pull = await run("oras", ["pull", ref, "-o", tempDir], signal);
+				const pull = await runCommand("oras", ["pull", ref, "-o", tempDir], { signal });
 				if (pull.exitCode !== 0) {
 					const localServiceDir = join(packageRoot, "services", params.name);
 					const localQuadlet = join(localServiceDir, "quadlet");
@@ -403,7 +394,7 @@ export default function (pi: ExtensionAPI) {
 					writeFileSync(tokenEnvPath, `BLOOM_CHANNEL_TOKEN=${token}\n`);
 				}
 
-				const daemonReload = await run("systemctl", ["--user", "daemon-reload"], signal);
+				const daemonReload = await runCommand("systemctl", ["--user", "daemon-reload"], { signal });
 				if (daemonReload.exitCode !== 0) return errorResult(`daemon-reload failed:\n${daemonReload.stderr}`);
 
 				const socketUnit = join(userSystemdDir, `bloom-${params.name}.socket`);
@@ -415,7 +406,7 @@ export default function (pi: ExtensionAPI) {
 				}
 				if (shouldStart) {
 					const target = existsSync(socketUnit) ? `bloom-${params.name}.socket` : `bloom-${params.name}.service`;
-					const startRes = await run("systemctl", ["--user", "start", target], signal);
+					const startRes = await runCommand("systemctl", ["--user", "start", target], { signal });
 					if (startRes.exitCode !== 0) {
 						return errorResult(`Failed to start ${target}:\n${startRes.stderr}`);
 					}
@@ -493,22 +484,22 @@ export default function (pi: ExtensionAPI) {
 			const serviceUnit = `bloom-${params.name}`;
 			const startUnit = socketMode ? `${serviceUnit}.socket` : `${serviceUnit}.service`;
 
-			const reload = await run("systemctl", ["--user", "daemon-reload"], signal);
+			const reload = await runCommand("systemctl", ["--user", "daemon-reload"], { signal });
 			if (reload.exitCode !== 0) return errorResult(`daemon-reload failed:\n${reload.stderr}`);
 
-			const start = await run("systemctl", ["--user", "start", startUnit], signal);
+			const start = await runCommand("systemctl", ["--user", "start", startUnit], { signal });
 			if (start.exitCode !== 0) return errorResult(`Failed to start ${startUnit}:\n${start.stderr}`);
 
 			let active = false;
 			const waitUntil = Date.now() + timeoutSec * 1000;
 			while (Date.now() < waitUntil) {
-				const check = await run("systemctl", ["--user", "is-active", serviceUnit], signal);
+				const check = await runCommand("systemctl", ["--user", "is-active", serviceUnit], { signal });
 				if (check.exitCode === 0 && check.stdout.trim() === "active") {
 					active = true;
 					break;
 				}
 				if (socketMode) {
-					const socketActive = await run("systemctl", ["--user", "is-active", `${serviceUnit}.socket`], signal);
+					const socketActive = await runCommand("systemctl", ["--user", "is-active", `${serviceUnit}.socket`], { signal });
 					if (socketActive.exitCode === 0 && socketActive.stdout.trim() === "active") {
 						active = true;
 						break;
@@ -517,15 +508,15 @@ export default function (pi: ExtensionAPI) {
 				await sleep(2000);
 			}
 
-			const status = await run("systemctl", ["--user", "status", serviceUnit, "--no-pager"], signal);
-			const logs = await run("journalctl", ["--user", "-u", serviceUnit, "-n", "80", "--no-pager"], signal);
+			const status = await runCommand("systemctl", ["--user", "status", serviceUnit, "--no-pager"], { signal });
+			const logs = await runCommand("journalctl", ["--user", "-u", serviceUnit, "-n", "80", "--no-pager"], { signal });
 			const socketStatus = socketMode
-				? await run("systemctl", ["--user", "status", `${serviceUnit}.socket`, "--no-pager"], signal)
+				? await runCommand("systemctl", ["--user", "status", `${serviceUnit}.socket`, "--no-pager"], { signal })
 				: null;
 
 			if (cleanup) {
-				await run("systemctl", ["--user", "stop", serviceUnit], signal);
-				if (socketMode) await run("systemctl", ["--user", "stop", `${serviceUnit}.socket`], signal);
+				await runCommand("systemctl", ["--user", "stop", serviceUnit], { signal });
+				if (socketMode) await runCommand("systemctl", ["--user", "stop", `${serviceUnit}.socket`], { signal });
 			}
 
 			const resultText = [
