@@ -8,8 +8,8 @@ The bloom word comes from the concept that you "plant" your mini-pc and then in 
 ## Architecture
 
 - **Pi package**: Extensions + skills bundled as a Pi package (`pi install ./`)
-- **Extensions**: `extensions/` — TypeScript Pi extensions (bloom-garden, bloom-persona, bloom-os-core, bloom-fleet, bloom-runtime, bloom-objects, bloom-journal, bloom-channels, bloom-topics)
-- **Skills**: `skills/` — Pi skill markdown files (os-operations, object-store, self-evolution, service-management, first-boot)
+- **Extensions**: `extensions/` — TypeScript Pi extensions (bloom-audit, bloom-channels, bloom-fleet, bloom-garden, bloom-journal, bloom-objects, bloom-os-core, bloom-persona, bloom-runtime, bloom-services, bloom-topics)
+- **Skills**: `skills/` — Pi skill markdown files (first-boot, object-store, os-operations, recovery, self-evolution, service-management)
 - **Services**: `services/` — OCI-packaged containers (whisper, whatsapp, tailscale, syncthing)
 - **Persona**: `persona/` — OpenPersona 4-layer identity (SOUL.md, BODY.md, FACULTY.md, SKILL.md) — seeded to Garden on first run
 - **Garden vault**: `~/Garden/` — PARA-organized user content, synced via Syncthing. Env: `BLOOM_GARDEN_DIR`
