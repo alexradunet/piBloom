@@ -30,3 +30,6 @@ Restart=on-failure
 RestartSec=10
 TimeoutStartSec=600
 TimeoutStopSec=30
+
+[Install]
+WantedBy=default.target

@@ -6,7 +6,7 @@ export default defineConfig({
 		environment: "node",
 		coverage: {
 			provider: "v8",
-			include: ["lib/**/*.ts"],
+			include: ["lib/**/*.ts", "extensions/**/*.ts"],
 			thresholds: {
 				lines: 80,
 				functions: 80,

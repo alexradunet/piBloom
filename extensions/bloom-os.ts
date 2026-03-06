@@ -5,53 +5,27 @@
  * @hooks session_start, before_agent_start
  * @see {@link ../AGENTS.md#bloom-os} Extension reference
  */
-import { execFile } from "node:child_process";
-import { randomBytes } from "node:crypto";
-import {
-	existsSync,
-	mkdirSync,
-	mkdtempSync,
-	readdirSync,
-	readFileSync,
-	rmSync,
-	statSync,
-	writeFileSync,
-} from "node:fs";
+import { existsSync, mkdirSync } from "node:fs";
 import { readFile, writeFile } from "node:fs/promises";
-import { createRequire } from "node:module";
 import os from "node:os";
 import { join } from "node:path";
-import { promisify } from "node:util";
 import { StringEnum } from "@mariozechner/pi-ai";
 import type { ExtensionAPI, ExtensionContext } from "@mariozechner/pi-coding-agent";
 import { Type } from "@sinclair/typebox";
+import { run } from "../lib/exec.js";
+import {
+	detectRunningServices,
+	installServicePackage,
+	loadManifest,
+	loadServiceCatalog,
+	type Manifest,
+	saveManifest,
+	servicePreflightErrors,
+	tailscaleAuthConfigured,
+} from "../lib/manifest.js";
 import { guardBloom, parseGithubSlugFromUrl, slugifyBranchPart } from "../lib/os-utils.js";
-import { createLogger, errorResult, getGardenDir, truncate } from "../lib/shared.js";
-
-const require = createRequire(import.meta.url);
-const yaml: { load: (str: string) => unknown; dump: (obj: unknown) => string } = require("js-yaml");
-
-const log = createLogger("bloom-os");
-
-const execAsync = promisify(execFile);
-
-async function run(
-	cmd: string,
-	args: string[],
-	signal?: AbortSignal,
-): Promise<{ stdout: string; stderr: string; exitCode: number }> {
-	try {
-		const { stdout, stderr } = await execAsync(cmd, args, { signal });
-		return { stdout, stderr, exitCode: 0 };
-	} catch (err: unknown) {
-		const e = err as { message: string; stderr?: string; code?: number };
-		return {
-			stdout: "",
-			stderr: e.stderr ?? e.message,
-			exitCode: e.code ?? 1,
-		};
-	}
-}
+import { getRemoteUrl, inferRepoUrl } from "../lib/repo.js";
+import { errorResult, getGardenDir, truncate } from "../lib/shared.js";
 
 async function requireConfirmation(
 	ctx: ExtensionContext,
@@ -65,36 +39,6 @@ async function requireConfirmation(
 	const confirmed = await ctx.ui.confirm("Confirm action", `Allow: ${action}?`);
 	if (!confirmed) return `User declined: ${action}`;
 	return null;
-}
-
-async function getRemoteUrl(repoDir: string, remote: string, signal?: AbortSignal): Promise<string | null> {
-	const result = await run("git", ["-C", repoDir, "remote", "get-url", remote], signal);
-	if (result.exitCode !== 0) return null;
-	const url = result.stdout.trim();
-	return url || null;
-}
-
-async function inferRepoUrl(repoDir: string, signal?: AbortSignal): Promise<string> {
-	const existingUpstream = await getRemoteUrl(repoDir, "upstream", signal);
-	if (existingUpstream) return existingUpstream;
-
-	const bootc = await run("bootc", ["status", "--format=json"], signal);
-	if (bootc.exitCode === 0) {
-		try {
-			const status = JSON.parse(bootc.stdout) as {
-				status?: { booted?: { image?: { image?: { image?: string } } } };
-			};
-			const imageRef = status?.status?.booted?.image?.image?.image ?? "";
-			const match = imageRef.match(/^ghcr\.io\/([^/]+)\/bloom-os(?:[:@].+)?$/);
-			if (match?.[1]) {
-				return `https://github.com/${match[1]}/pi-bloom.git`;
-			}
-		} catch {
-			// fall through
-		}
-	}
-
-	return "https://github.com/pibloom/pi-bloom.git";
 }
 
 export default function (pi: ExtensionAPI) {
@@ -822,297 +766,6 @@ export default function (pi: ExtensionAPI) {
 	const gardenDir = getGardenDir();
 	const manifestPath = join(gardenDir, "Bloom", "manifest.yaml");
 
-	interface ManifestService {
-		image: string;
-		version?: string;
-		enabled: boolean;
-	}
-
-	interface Manifest {
-		device?: string;
-		os_image?: string;
-		services: Record<string, ManifestService>;
-	}
-
-	function loadManifest(): Manifest {
-		if (!existsSync(manifestPath)) return { services: {} };
-		try {
-			const raw = readFileSync(manifestPath, "utf-8");
-			const doc = yaml.load(raw) as Manifest | null;
-			return doc ?? { services: {} };
-		} catch (err) {
-			log.warn("failed to load manifest", { error: (err as Error).message });
-			return { services: {} };
-		}
-	}
-
-	function saveManifest(manifest: Manifest): void {
-		mkdirSync(join(gardenDir, "Bloom"), { recursive: true });
-		writeFileSync(manifestPath, yaml.dump(manifest));
-	}
-
-	interface ServiceCatalogEntry {
-		version?: string;
-		category?: string;
-		artifact?: string;
-		image?: string;
-		optional?: boolean;
-		preflight?: {
-			commands?: string[];
-			rootless_subids?: boolean;
-		};
-	}
-
-	function loadServiceCatalog(): Record<string, ServiceCatalogEntry> {
-		const candidates = [
-			join(repoDir, "services", "catalog.yaml"),
-			"/usr/local/share/bloom/services/catalog.yaml",
-			join(process.cwd(), "services", "catalog.yaml"),
-		];
-		for (const candidate of candidates) {
-			if (!existsSync(candidate)) continue;
-			try {
-				const raw = readFileSync(candidate, "utf-8");
-				const doc = (yaml.load(raw) as { services?: Record<string, ServiceCatalogEntry> } | null) ?? {};
-				if (doc.services && typeof doc.services === "object") return doc.services;
-			} catch {
-				// ignore and continue
-			}
-		}
-		return {};
-	}
-
-	function hasSubidRange(filePath: string, username: string): boolean {
-		if (!existsSync(filePath)) return false;
-		try {
-			return readFileSync(filePath, "utf-8")
-				.split("\n")
-				.some((line) => line.trim().startsWith(`${username}:`));
-		} catch {
-			return false;
-		}
-	}
-
-	function commandCheckArgs(cmd: string): string[] {
-		switch (cmd) {
-			case "oras":
-				return ["version"];
-			case "podman":
-			case "systemctl":
-				return ["--version"];
-			default:
-				return ["--version"];
-		}
-	}
-
-	function commandMissingError(stderr: string): boolean {
-		return /ENOENT|not found|No such file/i.test(stderr);
-	}
-
-	async function commandExists(cmd: string, signal?: AbortSignal): Promise<boolean> {
-		if (!/^[a-zA-Z0-9._+-]+$/.test(cmd)) return false;
-		const check = await run(cmd, commandCheckArgs(cmd), signal);
-		if (check.exitCode === 0) return true;
-		return !commandMissingError(check.stderr || check.stdout);
-	}
-
-	async function servicePreflightErrors(
-		name: string,
-		entry: ServiceCatalogEntry | undefined,
-		signal?: AbortSignal,
-	): Promise<string[]> {
-		const errors: string[] = [];
-		const commands = entry?.preflight?.commands ?? ["oras", "podman", "systemctl"];
-		for (const command of commands) {
-			const ok = await commandExists(command, signal);
-			if (!ok) errors.push(`missing command: ${command}`);
-		}
-
-		if (entry?.preflight?.rootless_subids) {
-			const user = os.userInfo().username;
-			const hasSubuid = hasSubidRange("/etc/subuid", user);
-			const hasSubgid = hasSubidRange("/etc/subgid", user);
-			if (!hasSubuid || !hasSubgid) {
-				errors.push(
-					`rootless subuid/subgid mappings missing for ${user} (fix: sudo usermod --add-subuids 100000-165535 ${user} && sudo usermod --add-subgids 100000-165535 ${user})`,
-				);
-			}
-		}
-
-		// Fallback guard for known services even if catalog not loaded.
-		if (name === "tailscale" && !entry?.preflight?.rootless_subids) {
-			const user = os.userInfo().username;
-			const hasSubuid = hasSubidRange("/etc/subuid", user);
-			const hasSubgid = hasSubidRange("/etc/subgid", user);
-			if (!hasSubuid || !hasSubgid) {
-				errors.push(
-					`rootless subuid/subgid mappings missing for ${user} (fix: sudo usermod --add-subuids 100000-165535 ${user} && sudo usermod --add-subgids 100000-165535 ${user})`,
-				);
-			}
-		}
-
-		return errors;
-	}
-
-	function hasTagOrDigest(ref: string): boolean {
-		if (ref.includes("@")) return true;
-		const lastSlash = ref.lastIndexOf("/");
-		const tail = ref.slice(lastSlash + 1);
-		return tail.includes(":");
-	}
-
-	function tailscaleAuthConfigured(): boolean {
-		const direct = process.env.TS_AUTHKEY?.trim();
-		if (direct) return true;
-		const envPath = join(os.homedir(), ".config", "bloom", "tailscale.env");
-		if (!existsSync(envPath)) return false;
-		try {
-			const raw = readFileSync(envPath, "utf-8");
-			return raw
-				.split("\n")
-				.some((line) => line.trim().startsWith("TS_AUTHKEY=") && line.trim().length > "TS_AUTHKEY=".length);
-		} catch {
-			return false;
-		}
-	}
-
-	function findLocalServicePackage(name: string): { serviceDir: string; quadletDir: string; skillPath: string } | null {
-		const candidates = [
-			join(repoDir, "services", name),
-			`/usr/local/share/bloom/services/${name}`,
-			join(process.cwd(), "services", name),
-		];
-		for (const serviceDir of candidates) {
-			const quadletDir = join(serviceDir, "quadlet");
-			const skillPath = join(serviceDir, "SKILL.md");
-			if (existsSync(quadletDir) && existsSync(skillPath)) {
-				return { serviceDir, quadletDir, skillPath };
-			}
-		}
-		return null;
-	}
-
-	async function installServicePackage(
-		name: string,
-		version: string,
-		registry: string,
-		entry: ServiceCatalogEntry | undefined,
-		signal?: AbortSignal,
-	): Promise<{ ok: boolean; source: "oci" | "local"; ref: string; note?: string }> {
-		const artifactBase = entry?.artifact?.trim() || `${registry}/bloom-svc-${name}`;
-		const ref = hasTagOrDigest(artifactBase) ? artifactBase : `${artifactBase}:${version}`;
-		const tempDir = mkdtempSync(join(os.tmpdir(), `bloom-manifest-${name}-`));
-
-		try {
-			let source: "oci" | "local" = "oci";
-			const pull = await run("oras", ["pull", ref, "-o", tempDir], signal);
-			if (pull.exitCode !== 0) {
-				const localPackage = findLocalServicePackage(name);
-				if (!localPackage) {
-					return {
-						ok: false,
-						source,
-						ref,
-						note: `Failed to pull ${ref}: ${pull.stderr || pull.stdout}`,
-					};
-				}
-
-				const localTempQuadlet = join(tempDir, "quadlet");
-				mkdirSync(localTempQuadlet, { recursive: true });
-				for (const fileName of readdirSync(localPackage.quadletDir)) {
-					const src = join(localPackage.quadletDir, fileName);
-					if (!statSync(src).isFile()) continue;
-					writeFileSync(join(localTempQuadlet, fileName), readFileSync(src));
-				}
-				writeFileSync(join(tempDir, "SKILL.md"), readFileSync(localPackage.skillPath));
-				source = "local";
-			}
-
-			const quadletSrc = join(tempDir, "quadlet");
-			const skillSrc = join(tempDir, "SKILL.md");
-			if (!existsSync(quadletSrc) || !existsSync(skillSrc)) {
-				return {
-					ok: false,
-					source,
-					ref,
-					note: `Service package for ${name} missing quadlet/ or SKILL.md`,
-				};
-			}
-
-			const systemdDir = join(os.homedir(), ".config", "containers", "systemd");
-			const userSystemdDir = join(os.homedir(), ".config", "systemd", "user");
-			const skillDir = join(gardenDir, "Bloom", "Skills", name);
-			mkdirSync(systemdDir, { recursive: true });
-			mkdirSync(userSystemdDir, { recursive: true });
-			mkdirSync(skillDir, { recursive: true });
-
-			const networkDest = join(systemdDir, "bloom.network");
-			if (!existsSync(networkDest)) {
-				const networkCandidates = [
-					"/usr/share/containers/systemd/bloom.network",
-					"/usr/local/share/bloom/os/sysconfig/bloom.network",
-					join(repoDir, "os", "sysconfig", "bloom.network"),
-				];
-				for (const candidate of networkCandidates) {
-					if (!existsSync(candidate)) continue;
-					writeFileSync(networkDest, readFileSync(candidate));
-					break;
-				}
-			}
-
-			for (const fileName of readdirSync(quadletSrc)) {
-				const src = join(quadletSrc, fileName);
-				if (!statSync(src).isFile()) continue;
-				const destDir = fileName.endsWith(".socket") ? userSystemdDir : systemdDir;
-				writeFileSync(join(destDir, fileName), readFileSync(src));
-			}
-			writeFileSync(join(skillDir, "SKILL.md"), readFileSync(skillSrc));
-
-			const expectedSocket = join(quadletSrc, `bloom-${name}.socket`);
-			const installedSocket = join(userSystemdDir, `bloom-${name}.socket`);
-			if (!existsSync(expectedSocket) && existsSync(installedSocket)) {
-				await run("systemctl", ["--user", "disable", "--now", `bloom-${name}.socket`], signal);
-				rmSync(installedSocket, { force: true });
-			}
-
-			const tokenDir = join(os.homedir(), ".config", "bloom", "channel-tokens");
-			mkdirSync(tokenDir, { recursive: true });
-			const tokenPath = join(tokenDir, name);
-			const tokenEnvPath = join(tokenDir, `${name}.env`);
-			if (!existsSync(tokenPath)) {
-				const token = randomBytes(32).toString("hex");
-				writeFileSync(tokenPath, `${token}\n`);
-				writeFileSync(tokenEnvPath, `BLOOM_CHANNEL_TOKEN=${token}\n`);
-			}
-
-			return { ok: true, source, ref };
-		} finally {
-			rmSync(tempDir, { recursive: true, force: true });
-		}
-	}
-
-	async function detectRunningServices(signal?: AbortSignal): Promise<Map<string, { image: string; state: string }>> {
-		const result = await run("podman", ["ps", "-a", "--format", "json", "--filter", "name=bloom-"], signal);
-		const detected = new Map<string, { image: string; state: string }>();
-		if (result.exitCode !== 0) return detected;
-		try {
-			const containers = JSON.parse(result.stdout || "[]") as Array<{
-				Names?: string[];
-				Image?: string;
-				State?: string;
-			}>;
-			for (const c of containers) {
-				const name = (c.Names ?? [])[0]?.replace(/^bloom-/, "") ?? "";
-				if (name) {
-					detected.set(name, { image: c.Image ?? "unknown", state: c.State ?? "unknown" });
-				}
-			}
-		} catch {
-			// parse error
-		}
-		return detected;
-	}
-
 	pi.registerTool({
 		name: "manifest_show",
 		label: "Show Manifest",
@@ -1121,7 +774,7 @@ export default function (pi: ExtensionAPI) {
 		promptGuidelines: ["Use manifest_show to view the current manifest state and configured services."],
 		parameters: Type.Object({}),
 		async execute() {
-			const manifest = loadManifest();
+			const manifest = loadManifest(manifestPath);
 			if (Object.keys(manifest.services).length === 0 && !manifest.device) {
 				return {
 					content: [
@@ -1172,7 +825,7 @@ export default function (pi: ExtensionAPI) {
 		}),
 		async execute(_toolCallId, params, signal, _onUpdate, _ctx) {
 			const mode = params.mode ?? "detect";
-			const manifest = loadManifest();
+			const manifest = loadManifest(manifestPath);
 			const running = await detectRunningServices(signal);
 
 			// Get OS image info
@@ -1228,7 +881,7 @@ export default function (pi: ExtensionAPI) {
 					}
 				}
 
-				saveManifest(updated);
+				saveManifest(updated, manifestPath, gardenDir);
 				const text =
 					drifts.length > 0
 						? `Manifest updated. Resolved ${drifts.length} drift(s):\n${drifts.join("\n")}`
@@ -1268,13 +921,13 @@ export default function (pi: ExtensionAPI) {
 			enabled: Type.Optional(Type.Boolean({ description: "Whether service should be running (default: true)" })),
 		}),
 		async execute(_toolCallId, params, _signal, _onUpdate, _ctx) {
-			const manifest = loadManifest();
+			const manifest = loadManifest(manifestPath);
 			manifest.services[params.name] = {
 				image: params.image,
 				version: params.version,
 				enabled: params.enabled ?? true,
 			};
-			saveManifest(manifest);
+			saveManifest(manifest, manifestPath, gardenDir);
 			return {
 				content: [
 					{
@@ -1313,7 +966,7 @@ export default function (pi: ExtensionAPI) {
 			dry_run: Type.Optional(Type.Boolean({ description: "Preview actions without mutating system", default: false })),
 		}),
 		async execute(_toolCallId, params, signal, _onUpdate, ctx) {
-			const manifest = loadManifest();
+			const manifest = loadManifest(manifestPath);
 			const serviceEntries = Object.entries(manifest.services).sort(([a], [b]) => a.localeCompare(b));
 			if (serviceEntries.length === 0) {
 				return errorResult("Manifest has no services. Use manifest_set_service first.");
@@ -1329,7 +982,7 @@ export default function (pi: ExtensionAPI) {
 				if (denied) return errorResult(denied);
 			}
 
-			const catalog = loadServiceCatalog();
+			const catalog = loadServiceCatalog(repoDir);
 			const lines: string[] = [];
 			const errors: string[] = [];
 			let installedCount = 0;
@@ -1373,7 +1026,7 @@ export default function (pi: ExtensionAPI) {
 					continue;
 				}
 
-				const install = await installServicePackage(name, version, registry, catalogEntry, signal);
+				const install = await installServicePackage(name, version, registry, gardenDir, repoDir, catalogEntry, signal);
 				if (!install.ok) {
 					errors.push(`${name}: install failed — ${install.note ?? "unknown error"}`);
 					continue;
@@ -1454,7 +1107,7 @@ export default function (pi: ExtensionAPI) {
 			}
 
 			if (manifestChanged && !dryRun) {
-				saveManifest(manifest);
+				saveManifest(manifest, manifestPath, gardenDir);
 			}
 
 			const summary = [
@@ -1485,7 +1138,7 @@ export default function (pi: ExtensionAPI) {
 	// Drift detection on session start
 	pi.on("session_start", async (_event, ctx) => {
 		if (!existsSync(manifestPath)) return;
-		const manifest = loadManifest();
+		const manifest = loadManifest(manifestPath);
 		const svcCount = Object.keys(manifest.services).length;
 		if (svcCount === 0) return;
 

@@ -11,10 +11,11 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import { normalizeCommand } from "../lib/persona-utils.js";
-import { getGardenDir } from "../lib/shared.js";
+import { createLogger, getGardenDir } from "../lib/shared.js";
 
 const require = createRequire(import.meta.url);
 const yaml: { load: (str: string) => unknown } = require("js-yaml");
+const log = createLogger("bloom-persona");
 
 /** A single guardrail regex pattern with its human-readable label. */
 interface GuardrailPattern {
@@ -57,16 +58,15 @@ function loadGuardrails(): Array<{ tool: string; pattern: RegExp; label: string 
 				try {
 					compiled.push({ tool: rule.tool, pattern: new RegExp(p.pattern), label: p.label });
 				} catch (patternErr) {
-					console.error(
-						`[bloom-persona] Skipping invalid guardrail pattern "${p.pattern}":`,
-						(patternErr as Error).message,
-					);
+					log.error(`Skipping invalid guardrail pattern "${p.pattern}"`, {
+						error: (patternErr as Error).message,
+					});
 				}
 			}
 		}
 		return compiled;
 	} catch (err) {
-		console.error("[bloom-persona] Failed to load guardrails:", (err as Error).message);
+		log.error("Failed to load guardrails", { error: (err as Error).message });
 		return [];
 	}
 }
@@ -85,7 +85,7 @@ function saveContext(ctx: BloomContext): void {
 		mkdirSync(join(os.homedir(), ".pi"), { recursive: true });
 		writeFileSync(CONTEXT_FILE, JSON.stringify(ctx, null, 2));
 	} catch (err) {
-		console.error("[bloom-persona] Failed to save context:", (err as Error).message);
+		log.error("Failed to save context", { error: (err as Error).message });
 	}
 }
 

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { isChannelMessage, makeLogger, MEDIA_TYPES, mimeToExt } from "../src/utils.js";
+import { isChannelMessage, MEDIA_TYPES, makeLogger, mimeToExt } from "../src/utils.js";
 
 // ---------------------------------------------------------------------------
 // mimeToExt

@@ -5,23 +5,22 @@
  * @hooks session_start
  * @see {@link ../AGENTS.md#bloom-services} Extension reference
  */
-import { execFile } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import os, { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { promisify } from "node:util";
 import type { ExtensionAPI, ExtensionContext } from "@mariozechner/pi-coding-agent";
 import { Type } from "@sinclair/typebox";
+import { run } from "../lib/exec.js";
 import { commandMissingError, extractDigest, validatePinnedImage, validateServiceName } from "../lib/service-utils.js";
 import { createLogger, errorResult, getGardenDir, parseFrontmatter, truncate } from "../lib/shared.js";
+import { hasSubidRange } from "../lib/system-checks.js";
 
 const require = createRequire(import.meta.url);
 const yaml: { load: (str: string) => unknown; dump: (obj: unknown) => string } = require("js-yaml");
 
-const execAsync = promisify(execFile);
 const log = createLogger("bloom-services");
 
 function resolvePackageRoot(): string {
@@ -40,25 +39,6 @@ const defaultNetworkPath = join(packageRoot, "os", "sysconfig", "bloom.network")
 const defaultServiceRegistry =
 	process.env.BLOOM_SERVICE_REGISTRY?.trim() || process.env.BLOOM_REGISTRY?.trim() || "ghcr.io/pibloom";
 const defaultSourceRepo = process.env.BLOOM_SOURCE_REPO?.trim() || "https://github.com/pibloom/pi-bloom";
-
-async function run(
-	cmd: string,
-	args: string[],
-	signal?: AbortSignal,
-	cwd?: string,
-): Promise<{ stdout: string; stderr: string; exitCode: number }> {
-	try {
-		const { stdout, stderr } = await execAsync(cmd, args, { signal, cwd });
-		return { stdout, stderr, exitCode: 0 };
-	} catch (err: unknown) {
-		const e = err as { message: string; stderr?: string; code?: number };
-		return {
-			stdout: "",
-			stderr: e.stderr ?? e.message,
-			exitCode: e.code ?? 1,
-		};
-	}
-}
 
 function sleep(ms: number): Promise<void> {
 	return new Promise((resolve) => setTimeout(resolve, ms));
@@ -88,17 +68,6 @@ async function resolveArtifactDigest(ref: string, signal?: AbortSignal): Promise
 	}
 
 	return null;
-}
-
-function hasSubidRange(filePath: string, username: string): boolean {
-	if (!existsSync(filePath)) return false;
-	try {
-		return readFileSync(filePath, "utf-8")
-			.split("\n")
-			.some((line) => line.trim().startsWith(`${username}:`));
-	} catch {
-		return false;
-	}
 }
 
 function tailscaleRootlessPreflightError(): string | null {

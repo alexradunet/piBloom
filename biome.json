@@ -15,5 +15,8 @@
 		"rules": {
 			"recommended": true
 		}
+	},
+	"files": {
+		"includes": ["**", "!node_modules", "!dist", "!services/whatsapp/node_modules", "!.worktrees", "!os/output", "!.pi"]
 	}
 }

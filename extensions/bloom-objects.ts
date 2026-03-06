@@ -21,90 +21,90 @@ import {
 	truncate,
 } from "../lib/shared.js";
 
-// --- In-memory index ---
-
-/** In-memory index entry for a Garden vault object. */
-interface IndexEntry {
-	ref: string;
-	path: string;
-	title?: string;
-	project?: string;
-	area?: string;
-	type: string;
-	slug: string;
-}
-
-const index: Map<string, IndexEntry> = new Map();
-
-function buildIndex(gardenDir: string): void {
-	index.clear();
-	for (const paraDir of PARA_DIRS) {
-		const dir = path.join(gardenDir, paraDir);
-		if (!fs.existsSync(dir)) continue;
-		const files = fs.globSync("**/*.md", { cwd: dir });
-		for (const file of files) {
-			if (file.endsWith(".pi.md")) continue;
-			indexFile(path.join(dir, file));
-		}
-	}
-}
-
-function indexFile(filepath: string): void {
-	try {
-		const raw = fs.readFileSync(filepath, "utf-8");
-		const { attributes } = parseFrontmatter<Record<string, unknown>>(raw);
-		if (!attributes.type) return;
-		const type = String(attributes.type);
-		const slug = String(attributes.slug ?? path.basename(filepath, ".md"));
-		const ref = `${type}/${slug}`;
-		index.set(ref, {
-			ref,
-			path: filepath,
-			title: attributes.title as string | undefined,
-			project: attributes.project as string | undefined,
-			area: attributes.area as string | undefined,
-			type,
-			slug,
-		});
-	} catch {
-		// Skip unreadable files
-	}
-}
-
-function findFileByName(dir: string, filename: string, type: string): string | null {
-	if (!fs.existsSync(dir)) return null;
-	const matches = fs.globSync(`**/${filename}`, { cwd: dir });
-	for (const match of matches) {
-		const filepath = path.join(dir, match);
-		const raw = fs.readFileSync(filepath, "utf-8");
-		const { attributes } = parseFrontmatter<Record<string, unknown>>(raw);
-		if (String(attributes.type ?? "") === type) return filepath;
-	}
-	return null;
-}
-
-function findObject(gardenDir: string, type: string, slug: string): string | null {
-	const ref = `${type}/${slug}`;
-	const entry = index.get(ref);
-	if (entry && fs.existsSync(entry.path)) return entry.path;
-
-	const filename = `${slug}.md`;
-	for (const paraDir of PARA_DIRS) {
-		const found = findFileByName(path.join(gardenDir, paraDir), filename, type);
-		if (found) {
-			indexFile(found);
-			return found;
-		}
-	}
-	return null;
-}
-
-function walkMdFiles(dir: string): string[] {
-	if (!fs.existsSync(dir)) return [];
-	return fs.globSync("**/*.md", { cwd: dir }).map((f) => path.join(dir, f));
-}
-
 export default function (pi: ExtensionAPI) {
+	// --- In-memory index ---
+
+	/** In-memory index entry for a Garden vault object. */
+	interface IndexEntry {
+		ref: string;
+		path: string;
+		title?: string;
+		project?: string;
+		area?: string;
+		type: string;
+		slug: string;
+	}
+
+	const index: Map<string, IndexEntry> = new Map();
+
+	function buildIndex(gardenDir: string): void {
+		index.clear();
+		for (const paraDir of PARA_DIRS) {
+			const dir = path.join(gardenDir, paraDir);
+			if (!fs.existsSync(dir)) continue;
+			const files = fs.globSync("**/*.md", { cwd: dir });
+			for (const file of files) {
+				if (file.endsWith(".pi.md")) continue;
+				indexFile(path.join(dir, file));
+			}
+		}
+	}
+
+	function indexFile(filepath: string): void {
+		try {
+			const raw = fs.readFileSync(filepath, "utf-8");
+			const { attributes } = parseFrontmatter<Record<string, unknown>>(raw);
+			if (!attributes.type) return;
+			const type = String(attributes.type);
+			const slug = String(attributes.slug ?? path.basename(filepath, ".md"));
+			const ref = `${type}/${slug}`;
+			index.set(ref, {
+				ref,
+				path: filepath,
+				title: attributes.title as string | undefined,
+				project: attributes.project as string | undefined,
+				area: attributes.area as string | undefined,
+				type,
+				slug,
+			});
+		} catch {
+			// Skip unreadable files
+		}
+	}
+
+	function findFileByName(dir: string, filename: string, type: string): string | null {
+		if (!fs.existsSync(dir)) return null;
+		const matches = fs.globSync(`**/${filename}`, { cwd: dir });
+		for (const match of matches) {
+			const filepath = path.join(dir, match);
+			const raw = fs.readFileSync(filepath, "utf-8");
+			const { attributes } = parseFrontmatter<Record<string, unknown>>(raw);
+			if (String(attributes.type ?? "") === type) return filepath;
+		}
+		return null;
+	}
+
+	function findObject(gardenDir: string, type: string, slug: string): string | null {
+		const ref = `${type}/${slug}`;
+		const entry = index.get(ref);
+		if (entry && fs.existsSync(entry.path)) return entry.path;
+
+		const filename = `${slug}.md`;
+		for (const paraDir of PARA_DIRS) {
+			const found = findFileByName(path.join(gardenDir, paraDir), filename, type);
+			if (found) {
+				indexFile(found);
+				return found;
+			}
+		}
+		return null;
+	}
+
+	function walkMdFiles(dir: string): string[] {
+		if (!fs.existsSync(dir)) return [];
+		return fs.globSync("**/*.md", { cwd: dir }).map((f) => path.join(dir, f));
+	}
+
 	pi.on("session_start", () => {
 		buildIndex(getGardenDir());
 	});
