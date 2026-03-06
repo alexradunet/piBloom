@@ -11,6 +11,7 @@ import {
 	useMultiFileAuthState,
 } from "baileys";
 import qrcode from "qrcode-terminal";
+import { isChannelMessage, MEDIA_TYPES, makeLogger, mimeToExt } from "./utils.js";
 
 const AUTH_DIR = process.env.BLOOM_AUTH_DIR ?? "/data/auth";
 const CHANNELS_SOCKET = process.env.BLOOM_CHANNELS_SOCKET ?? "/run/bloom/channels.sock";
@@ -19,33 +20,6 @@ const CHANNEL_TOKEN = process.env.BLOOM_CHANNEL_TOKEN ?? "";
 
 const RECONNECT_BASE_MS = 2_000;
 const RECONNECT_MAX_MS = 30_000;
-
-const MEDIA_TYPES: Record<string, string> = {
-	audioMessage: "audio",
-	imageMessage: "image",
-	videoMessage: "video",
-	documentMessage: "document",
-	stickerMessage: "sticker",
-};
-
-function mimeToExt(mime: string): string {
-	const map: Record<string, string> = {
-		"audio/ogg": "ogg",
-		"audio/ogg; codecs=opus": "ogg",
-		"audio/mpeg": "mp3",
-		"audio/mp4": "m4a",
-		"audio/wav": "wav",
-		"image/jpeg": "jpg",
-		"image/png": "png",
-		"image/webp": "webp",
-		"image/gif": "gif",
-		"video/mp4": "mp4",
-		"video/3gpp": "3gp",
-		"application/pdf": "pdf",
-		"application/octet-stream": "bin",
-	};
-	return map[mime] ?? mime.split("/").pop() ?? "bin";
-}
 
 type WaSocket = ReturnType<typeof makeWASocket>;
 
@@ -265,22 +239,6 @@ async function handleMediaMessage(
 	});
 }
 
-// --- Minimal pino-compatible logger to suppress Baileys noise ---
-
-function makeLogger() {
-	const noop = () => {};
-	return {
-		level: "silent",
-		trace: noop,
-		debug: noop,
-		info: noop,
-		warn: (obj: unknown, msg?: string) => console.warn("[wa:warn]", msg ?? obj),
-		error: (obj: unknown, msg?: string) => console.error("[wa:error]", msg ?? obj),
-		fatal: (obj: unknown, msg?: string) => console.error("[wa:fatal]", msg ?? obj),
-		child: () => makeLogger(),
-	};
-}
-
 // --- TCP channel connection ---
 
 function connectToChannels(waSock: WaSocket): void {
@@ -352,21 +310,6 @@ function sendToChannels(msg: Record<string, unknown>): void {
 }
 
 // --- Incoming channel messages -> WhatsApp ---
-
-interface ChannelMessage {
-	type: string;
-	to?: string;
-	text?: string;
-}
-
-function isChannelMessage(val: unknown): val is ChannelMessage {
-	return (
-		typeof val === "object" &&
-		val !== null &&
-		"type" in val &&
-		typeof (val as Record<string, unknown>).type === "string"
-	);
-}
 
 function handleChannelMessage(waSock: WaSocket, raw: unknown): void {
 	if (!isChannelMessage(raw)) {

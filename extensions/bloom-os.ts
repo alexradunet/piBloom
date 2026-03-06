@@ -18,6 +18,7 @@ import { promisify } from "node:util";
 import { StringEnum } from "@mariozechner/pi-ai";
 import type { ExtensionAPI, ExtensionContext } from "@mariozechner/pi-coding-agent";
 import { Type } from "@sinclair/typebox";
+import { guardBloom, parseGithubSlugFromUrl, slugifyBranchPart } from "../lib/os-utils.js";
 import { createLogger, errorResult, getGardenDir, truncate } from "../lib/shared.js";
 
 const require = createRequire(import.meta.url);
@@ -45,13 +46,6 @@ async function run(
 	}
 }
 
-function guardBloom(name: string): string | null {
-	if (!name.startsWith("bloom-")) {
-		return `Security error: only bloom-* names are permitted, got "${name}"`;
-	}
-	return null;
-}
-
 async function requireConfirmation(
 	ctx: ExtensionContext,
 	action: string,
@@ -64,28 +58,6 @@ async function requireConfirmation(
 	const confirmed = await ctx.ui.confirm("Confirm action", `Allow: ${action}?`);
 	if (!confirmed) return `User declined: ${action}`;
 	return null;
-}
-
-function parseGithubSlugFromUrl(url: string): string | null {
-	const trimmed = url.trim();
-	const ssh = trimmed.match(/^git@github\.com:([^/]+)\/([^/]+?)(?:\.git)?$/);
-	if (ssh) return `${ssh[1]}/${ssh[2]}`;
-
-	const https = trimmed.match(/^https:\/\/github\.com\/([^/]+)\/([^/]+?)(?:\.git)?$/);
-	if (https) return `${https[1]}/${https[2]}`;
-
-	const sshUrl = trimmed.match(/^ssh:\/\/git@github\.com\/([^/]+)\/([^/]+?)(?:\.git)?$/);
-	if (sshUrl) return `${sshUrl[1]}/${sshUrl[2]}`;
-
-	return null;
-}
-
-function slugifyBranchPart(input: string): string {
-	return input
-		.toLowerCase()
-		.replace(/[^a-z0-9]+/g, "-")
-		.replace(/^-+|-+$/g, "")
-		.slice(0, 48);
 }
 
 async function getRemoteUrl(repoDir: string, remote: string, signal?: AbortSignal): Promise<string | null> {

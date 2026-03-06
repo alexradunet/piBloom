@@ -2,13 +2,13 @@ import { appendFileSync, existsSync, mkdirSync, readdirSync, readFileSync, unlin
 import { join } from "node:path";
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import { Type } from "@sinclair/typebox";
+import { dayStamp, sanitize, summarizeInput } from "../lib/audit-utils.js";
 import { createLogger, getGardenDir, truncate } from "../lib/shared.js";
 
 const log = createLogger("bloom-audit");
 
 const RETENTION_DAYS = 30;
 const DAY_MS = 24 * 60 * 60 * 1000;
-const SENSITIVE_KEY = /(token|secret|password|authorization|api[_-]?key|cookie)/i;
 
 interface AuditEntry {
 	ts: string;
@@ -23,30 +23,10 @@ function auditDir(): string {
 	return join(getGardenDir(), "Bloom", "audit");
 }
 
-function dayStamp(date: Date): string {
-	return date.toISOString().slice(0, 10);
-}
-
 function ensureAuditDir(): string {
 	const dir = auditDir();
 	mkdirSync(dir, { recursive: true });
 	return dir;
-}
-
-function sanitize(value: unknown): unknown {
-	if (value === null || value === undefined) return value;
-	if (Array.isArray(value)) return value.map((v) => sanitize(v));
-	if (typeof value === "object") {
-		const out: Record<string, unknown> = {};
-		for (const [key, val] of Object.entries(value as Record<string, unknown>)) {
-			out[key] = SENSITIVE_KEY.test(key) ? "[REDACTED]" : sanitize(val);
-		}
-		return out;
-	}
-	if (typeof value === "string" && value.length > 4000) {
-		return `${value.slice(0, 4000)}…`;
-	}
-	return value;
 }
 
 function appendAudit(entry: AuditEntry): void {
@@ -101,17 +81,6 @@ function readEntries(days: number): AuditEntry[] {
 	}
 
 	return entries;
-}
-
-function summarizeInput(input: unknown): string {
-	if (input === undefined) return "";
-	try {
-		const text = JSON.stringify(input);
-		if (!text || text === "{}") return "";
-		return text.length > 160 ? `${text.slice(0, 160)}…` : text;
-	} catch {
-		return "<unserializable input>";
-	}
 }
 
 export default function (pi: ExtensionAPI) {
