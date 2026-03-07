@@ -52,10 +52,10 @@ Expected local path:
 
 Declare desired services in `~/Bloom/manifest.yaml` via tool calls:
 
-- `manifest_set_service(name="syncthing", image="docker.io/syncthing/syncthing@sha256:...", version="0.1.0", enabled=true)`
-- `manifest_set_service(name="whatsapp", image="ghcr.io/pibloom/bloom-whatsapp:0.1.0", version="0.1.0", enabled=true)`
-- `manifest_set_service(name="whisper", image="docker.io/fedirz/faster-whisper-server@sha256:...", version="0.1.0", enabled=true)`
-- `manifest_set_service(name="netbird", image="docker.io/netbirdio/netbird@sha256:...", version="0.1.0", enabled=true)`
+- `manifest_set_service(name="dufs", image="docker.io/sigoden/dufs:latest", version="0.1.0", enabled=true)`
+- `manifest_set_service(name="whatsapp", image="ghcr.io/pibloom/bloom-whatsapp:0.2.0", version="0.2.0", enabled=true)`
+- `manifest_set_service(name="lemonade", image="ghcr.io/lemonade-sdk/lemonade-server:latest", version="0.1.0", enabled=true)`
+- `manifest_set_service(name="netbird", image="netbirdio/netbird@sha256:...", version="0.1.0", enabled=true)`
 
 Preview:
 
