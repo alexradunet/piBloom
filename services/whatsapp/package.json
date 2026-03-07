@@ -1,7 +1,7 @@
 {
 	"name": "bloom-whatsapp-transport",
-	"version": "0.2.0",
-	"description": "WhatsApp transport for Bloom via whatsapp-web.js",
+	"version": "0.3.0",
+	"description": "WhatsApp transport for Bloom via Baileys",
 	"type": "module",
 	"main": "dist/transport.js",
 	"scripts": {
@@ -12,7 +12,9 @@
 		"start": "node dist/transport.js"
 	},
 	"dependencies": {
-		"whatsapp-web.js": "^1.26.0"
+		"@whiskeysockets/baileys": "^6.7.16",
+		"@hapi/boom": "^10.0.1",
+		"pino": "^9.6.0"
 	},
 	"devDependencies": {
 		"@types/node": "^22.0.0",
