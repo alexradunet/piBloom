@@ -1,13 +1,14 @@
 /**
  * 🔀 bloom-repo — Repository management: configure, sync, submit PRs, check status.
  *
- * @tools bloom_repo_configure, bloom_repo_sync, bloom_repo_submit_pr, bloom_repo_status
+ * @tools bloom_repo, bloom_repo_submit_pr
  * @see {@link ../AGENTS.md#bloom-os} Extension reference
  */
 import { mkdirSync } from "node:fs";
 import { createRequire } from "node:module";
 import os from "node:os";
 import { join } from "node:path";
+import { StringEnum } from "@mariozechner/pi-ai";
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import { Type } from "@sinclair/typebox";
 import { run } from "../lib/exec.js";
@@ -39,153 +40,178 @@ export default function (pi: ExtensionAPI) {
 	const repoDir = join(bloomDir, "pi-bloom");
 
 	pi.registerTool({
-		name: "bloom_repo_configure",
-		label: "Configure Bloom Repo",
-		description: "Clone/configure local Bloom repo remotes for PR-based self-evolution (upstream + origin fork).",
-		promptSnippet: "bloom_repo_configure — bootstrap local repo and remotes",
-		promptGuidelines: [
-			"Use bloom_repo_configure during first-boot so each device can submit fixes via PR.",
-			"Set upstream to canonical repo and origin to a writable fork whenever possible.",
-		],
+		name: "bloom_repo",
+		label: "Bloom Repository",
+		description: "Configure, check status, or sync the local Bloom repo for self-evolution PRs.",
+		promptGuidelines: ["Never push directly to main; always open a PR."],
 		parameters: Type.Object({
-			repo_url: Type.Optional(
-				Type.String({ description: "Canonical upstream repository URL (https://github.com/{owner}/pi-bloom.git)" }),
-			),
-			fork_url: Type.Optional(Type.String({ description: "Writable fork URL to set as origin (optional)" })),
-			git_name: Type.Optional(Type.String({ description: "Local git author name for this device" })),
-			git_email: Type.Optional(Type.String({ description: "Local git author email for this device" })),
+			action: StringEnum(["configure", "status", "sync"] as const),
+			// configure-specific params (ignored for status/sync):
+			repo_url: Type.Optional(Type.String({ description: "Upstream repo URL (configure only)" })),
+			fork_url: Type.Optional(Type.String({ description: "Fork URL (configure only)" })),
+			git_name: Type.Optional(Type.String({ description: "Git author name (configure only)" })),
+			git_email: Type.Optional(Type.String({ description: "Git author email (configure only)" })),
+			// sync-specific param:
+			branch: Type.Optional(Type.String({ description: "Branch to sync (sync only, default: main)" })),
 		}),
 		async execute(_toolCallId, params, signal, _onUpdate, _ctx) {
-			mkdirSync(bloomDir, { recursive: true });
-			const changes: string[] = [];
-			const notes: string[] = [];
+			switch (params.action) {
+				case "configure": {
+					mkdirSync(bloomDir, { recursive: true });
+					const changes: string[] = [];
+					const notes: string[] = [];
 
-			const repoCheck = await run("git", ["-C", repoDir, "rev-parse", "--git-dir"], signal);
-			const repoExists = repoCheck.exitCode === 0;
-			const upstreamUrl = (params.repo_url?.trim() || (await inferRepoUrl(repoDir, signal))).trim();
+					const repoCheck = await run("git", ["-C", repoDir, "rev-parse", "--git-dir"], signal);
+					const repoExists = repoCheck.exitCode === 0;
+					const upstreamUrl = (params.repo_url?.trim() || (await inferRepoUrl(repoDir, signal))).trim();
 
-			if (!repoExists) {
-				const clone = await run("git", ["clone", upstreamUrl, repoDir], signal);
-				if (clone.exitCode !== 0) {
-					return errorResult(`Failed to clone ${upstreamUrl} into ${repoDir}:\n${clone.stderr}`);
-				}
-				changes.push(`cloned ${upstreamUrl} -> ${repoDir}`);
-			}
-
-			const ensureRepo = await run("git", ["-C", repoDir, "rev-parse", "--git-dir"], signal);
-			if (ensureRepo.exitCode !== 0) {
-				return errorResult(`No repo clone found at ${repoDir}. Run first-boot setup to clone it.`);
-			}
-
-			const currentUpstream = await getRemoteUrl(repoDir, "upstream", signal);
-			if (!currentUpstream) {
-				const add = await run("git", ["-C", repoDir, "remote", "add", "upstream", upstreamUrl], signal);
-				if (add.exitCode !== 0) return errorResult(`Failed to add upstream remote:\n${add.stderr}`);
-				changes.push(`remote upstream -> ${upstreamUrl}`);
-			} else if (currentUpstream !== upstreamUrl) {
-				const set = await run("git", ["-C", repoDir, "remote", "set-url", "upstream", upstreamUrl], signal);
-				if (set.exitCode !== 0) return errorResult(`Failed to set upstream remote:\n${set.stderr}`);
-				changes.push(`updated upstream: ${currentUpstream} -> ${upstreamUrl}`);
-			}
-
-			const currentOrigin = await getRemoteUrl(repoDir, "origin", signal);
-			if (params.fork_url?.trim()) {
-				const forkUrl = params.fork_url.trim();
-				if (!currentOrigin) {
-					const add = await run("git", ["-C", repoDir, "remote", "add", "origin", forkUrl], signal);
-					if (add.exitCode !== 0) return errorResult(`Failed to add origin remote:\n${add.stderr}`);
-					changes.push(`remote origin -> ${forkUrl}`);
-				} else if (currentOrigin !== forkUrl) {
-					const set = await run("git", ["-C", repoDir, "remote", "set-url", "origin", forkUrl], signal);
-					if (set.exitCode !== 0) return errorResult(`Failed to set origin remote:\n${set.stderr}`);
-					changes.push(`updated origin: ${currentOrigin} -> ${forkUrl}`);
-				}
-			} else if (!currentOrigin) {
-				const upstreamSlug = parseGithubSlugFromUrl(upstreamUrl);
-				const ghAuth = await run("gh", ["auth", "status"], signal);
-				if (upstreamSlug && ghAuth.exitCode === 0) {
-					const fork = await run(
-						"gh",
-						["repo", "fork", upstreamSlug, "--remote", "--remote-name", "origin", "--clone=false"],
-						signal,
-					);
-					if (fork.exitCode === 0) {
-						changes.push(`created/attached fork remote origin for ${upstreamSlug}`);
-					} else {
-						notes.push(`Could not auto-create fork with gh: ${fork.stderr.trim()}`);
+					if (!repoExists) {
+						const clone = await run("git", ["clone", upstreamUrl, repoDir], signal);
+						if (clone.exitCode !== 0) {
+							return errorResult(`Failed to clone ${upstreamUrl} into ${repoDir}:\n${clone.stderr}`);
+						}
+						changes.push(`cloned ${upstreamUrl} -> ${repoDir}`);
 					}
-				} else {
-					notes.push("gh auth not available; skipping auto-fork creation.");
+
+					const ensureRepo = await run("git", ["-C", repoDir, "rev-parse", "--git-dir"], signal);
+					if (ensureRepo.exitCode !== 0) {
+						return errorResult(`No repo clone found at ${repoDir}. Run first-boot setup to clone it.`);
+					}
+
+					const currentUpstream = await getRemoteUrl(repoDir, "upstream", signal);
+					if (!currentUpstream) {
+						const add = await run("git", ["-C", repoDir, "remote", "add", "upstream", upstreamUrl], signal);
+						if (add.exitCode !== 0) return errorResult(`Failed to add upstream remote:\n${add.stderr}`);
+						changes.push(`remote upstream -> ${upstreamUrl}`);
+					} else if (currentUpstream !== upstreamUrl) {
+						const set = await run("git", ["-C", repoDir, "remote", "set-url", "upstream", upstreamUrl], signal);
+						if (set.exitCode !== 0) return errorResult(`Failed to set upstream remote:\n${set.stderr}`);
+						changes.push(`updated upstream: ${currentUpstream} -> ${upstreamUrl}`);
+					}
+
+					const currentOrigin = await getRemoteUrl(repoDir, "origin", signal);
+					if (params.fork_url?.trim()) {
+						const forkUrl = params.fork_url.trim();
+						if (!currentOrigin) {
+							const add = await run("git", ["-C", repoDir, "remote", "add", "origin", forkUrl], signal);
+							if (add.exitCode !== 0) return errorResult(`Failed to add origin remote:\n${add.stderr}`);
+							changes.push(`remote origin -> ${forkUrl}`);
+						} else if (currentOrigin !== forkUrl) {
+							const set = await run("git", ["-C", repoDir, "remote", "set-url", "origin", forkUrl], signal);
+							if (set.exitCode !== 0) return errorResult(`Failed to set origin remote:\n${set.stderr}`);
+							changes.push(`updated origin: ${currentOrigin} -> ${forkUrl}`);
+						}
+					} else if (!currentOrigin) {
+						const upstreamSlug = parseGithubSlugFromUrl(upstreamUrl);
+						const ghAuth = await run("gh", ["auth", "status"], signal);
+						if (upstreamSlug && ghAuth.exitCode === 0) {
+							const fork = await run(
+								"gh",
+								["repo", "fork", upstreamSlug, "--remote", "--remote-name", "origin", "--clone=false"],
+								signal,
+							);
+							if (fork.exitCode === 0) {
+								changes.push(`created/attached fork remote origin for ${upstreamSlug}`);
+							} else {
+								notes.push(`Could not auto-create fork with gh: ${fork.stderr.trim()}`);
+							}
+						} else {
+							notes.push("gh auth not available; skipping auto-fork creation.");
+						}
+
+						const originAfterFork = await getRemoteUrl(repoDir, "origin", signal);
+						if (!originAfterFork) {
+							const fallback = await run("git", ["-C", repoDir, "remote", "add", "origin", upstreamUrl], signal);
+							if (fallback.exitCode !== 0)
+								return errorResult(`Failed to set fallback origin remote:\n${fallback.stderr}`);
+							changes.push(`fallback origin -> ${upstreamUrl}`);
+							notes.push("origin currently points to upstream. Set fork_url later for writable PR flow.");
+						}
+					}
+
+					const hostname = os.hostname();
+					const desiredName = params.git_name?.trim() || `Bloom (${hostname})`;
+					const desiredEmail = params.git_email?.trim() || `bloom+${hostname}@localhost`;
+
+					const setName = await run("git", ["-C", repoDir, "config", "user.name", desiredName], signal);
+					if (setName.exitCode !== 0) return errorResult(`Failed to set git user.name:\n${setName.stderr}`);
+					const setEmail = await run("git", ["-C", repoDir, "config", "user.email", desiredEmail], signal);
+					if (setEmail.exitCode !== 0) return errorResult(`Failed to set git user.email:\n${setEmail.stderr}`);
+					changes.push(`git identity -> ${desiredName} <${desiredEmail}>`);
+
+					const remotes = await run("git", ["-C", repoDir, "remote", "-v"], signal);
+					const text = [
+						`Repo path: ${repoDir}`,
+						changes.length > 0 ? `\nChanges:\n- ${changes.join("\n- ")}` : "\nChanges:\n- (none)",
+						`\nRemotes:\n${(remotes.stdout || remotes.stderr).trim() || "(none)"}`,
+						notes.length > 0 ? `\nNotes:\n- ${notes.join("\n- ")}` : "",
+					].join("\n");
+					return { content: [{ type: "text", text: text.trim() }], details: { path: repoDir } };
 				}
 
-				const originAfterFork = await getRemoteUrl(repoDir, "origin", signal);
-				if (!originAfterFork) {
-					const fallback = await run("git", ["-C", repoDir, "remote", "add", "origin", upstreamUrl], signal);
-					if (fallback.exitCode !== 0) return errorResult(`Failed to set fallback origin remote:\n${fallback.stderr}`);
-					changes.push(`fallback origin -> ${upstreamUrl}`);
-					notes.push("origin currently points to upstream. Set fork_url later for writable PR flow.");
+				case "status": {
+					const check = await run("git", ["-C", repoDir, "rev-parse", "--git-dir"], signal);
+					if (check.exitCode !== 0) {
+						return errorResult(`No repo clone found at ${repoDir}. Run bloom_repo action=configure first.`);
+					}
+					const branch = await run("git", ["-C", repoDir, "branch", "--show-current"], signal);
+					const status = await run("git", ["-C", repoDir, "status", "--short"], signal);
+					const log = await run("git", ["-C", repoDir, "log", "--oneline", "-5"], signal);
+					const remotes = await run("git", ["-C", repoDir, "remote", "-v"], signal);
+					const ghAuth = await run("gh", ["auth", "status"], signal);
+					const upstream = await getRemoteUrl(repoDir, "upstream", signal);
+					const origin = await getRemoteUrl(repoDir, "origin", signal);
+					const upstreamSlug = upstream ? parseGithubSlugFromUrl(upstream) : null;
+					const originSlug = origin ? parseGithubSlugFromUrl(origin) : null;
+
+					const ready = upstreamSlug && originSlug && ghAuth.exitCode === 0 ? "yes" : "no";
+					const originIsUpstream = upstream && origin && upstream === origin;
+					const text = [
+						`Path: ${repoDir}`,
+						`Branch: ${branch.stdout.trim() || "unknown"}`,
+						`PR-ready: ${ready}`,
+						`Upstream: ${upstream ?? "(missing)"}`,
+						`Origin: ${origin ?? "(missing)"}`,
+						originIsUpstream
+							? "Warning: origin matches upstream. Configure a writable fork URL for safer fork-based PR flow."
+							: "",
+						`\nStatus:\n${status.stdout.trim() || "(clean)"}`,
+						`\nRemotes:\n${remotes.stdout.trim() || "(none)"}`,
+						`\nRecent commits:\n${log.stdout.trim()}`,
+						`\nGitHub auth:\n${ghAuth.exitCode === 0 ? "ok" : (ghAuth.stderr || ghAuth.stdout).trim() || "not authenticated"}`,
+					].join("\n");
+					return {
+						content: [{ type: "text", text }],
+						details: { path: repoDir, pr_ready: ready === "yes" },
+					};
+				}
+
+				case "sync": {
+					const branch = (params.branch ?? "main").trim() || "main";
+					const check = await run("git", ["-C", repoDir, "rev-parse", "--git-dir"], signal);
+					if (check.exitCode !== 0)
+						return errorResult(`No repo clone found at ${repoDir}. Run bloom_repo action=configure first.`);
+
+					const fetch = await run("git", ["-C", repoDir, "fetch", "upstream", "--prune"], signal);
+					if (fetch.exitCode !== 0) {
+						return errorResult(`Failed to fetch upstream:\n${fetch.stderr || fetch.stdout}`);
+					}
+
+					const checkout = await run("git", ["-C", repoDir, "checkout", branch], signal);
+					if (checkout.exitCode !== 0) {
+						return errorResult(`Failed to checkout ${branch}:\n${checkout.stderr || checkout.stdout}`);
+					}
+
+					const pull = await run("git", ["-C", repoDir, "pull", "--ff-only", "upstream", branch], signal);
+					if (pull.exitCode !== 0) {
+						return errorResult(`Failed to fast-forward ${branch} from upstream:\n${pull.stderr || pull.stdout}`);
+					}
+
+					const short = await run("git", ["-C", repoDir, "rev-parse", "--short", "HEAD"], signal);
+					const text = `Synced ${branch} from upstream. HEAD: ${short.stdout.trim() || "unknown"}`;
+					return { content: [{ type: "text", text }], details: { path: repoDir, branch } };
 				}
 			}
-
-			const hostname = os.hostname();
-			const desiredName = params.git_name?.trim() || `Bloom (${hostname})`;
-			const desiredEmail = params.git_email?.trim() || `bloom+${hostname}@localhost`;
-
-			const setName = await run("git", ["-C", repoDir, "config", "user.name", desiredName], signal);
-			if (setName.exitCode !== 0) return errorResult(`Failed to set git user.name:\n${setName.stderr}`);
-			const setEmail = await run("git", ["-C", repoDir, "config", "user.email", desiredEmail], signal);
-			if (setEmail.exitCode !== 0) return errorResult(`Failed to set git user.email:\n${setEmail.stderr}`);
-			changes.push(`git identity -> ${desiredName} <${desiredEmail}>`);
-
-			const remotes = await run("git", ["-C", repoDir, "remote", "-v"], signal);
-			const text = [
-				`Repo path: ${repoDir}`,
-				changes.length > 0 ? `\nChanges:\n- ${changes.join("\n- ")}` : "\nChanges:\n- (none)",
-				`\nRemotes:\n${(remotes.stdout || remotes.stderr).trim() || "(none)"}`,
-				notes.length > 0 ? `\nNotes:\n- ${notes.join("\n- ")}` : "",
-			].join("\n");
-			return { content: [{ type: "text", text: text.trim() }], details: { path: repoDir } };
-		},
-	});
-
-	pi.registerTool({
-		name: "bloom_repo_sync",
-		label: "Sync Bloom Repo",
-		description: "Fetch upstream and fast-forward a local branch (default: main).",
-		promptSnippet: "bloom_repo_sync — sync local repo from upstream",
-		promptGuidelines: [
-			"Use bloom_repo_sync before starting a fix branch to reduce merge conflicts.",
-			"Prefer fast-forward sync from upstream main.",
-		],
-		parameters: Type.Object({
-			branch: Type.Optional(
-				Type.String({ description: "Branch to sync from upstream (default: main)", default: "main" }),
-			),
-		}),
-		async execute(_toolCallId, params, signal, _onUpdate, _ctx) {
-			const branch = (params.branch ?? "main").trim() || "main";
-			const check = await run("git", ["-C", repoDir, "rev-parse", "--git-dir"], signal);
-			if (check.exitCode !== 0)
-				return errorResult(`No repo clone found at ${repoDir}. Run bloom_repo_configure first.`);
-
-			const fetch = await run("git", ["-C", repoDir, "fetch", "upstream", "--prune"], signal);
-			if (fetch.exitCode !== 0) {
-				return errorResult(`Failed to fetch upstream:\n${fetch.stderr || fetch.stdout}`);
-			}
-
-			const checkout = await run("git", ["-C", repoDir, "checkout", branch], signal);
-			if (checkout.exitCode !== 0) {
-				return errorResult(`Failed to checkout ${branch}:\n${checkout.stderr || checkout.stdout}`);
-			}
-
-			const pull = await run("git", ["-C", repoDir, "pull", "--ff-only", "upstream", branch], signal);
-			if (pull.exitCode !== 0) {
-				return errorResult(`Failed to fast-forward ${branch} from upstream:\n${pull.stderr || pull.stdout}`);
-			}
-
-			const short = await run("git", ["-C", repoDir, "rev-parse", "--short", "HEAD"], signal);
-			const text = `Synced ${branch} from upstream. HEAD: ${short.stdout.trim() || "unknown"}`;
-			return { content: [{ type: "text", text }], details: { path: repoDir, branch } };
 		},
 	});
 
@@ -193,11 +219,6 @@ export default function (pi: ExtensionAPI) {
 		name: "bloom_repo_submit_pr",
 		label: "Submit Bloom Fix PR",
 		description: "Create branch + commit + push + PR from local repo changes to upstream.",
-		promptSnippet: "bloom_repo_submit_pr — submit local fix as pull request",
-		promptGuidelines: [
-			"Use bloom_repo_submit_pr after implementing and testing a local fix.",
-			"Never push directly to main; always open a PR.",
-		],
 		parameters: Type.Object({
 			title: Type.String({ description: "Pull request title" }),
 			body: Type.Optional(Type.String({ description: "Pull request body markdown" })),
@@ -219,7 +240,7 @@ export default function (pi: ExtensionAPI) {
 
 			const check = await run("git", ["-C", repoDir, "rev-parse", "--git-dir"], signal);
 			if (check.exitCode !== 0)
-				return errorResult(`No repo clone found at ${repoDir}. Run bloom_repo_configure first.`);
+				return errorResult(`No repo clone found at ${repoDir}. Run bloom_repo action=configure first.`);
 
 			const ghAuth = await run("gh", ["auth", "status"], signal);
 			if (ghAuth.exitCode !== 0) {
@@ -228,8 +249,8 @@ export default function (pi: ExtensionAPI) {
 
 			const upstreamUrl = await getRemoteUrl(repoDir, "upstream", signal);
 			const originUrl = await getRemoteUrl(repoDir, "origin", signal);
-			if (!upstreamUrl) return errorResult("Missing upstream remote. Run bloom_repo_configure first.");
-			if (!originUrl) return errorResult("Missing origin remote. Run bloom_repo_configure with fork_url first.");
+			if (!upstreamUrl) return errorResult("Missing upstream remote. Run bloom_repo action=configure first.");
+			if (!originUrl) return errorResult("Missing origin remote. Run bloom_repo action=configure with fork_url first.");
 
 			const upstreamSlug = parseGithubSlugFromUrl(upstreamUrl);
 			const originSlug = parseGithubSlugFromUrl(originUrl);
@@ -341,51 +362,6 @@ export default function (pi: ExtensionAPI) {
 				content: [{ type: "text", text }],
 				details: { path: repoDir, branch: targetBranch, base, pr_url: prUrl || null },
 			};
-		},
-	});
-
-	pi.registerTool({
-		name: "bloom_repo_status",
-		label: "Bloom Repo Status",
-		description: "Check local Bloom repo status, remotes, and PR readiness.",
-		promptSnippet: "bloom_repo_status — check local repo and remotes",
-		promptGuidelines: [
-			"Use bloom_repo_status before starting self-evolution git operations.",
-			"Verify upstream/origin remotes and gh auth before attempting PR submission.",
-		],
-		parameters: Type.Object({}),
-		async execute(_toolCallId, _params, signal, _onUpdate, _ctx) {
-			const check = await run("git", ["-C", repoDir, "rev-parse", "--git-dir"], signal);
-			if (check.exitCode !== 0) {
-				return errorResult(`No repo clone found at ${repoDir}. Run bloom_repo_configure first.`);
-			}
-			const branch = await run("git", ["-C", repoDir, "branch", "--show-current"], signal);
-			const status = await run("git", ["-C", repoDir, "status", "--short"], signal);
-			const log = await run("git", ["-C", repoDir, "log", "--oneline", "-5"], signal);
-			const remotes = await run("git", ["-C", repoDir, "remote", "-v"], signal);
-			const ghAuth = await run("gh", ["auth", "status"], signal);
-			const upstream = await getRemoteUrl(repoDir, "upstream", signal);
-			const origin = await getRemoteUrl(repoDir, "origin", signal);
-			const upstreamSlug = upstream ? parseGithubSlugFromUrl(upstream) : null;
-			const originSlug = origin ? parseGithubSlugFromUrl(origin) : null;
-
-			const ready = upstreamSlug && originSlug && ghAuth.exitCode === 0 ? "yes" : "no";
-			const originIsUpstream = upstream && origin && upstream === origin;
-			const text = [
-				`Path: ${repoDir}`,
-				`Branch: ${branch.stdout.trim() || "unknown"}`,
-				`PR-ready: ${ready}`,
-				`Upstream: ${upstream ?? "(missing)"}`,
-				`Origin: ${origin ?? "(missing)"}`,
-				originIsUpstream
-					? "Warning: origin matches upstream. Configure a writable fork URL for safer fork-based PR flow."
-					: "",
-				`\nStatus:\n${status.stdout.trim() || "(clean)"}`,
-				`\nRemotes:\n${remotes.stdout.trim() || "(none)"}`,
-				`\nRecent commits:\n${log.stdout.trim()}`,
-				`\nGitHub auth:\n${ghAuth.exitCode === 0 ? "ok" : (ghAuth.stderr || ghAuth.stdout).trim() || "not authenticated"}`,
-			].join("\n");
-			return { content: [{ type: "text", text }], details: { path: repoDir, pr_ready: ready === "yes" } };
 		},
 	});
 }

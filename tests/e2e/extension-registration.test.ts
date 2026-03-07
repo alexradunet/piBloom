@@ -112,9 +112,7 @@ describe("bloom-repo registration", () => {
 		const api = createMockExtensionAPI();
 		mod.default(api as never);
 
-		expect(toolNames(api)).toEqual(
-			expect.arrayContaining(["bloom_repo_configure", "bloom_repo_sync", "bloom_repo_submit_pr", "bloom_repo_status"]),
-		);
+		expect(toolNames(api)).toEqual(expect.arrayContaining(["bloom_repo", "bloom_repo_submit_pr"]));
 	});
 });
 
