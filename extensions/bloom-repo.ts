@@ -5,19 +5,15 @@
  * @see {@link ../AGENTS.md#bloom-os} Extension reference
  */
 import { mkdirSync } from "node:fs";
-import { createRequire } from "node:module";
 import os from "node:os";
 import { join } from "node:path";
 import { StringEnum } from "@mariozechner/pi-ai";
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import { Type } from "@sinclair/typebox";
+import HostedGitInfo from "hosted-git-info";
 import { run } from "../lib/exec.js";
 import { getRemoteUrl, inferRepoUrl } from "../lib/repo.js";
 import { errorResult, requireConfirmation } from "../lib/shared.js";
-
-const require = createRequire(import.meta.url);
-const HostedGitInfo: { fromUrl(url: string): { type: string; user: string; project: string } | undefined } =
-	require("hosted-git-info");
 
 /** Extract `owner/repo` slug from a GitHub URL (HTTPS, SSH, or ssh:// format). Returns null if not a valid GitHub URL. */
 export function parseGithubSlugFromUrl(url: string): string | null {

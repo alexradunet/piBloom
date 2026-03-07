@@ -12,7 +12,7 @@ graph TD
     q1 -->|No| skill[Skill<br/>SKILL.md]
     q1 -->|Yes| q2{Needs direct access<br/>to Pi session?}
     q2 -->|Yes| ext[Extension<br/>TypeScript]
-    q2 -->|No| svc[Service<br/>OCI Container]
+    q2 -->|No| svc[Service<br/>Container / Native]
 
     skill --> skill_desc["Markdown file with instructions<br/>Cheapest to create<br/>No code, just knowledge"]
     ext --> ext_desc["In-process TypeScript<br/>Full Pi API access<br/>Commands, tools, events"]
@@ -90,7 +90,7 @@ graph TB
 
 - **Skills** are pure knowledge — procedures, API references, troubleshooting guides. Pi reads them and acts. No code, no process, no resources. Pi can create these autonomously.
 - **Extensions** need direct access to Pi's session (send messages, register commands, access context). They run in-process and require TypeScript. These are core platform code.
-- **Services** are standalone workloads (speech-to-text, messaging bridges, mesh VPN, file sync) that run as either containers (for isolation) or native systemd units (when container overhead is unnecessary). Pi can create and distribute containerized services via OCI artifacts.
+- **Services** are standalone workloads (speech-to-text, messaging bridges, mesh VPN, file sync) that run as either containers (for isolation) or native systemd units (when container overhead is unnecessary).
 
 ### 📦 The `bloom-` Prefix
 
@@ -107,34 +107,9 @@ The prefix enables:
 - `systemctl --user status bloom-*` — list all Bloom-managed user services
 - Clear separation from user-installed services
 
-## 📦 OCI Artifact Distribution
+## 📦 Local Package Installation
 
-Service packages are distributed as OCI artifacts via GHCR, using `oras` for push/pull.
-
-```mermaid
-sequenceDiagram
-    participant Dev as Developer
-    participant GHCR as ghcr.io
-    participant Bloom as Bloom Device
-    participant Pi as Pi Agent
-
-    Note over Dev: Create service package
-    Dev->>Dev: services/{name}/quadlet/ + SKILL.md
-    Dev->>GHCR: just svc-push {name}<br/>oras push
-
-    Note over Bloom: Install service
-    Pi->>GHCR: oras pull bloom-svc-{name}
-    Pi->>Bloom: Copy quadlet → ~/.config/containers/systemd/
-    Pi->>Bloom: Copy SKILL.md → ~/Bloom/Skills/{name}/
-    Pi->>Bloom: systemctl --user daemon-reload
-    Pi->>Bloom: systemctl --user start bloom-{name}
-
-    Note over Bloom: Self-evolution (future)
-    Pi->>Pi: Detect capability gap
-    Pi->>Pi: Create service package
-    Pi->>GHCR: oras push bloom-svc-{name}
-    Pi->>Pi: Share with other Bloom devices
-```
+Services are installed from bundled local packages in `services/{name}/`. Each package contains Quadlet container units (or native systemd units) and a SKILL.md file.
 
 ### 📦 Package Format
 
@@ -151,40 +126,22 @@ services/{name}/
 `services/catalog.yaml` is the declarative metadata index for install automation:
 
 - default service versions
-- OCI artifact references (`bloom-svc-*`)
 - runtime image references
-- preflight requirements (for example `oras` and `podman` for container services)
+- preflight requirements (for example `podman` for container services)
 
 The `manifest_apply` tool uses this catalog to auto-install missing services and enforce preflight checks.
-
-### 📦 OCI Annotations
-
-```
-org.opencontainers.image.title       = bloom-{name}
-org.opencontainers.image.description = Human-readable description
-org.opencontainers.image.source      = https://github.com/pibloom/pi-bloom
-org.opencontainers.image.version     = 1.0.0
-dev.bloom.service.category           = media | communication | networking | sync
-dev.bloom.service.port               = 8000
-```
 
 ## 📦 Service Lifecycle
 
 ```mermaid
 stateDiagram-v2
-    [*] --> Available: Published to GHCR
-    Available --> Pulled: oras pull
-    Pulled --> Installed: Copy quadlet + SKILL.md
+    [*] --> Installed: service_install (local package)
     Installed --> Running: systemctl --user start
     Running --> Stopped: systemctl --user stop
     Stopped --> Running: systemctl --user start
     Stopped --> Removed: Remove quadlet + skill files
     Removed --> [*]
     Running --> Removed: systemctl --user stop + remove files
-
-    note right of Available
-        ghcr.io/pibloom/bloom-svc-{name}
-    end note
 
     note right of Installed
         ~/.config/containers/systemd/bloom-{name}.container
@@ -244,7 +201,6 @@ sequenceDiagram
 graph LR
     subgraph "Immutable OS Layer (/usr)"
         bloom_pkg["/usr/local/share/bloom/<br/>Extensions + Skills + Persona"]
-        oras_bin["/usr/local/bin/oras"]
     end
 
     subgraph "User State (~)"
@@ -282,8 +238,7 @@ graph LR
 1. Create `services/{name}/quadlet/bloom-{name}.container` with Quadlet conventions
 2. Create `services/{name}/SKILL.md` documenting the API and usage
 3. Test locally: copy to `~/.config/containers/systemd/`, reload, start
-4. Push to GHCR: `just svc-push {name}`
-5. Update the services table in `services/README.md` and `AGENTS.md`
+4. Update the services table in `services/README.md` and `AGENTS.md`
 
 ### 📦 Quadlet Conventions Checklist
 

@@ -239,9 +239,17 @@ export default function (pi: ExtensionAPI) {
 		description: "Composite health check: OS image status, containers, disk usage, system load, and memory.",
 		parameters: Type.Object({}),
 		async execute(_toolCallId, _params, signal, _onUpdate, _ctx) {
+			const [bootc, ps, df, loadavg, meminfo, uptime] = await Promise.all([
+				run("bootc", ["status", "--format=json"], signal),
+				run("podman", ["ps", "--format", "json", "--filter", "name=bloom-"], signal),
+				run("df", ["-h", "/", "/var", "/home"], signal),
+				run("cat", ["/proc/loadavg"], signal),
+				run("free", ["-h", "--si"], signal),
+				run("uptime", ["-p"], signal),
+			]);
+
 			const sections: string[] = [];
 
-			const bootc = await run("bootc", ["status", "--format=json"], signal);
 			if (bootc.exitCode === 0) {
 				try {
 					const status = JSON.parse(bootc.stdout) as {
@@ -256,7 +264,6 @@ export default function (pi: ExtensionAPI) {
 				sections.push("## OS Image\n(bootc status unavailable)");
 			}
 
-			const ps = await run("podman", ["ps", "--format", "json", "--filter", "name=bloom-"], signal);
 			if (ps.exitCode === 0) {
 				try {
 					const containers = JSON.parse(ps.stdout || "[]") as Array<{
@@ -278,14 +285,9 @@ export default function (pi: ExtensionAPI) {
 				}
 			}
 
-			const df = await run("df", ["-h", "/", "/var", "/home"], signal);
 			if (df.exitCode === 0) {
 				sections.push(`## Disk Usage\n\`\`\`\n${df.stdout.trim()}\n\`\`\``);
 			}
-
-			const loadavg = await run("cat", ["/proc/loadavg"], signal);
-			const meminfo = await run("free", ["-h", "--si"], signal);
-			const uptime = await run("uptime", ["-p"], signal);
 
 			const loadParts: string[] = [];
 			if (loadavg.exitCode === 0) {

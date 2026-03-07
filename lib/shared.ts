@@ -1,25 +1,10 @@
-import { createRequire } from "node:module";
 import os from "node:os";
 import path from "node:path";
+import matter from "@11ty/gray-matter";
 import type { ExtensionContext } from "@mariozechner/pi-coding-agent";
 import { truncateHead } from "@mariozechner/pi-coding-agent";
+import jsYaml from "js-yaml";
 
-const require = createRequire(import.meta.url);
-const matter: (
-	str: string,
-	opts?: Record<string, unknown>,
-) => {
-	data: Record<string, unknown>;
-	content: string;
-	matter: string;
-} = require("@11ty/gray-matter");
-const jsYaml: {
-	load: (str: string) => unknown;
-	dump: (obj: unknown, opts?: Record<string, unknown>) => string;
-	JSON_SCHEMA: unknown;
-} = require("js-yaml");
-
-/** Centralized js-yaml import via createRequire (avoids ESM/CJS interop issues). */
 export const yaml: { load: (str: string) => unknown; dump: (obj: unknown) => string } = jsYaml;
 
 /**
@@ -100,7 +85,7 @@ export function parseFrontmatter<T extends Record<string, unknown> = Record<stri
 
 	let result: { data: Record<string, unknown>; content: string; matter: string };
 	try {
-		result = matter(str, { schema: jsYaml.JSON_SCHEMA });
+		result = matter(str, { schema: jsYaml.JSON_SCHEMA } as Record<string, unknown>);
 	} catch {
 		return empty;
 	}

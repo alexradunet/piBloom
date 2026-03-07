@@ -83,40 +83,32 @@ Tool-call audit trail with 30-day retention.
 - `tool_call` — Append tool call event to daily JSONL
 - `tool_result` — Append tool result event to daily JSONL
 
-### 💻 bloom-os (402 lines)
+### 💻 bloom-os
 
 OS management: bootc lifecycle, containers, systemd, health, updates.
 
 **Tools:**
-- Bootc: `bootc_status`, `bootc_update`, `bootc_rollback`
-- Containers: `container_status`, `container_logs`, `container_deploy`
+- Bootc: `bootc` (actions: status, check, download, apply, rollback)
+- Containers: `container` (actions: status, logs, deploy)
 - System: `systemd_control`, `system_health`
 - Updates: `update_status`, `schedule_reboot`
 
 **Hooks:**
 - `before_agent_start` — Inject OS update availability into system prompt
 
-### 🔀 bloom-repo (371 lines)
+### 🔀 bloom-repo
 
 Repository management: configure, sync, submit PRs, check status.
 
-**Tools:** `bloom_repo_configure`, `bloom_repo_sync`, `bloom_repo_submit_pr`, `bloom_repo_status`
+**Tools:** `bloom_repo` (actions: configure, status, sync), `bloom_repo_submit_pr`
 
-### 📋 bloom-manifest (419 lines)
+### 📦 bloom-services
 
-Declarative service manifest: show, sync, set, apply.
+Service lifecycle: scaffold, install, test, and declarative manifest management.
 
-**Tools:** `manifest_show`, `manifest_sync`, `manifest_set_service`, `manifest_apply`
+**Tools:** `service_scaffold`, `service_install`, `service_test`, `manifest_show`, `manifest_sync`, `manifest_set_service`, `manifest_apply`
 **Hooks:**
-- `session_start` — Check manifest drift, display status widget
-
-### 📦 bloom-services (570 lines)
-
-Service lifecycle: scaffold, publish, install, and test OCI service packages.
-
-**Tools:** `service_scaffold`, `service_publish`, `service_install`, `service_test`
-**Hooks:**
-- `session_start` — Set UI status
+- `session_start` — Set UI status, check manifest drift, display status widget
 
 ### 🗂️ bloom-objects
 
@@ -154,35 +146,28 @@ Conversation topic management and session organization.
 - `before_agent_start` — Inject topic guidance into system prompt
 - `session_start` — Initialize topic state
 
-## 🧩 All Registered Tools (30)
+## 🧩 All Registered Tools (25)
 
 Quick reference of every tool name available to Pi:
 
 | Tool | Extension | Purpose |
 |------|-----------|---------|
 | `audit_review` | bloom-audit | Inspect recent audited tool activity |
-| `bootc_status` | bloom-os | Show OS image version, staged updates |
-| `bootc_update` | bloom-os | Check/download/apply OS updates |
-| `bootc_rollback` | bloom-os | Rollback to previous OS image |
-| `container_status` | bloom-os | List running bloom-* containers |
-| `container_logs` | bloom-os | Tail logs for a service |
-| `container_deploy` | bloom-os | Daemon-reload + start a Quadlet unit |
+| `bootc` | bloom-os | Bootc lifecycle (actions: status, check, download, apply, rollback) |
+| `container` | bloom-os | Container management (actions: status, logs, deploy) |
 | `systemd_control` | bloom-os | Start/stop/restart/status a service |
 | `system_health` | bloom-os | Comprehensive health overview |
 | `update_status` | bloom-os | Check if OS update is available |
 | `schedule_reboot` | bloom-os | Schedule a delayed reboot |
-| `bloom_repo_configure` | bloom-repo | Bootstrap repo, set remotes, git identity |
-| `bloom_repo_sync` | bloom-repo | Sync from upstream branch |
+| `bloom_repo` | bloom-repo | Repository management (actions: configure, status, sync) |
 | `bloom_repo_submit_pr` | bloom-repo | Create PR from local changes |
-| `bloom_repo_status` | bloom-repo | Check repo health, remotes, GitHub auth |
-| `manifest_show` | bloom-manifest | Display service manifest |
-| `manifest_sync` | bloom-manifest | Reconcile manifest with running state |
-| `manifest_set_service` | bloom-manifest | Declare service in manifest |
-| `manifest_apply` | bloom-manifest | Apply desired state |
 | `service_scaffold` | bloom-services | Generate service package skeleton |
-| `service_publish` | bloom-services | Publish package to OCI registry (oras) |
-| `service_install` | bloom-services | Pull and install package from registry |
+| `service_install` | bloom-services | Install service from bundled local package |
 | `service_test` | bloom-services | Smoke-test installed service units |
+| `manifest_show` | bloom-services | Display service manifest |
+| `manifest_sync` | bloom-services | Reconcile manifest with running state |
+| `manifest_set_service` | bloom-services | Declare service in manifest |
+| `manifest_apply` | bloom-services | Apply desired state |
 | `memory_create` | bloom-objects | Create new object in ~/Bloom/Objects/ |
 | `memory_read` | bloom-objects | Read object by type/slug |
 | `memory_search` | bloom-objects | Search objects by pattern |
@@ -200,7 +185,7 @@ Quick reference of every tool name available to Pi:
 | `first-boot` | One-time system setup (LLM provider, GitHub auth, repo, services, sync) |
 | `os-operations` | System health inspection and remediation (bootc, containers, systemd) |
 | `object-store` | CRUD operations for the memory store |
-| `service-management` | Install, manage, and discover OCI service packages |
+| `service-management` | Install, manage, and discover bundled service packages |
 | `self-evolution` | Structured system change workflow |
 | `recovery` | Troubleshooting playbooks (WhatsApp, OS updates, dufs, disk, containers) |
 
@@ -238,7 +223,7 @@ graph LR
 
 ## 📖 Shared Library
 
-`lib/shared.ts` — utilities re-exported via `extensions/shared.ts`:
+`lib/shared.ts` — shared utilities:
 
 | Export | Purpose |
 |--------|---------|
@@ -250,7 +235,6 @@ graph LR
 | `truncate(text)` | Truncate to 2000 lines / 50KB |
 | `errorResult(message)` | Standardized error response |
 | `requireConfirmation(ctx, action)` | Prompt for UI confirmation, returns null or error string |
-| `getServiceRegistry()` | Resolve OCI service registry from env |
 | `nowIso()` | ISO timestamp without milliseconds |
 
 ## 🚀 Install
@@ -261,7 +245,7 @@ pi install /path/to/bloom
 
 Or for development:
 ```bash
-pi -e ./extensions/bloom-persona.ts -e ./extensions/bloom-audit.ts -e ./extensions/bloom-os.ts -e ./extensions/bloom-repo.ts -e ./extensions/bloom-manifest.ts -e ./extensions/bloom-services.ts -e ./extensions/bloom-objects.ts -e ./extensions/bloom-garden.ts -e ./extensions/bloom-channels.ts -e ./extensions/bloom-topics.ts
+pi -e ./extensions/bloom-persona.ts -e ./extensions/bloom-audit.ts -e ./extensions/bloom-os.ts -e ./extensions/bloom-repo.ts -e ./extensions/bloom-services.ts -e ./extensions/bloom-objects.ts -e ./extensions/bloom-garden.ts -e ./extensions/bloom-channels.ts -e ./extensions/bloom-topics.ts
 ```
 
 ## 📖 Setup & Deployment Docs

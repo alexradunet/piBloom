@@ -15,7 +15,7 @@ When extending capabilities, prefer the lightest option: **Skill → Extension �
 |------|-----------|---------|
 | Pi needs knowledge or a procedure | **Skill** — create a SKILL.md | Meal planning guide, API reference |
 | Pi needs commands, tools, or session hooks | **Extension** — TypeScript (requires PR) | New Pi command, event handler |
-| Standalone workload needing isolation | **Service** — OCI container package | ML model, messaging bridge, VPN |
+| Standalone workload needing isolation | **Service** — Container or native systemd service | ML model, messaging bridge, VPN |
 
 ## Evolution Workflow
 
@@ -37,8 +37,7 @@ When extending capabilities, prefer the lightest option: **Skill → Extension �
 
 ### Service Lifecycle
 - `service_scaffold` — Generate a new service package skeleton (Quadlet + SKILL.md)
-- `service_publish` — Push a service package to OCI registry (supports semver tags)
-- `service_install` — Pull and install a package from OCI artifact into Quadlet + Garden skill paths
+- `service_install` — Install a service from bundled local package into Quadlet + skill paths
 - `service_test` — Smoke-test installed service units before release
 
 ### Object Store (for tracking)
@@ -96,14 +95,14 @@ When Bloom identifies a code-level fix or improvement to its own OS/extensions, 
 1. **Detect + Plan**
    - Describe the issue and proposed fix in plain language.
 2. **Ensure repo is configured**
-   - Run `bloom_repo_configure` once per device (upstream + origin fork remotes, git identity).
+   - Run `bloom_repo(action: "configure")` once per device (upstream + origin fork remotes, git identity).
 3. **Check readiness**
-   - Run `bloom_repo_status` and confirm:
+   - Run `bloom_repo(action: "status")` and confirm:
      - repo exists
      - `upstream` and `origin` remotes are set
      - GitHub auth is valid
 4. **Sync before changes**
-   - Run `bloom_repo_sync(branch="main")`.
+   - Run `bloom_repo(action: "sync", branch: "main")`.
 5. **Implement + test**
    - Make the fix, then run `npm run build && npm run check` in the repo.
 6. **Submit PR in one step**
@@ -120,7 +119,7 @@ When Bloom identifies a code-level fix or improvement to its own OS/extensions, 
 
 ## Adding a Service Package
 
-When Bloom identifies a need for a new containerized service, follow this workflow to create and distribute it as an OCI artifact.
+When Bloom identifies a need for a new containerized service, follow this workflow to create and install it.
 
 ### Directory Convention
 
@@ -158,14 +157,12 @@ Include frontmatter with `name` and `description`, then document:
 - Common commands
 - Troubleshooting
 
-### Publishing
+### Installation
 
 ```bash
-# Push to GHCR as OCI artifact
-just svc-push {name}
-
-# Test installation locally
-just svc-install {name}
+# Install from local package
+systemctl --user daemon-reload
+systemctl --user start bloom-{name}
 ```
 
 ### Testing
@@ -173,7 +170,6 @@ just svc-install {name}
 1. Create the service directory with quadlet + SKILL.md
 2. Test locally: copy quadlet files to `~/.config/containers/systemd/`, run `systemctl --user daemon-reload && systemctl --user start bloom-{name}`
 3. Verify health: `systemctl --user status bloom-{name}`
-4. Push to registry: `just svc-push {name}`
 
 Reference example packages:
 - `services/examples/demo-api/`
@@ -187,6 +183,5 @@ Use this tool flow for repeatable service delivery:
 
 1. `service_scaffold` — generate package skeleton
 2. `service_test` — smoke test unit startup and logs
-3. `service_publish` — push semver tag (e.g. `0.1.0`) and optionally `latest`
-4. `service_install` — deploy exact version from registry
-5. `manifest_show` / `manifest_sync` — verify tracked state and drift
+3. `service_install` — install from local package
+4. `manifest_show` / `manifest_sync` — verify tracked state and drift

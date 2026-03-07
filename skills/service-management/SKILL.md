@@ -1,40 +1,32 @@
 ---
 name: service-management
-description: Install, manage, and discover OCI-packaged service containers
+description: Install, manage, and discover bundled service packages
 ---
 
 # Service Management
 
-Bloom services are modular capabilities packaged as OCI artifacts. Each package contains Quadlet container units and a SKILL.md file.
+Bloom services are modular capabilities bundled as local packages. Each package contains Quadlet container units (or native systemd units) and a SKILL.md file.
 
 Follow `docs/supply-chain.md` for reproducibility and verification policy.
 
-## Registry
-
-Service packages are hosted at:
-```
-ghcr.io/pibloom/bloom-svc-{name}:<version>
-```
-
-Use immutable semver tags (for example `0.1.0`) for installs. `latest` is mutable and should be explicit only for development.
-
-Service metadata defaults (version, artifact ref, preflight requirements) are tracked in `services/catalog.yaml`.
+Service metadata defaults (version, preflight requirements) are tracked in `services/catalog.yaml`.
 
 ## Lifecycle Tools
 
 Bloom exposes service lifecycle tools:
 
 - `service_scaffold` — create a new service package skeleton
-- `service_publish` — publish service package to OCI registry
-- `service_install` — install service package from OCI artifact
+- `service_install` — install service from bundled local package
 - `service_test` — run a local smoke test on installed units
 
 Related declarative tools:
 
+- `manifest_show` — display the current service manifest
+- `manifest_sync` — reconcile manifest with running state
 - `manifest_set_service` — declare desired service state in `~/Bloom/manifest.yaml`
 - `manifest_apply` — apply desired state (install missing, start enabled, stop disabled)
 
-## End-to-End Example (Scaffold → Test → Publish → Install)
+## End-to-End Example (Scaffold → Test → Install)
 
 Use this sequence when creating a new service package:
 
@@ -42,11 +34,9 @@ Use this sequence when creating a new service package:
    - `service_scaffold(name="demo-api", description="Demo HTTP API", image="docker.io/library/nginx:stable", version="0.1.0", port=9080, container_port=80)`
 2. Smoke test locally:
    - `service_test(name="demo-api", start_timeout_sec=120)`
-3. Publish immutable version:
-   - `service_publish(name="demo-api", version="0.1.0")`
-4. Install that exact version:
-   - `service_install(name="demo-api", version="0.1.0")`
-5. Verify result:
+3. Install from local package:
+   - `service_install(name="demo-api")`
+4. Verify result:
    - `systemctl --user status bloom-demo-api`
    - `manifest_show`
 
@@ -62,28 +52,24 @@ Reference packages:
 
 ## Install a Service
 
+Services install from bundled local packages in `services/{name}/`:
+
 ```bash
-mkdir -p /tmp/bloom-svc
-oras pull ghcr.io/pibloom/bloom-svc-{name}:{version} -o /tmp/bloom-svc/
 mkdir -p ~/.config/containers/systemd ~/.config/systemd/user
-find /tmp/bloom-svc/quadlet -maxdepth 1 -type f -name '*.socket' -exec cp {} ~/.config/systemd/user/ \;
-find /tmp/bloom-svc/quadlet -maxdepth 1 -type f ! -name '*.socket' -exec cp {} ~/.config/containers/systemd/ \;
+find services/{name}/quadlet -maxdepth 1 -type f -name '*.socket' -exec cp {} ~/.config/systemd/user/ \;
+find services/{name}/quadlet -maxdepth 1 -type f ! -name '*.socket' -exec cp {} ~/.config/containers/systemd/ \;
 [ -f ~/.config/containers/systemd/bloom.network ] || cp /usr/local/share/bloom/os/sysconfig/bloom.network ~/.config/containers/systemd/bloom.network
 mkdir -p ~/Bloom/Skills/{name}
-cp /tmp/bloom-svc/SKILL.md ~/Bloom/Skills/{name}/SKILL.md
+cp services/{name}/SKILL.md ~/Bloom/Skills/{name}/SKILL.md
 systemctl --user daemon-reload
 if [ -f ~/.config/systemd/user/bloom-{name}.socket ]; then
   systemctl --user start bloom-{name}.socket
 else
   systemctl --user start bloom-{name}.service
 fi
-rm -rf /tmp/bloom-svc
 ```
 
-Notes:
-
-- `service_install` is registry-first. If OCI pull fails but the service package exists in the local Bloom bundle, it may install from the bundled copy as a fallback.
-- For `netbird`, ensure rootless Podman subuid/subgid mappings exist for the user (`/etc/subuid`, `/etc/subgid`).
+Use `service_install(name="{name}")` to automate this process.
 
 ## Remove a Service
 
@@ -115,26 +101,6 @@ systemctl --user status bloom-{name}.socket  # if socket-activated
 journalctl --user -u bloom-{name} -n 50
 ```
 
-## Browse Available Versions
-
-```bash
-oras repo tags ghcr.io/pibloom/bloom-svc-{name}
-```
-
-## Backup and Restore (oras v1.3.0+)
-
-Backup a service package locally before making changes:
-
-```bash
-oras backup ghcr.io/pibloom/bloom-svc-{name}:latest -o ~/Bloom/backups/
-```
-
-Restore a previously backed-up service:
-
-```bash
-oras restore ~/Bloom/backups/bloom-svc-{name}/ --to ghcr.io/pibloom/bloom-svc-{name}:rollback
-```
-
 ## Service Dependencies
 
 Services may depend on other components:
@@ -160,34 +126,13 @@ image: ghcr.io/lemonade-sdk/lemonade-server:latest
 ---
 ```
 
-OCI artifacts use semver tags: `ghcr.io/pibloom/bloom-svc-lemonade:0.1.0`
-
 ### Check Installed Version
 
 The manifest at `~/Bloom/manifest.yaml` tracks installed service versions. Use `manifest_show` to view current state.
 
 ### Pin a Service Version
 
-```bash
-oras pull ghcr.io/pibloom/bloom-svc-{name}:0.1.0 -o /tmp/bloom-svc/
-```
-
-Then update the manifest with `manifest_set_service` to record the pinned version.
-
-### Verify Artifact Digest (Recommended)
-
-For higher assurance, resolve and pin the OCI artifact digest before install:
-
-```bash
-oras resolve ghcr.io/pibloom/bloom-svc-{name}:{version}
-# => sha256:...
-```
-
-Then pass it to `service_install`:
-
-- `service_install(name="{name}", version="{version}", expected_digest="sha256:...")`
-
-`service_install` verifies the digest (when provided) and enforces pinned runtime images by default.
+Update the manifest with `manifest_set_service` to record the desired version.
 
 ## Known Services
 

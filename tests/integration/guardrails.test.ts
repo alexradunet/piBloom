@@ -1,11 +1,10 @@
 import { readFileSync } from "node:fs";
-import { createRequire } from "node:module";
 import { join } from "node:path";
+import jsYaml from "js-yaml";
 import { describe, expect, it } from "vitest";
 import { normalizeCommand } from "../../extensions/bloom-persona.js";
 
-const require = createRequire(import.meta.url);
-const yaml: { load: (str: string) => unknown } = require("js-yaml");
+const yaml: { load: (str: string) => unknown } = jsYaml;
 
 interface GuardrailPattern {
 	pattern: string;
