@@ -393,7 +393,7 @@ apply_hardening() {
 	# NetBird mesh (wt0) is trusted — allow all traffic from mesh peers
 	firewall-cmd --permanent --zone=trusted --add-interface=wt0 >/dev/null 2>&1 || true
 
-	# Default zone only allows SSH from local subnets
+	# Default zone allows SSH only
 	firewall-cmd --permanent --zone=bloom --add-service=ssh >/dev/null 2>&1 || true
 
 	# Detect local RFC1918 subnets from active interfaces and allow SSH from them
