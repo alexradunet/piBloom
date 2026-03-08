@@ -29,7 +29,7 @@ graph TD
 |-----------|----------|----------|------|
 | **Skill** | Pi needs knowledge or a procedure to follow | meal-planning, troubleshooting guides, API references | Zero — just a markdown file |
 | **Extension** | Pi needs to register commands, tools, or react to session events | bloom-channels (Unix socket server), bloom-objects (object store) | Low — TypeScript, runs in-process |
-| **Service** | A standalone process needs to run independently of Pi's session | Lemonade (local LLM), WhatsApp bridge (always-on), dufs (WebDAV) | Medium — systemd unit, resource allocation |
+| **Service** | A standalone process needs to run independently of Pi's session | LLM (llama.cpp), STT (whisper.cpp), WhatsApp bridge (always-on), dufs (WebDAV) | Medium — systemd unit, resource allocation |
 
 **Always prefer the lighter option.** A skill that teaches Pi to call an existing API is better than an extension wrapping that API, which is better than a service re-implementing it.
 
@@ -47,9 +47,11 @@ graph TB
         end
 
         subgraph "Service Containers (Podman Quadlet)"
-            lemonade[bloom-lemonade<br/>Lemonade :8000]
+            llm[bloom-llm<br/>llama.cpp :8080]
+            stt[bloom-stt<br/>whisper.cpp :8081]
             dufs[bloom-dufs<br/>WebDAV :5000]
             wa[bloom-whatsapp<br/>Baileys Bridge]
+            signal[bloom-signal<br/>Signal Bridge]
         end
 
         subgraph "System Services (RPM)"
@@ -63,12 +65,16 @@ graph TB
     end
 
     channels <-->|Unix socket JSON| wa
+    channels <-->|Unix socket JSON| signal
     wa <-->|Baileys| whatsapp_cloud[WhatsApp Cloud]
-    lemonade -->|HTTP API| channels
+    signal <-->|signal-cli| signal_cloud[Signal Cloud]
+    llm -->|HTTP API| channels
     netbird <-->|WireGuard| netbird_cloud[NetBird Cloud]
     dufs -->|WebDAV| devices[Other Devices]
     systemd -->|manages| wa
-    systemd -->|manages| lemonade
+    systemd -->|manages| signal
+    systemd -->|manages| llm
+    systemd -->|manages| stt
     systemd -->|manages| dufs
     systemd_sys -->|manages| netbird
 
@@ -94,13 +100,15 @@ graph TB
 
 ### 📦 The `bloom-` Prefix
 
-Bloom-managed services use a `bloom-` prefix on their **unit names** (e.g., `bloom-lemonade`, `bloom-whatsapp`). This is a management namespace — it does NOT mean the underlying image is Bloom-specific. NetBird runs as a system-level RPM service:
+Bloom-managed services use a `bloom-` prefix on their **unit names** (e.g., `bloom-llm`, `bloom-whatsapp`). This is a management namespace — it does NOT mean the underlying image is Bloom-specific. NetBird runs as a system-level RPM service:
 
 | Unit Name | Type | Image / Runtime | Bloom-specific? |
 |-----------|------|-----------------|-----------------|
-| `bloom-lemonade` | Podman Quadlet (user) | `ghcr.io/lemonade-sdk/lemonade-server:latest` | No — upstream image |
+| `bloom-llm` | Podman Quadlet (user) | `ghcr.io/ggml-org/llama.cpp:server` | No — upstream image |
+| `bloom-stt` | Podman Quadlet (user) | `ghcr.io/ggml-org/whisper.cpp:main` | No — upstream image |
 | `bloom-dufs` | Podman Quadlet (user) | `docker.io/sigoden/dufs:latest` | No — upstream image |
 | `bloom-whatsapp` | Podman Quadlet (user) | localhost/bloom-whatsapp:latest | Yes — custom bridge |
+| `bloom-signal` | Podman Quadlet (user) | localhost/bloom-signal:latest | Yes — custom bridge |
 | `netbird` | System RPM service | NetBird package | No — upstream RPM |
 
 The prefix enables:
@@ -160,7 +168,7 @@ sequenceDiagram
     participant FS as /var/lib/bloom/media/
     participant Channels as bloom-channels
     participant Pi as Pi Agent
-    participant Lemonade as bloom-lemonade
+    participant STT as bloom-stt
 
     WA->>Bridge: Incoming voice note
     Bridge->>Bridge: downloadMediaMessage()
@@ -169,8 +177,8 @@ sequenceDiagram
     Channels->>Pi: "[whatsapp: John] sent audio (15s, 24KB, audio/ogg). File: /var/lib/bloom/media/..."
 
     Note over Pi: Pi decides to transcribe
-    Pi->>Lemonade: POST /v1/audio/transcriptions<br/>file=@/var/lib/bloom/media/...ogg
-    Lemonade->>Pi: {"text": "transcribed content"}
+    Pi->>STT: POST http://localhost:8081/inference<br/>file=@/var/lib/bloom/media/...ogg
+    STT->>Pi: {"text": "transcribed content"}
     Pi->>Channels: Response text
     Channels->>Bridge: Unix socket JSON response
     Bridge->>WA: Send reply
@@ -212,8 +220,10 @@ graph LR
     end
 
     subgraph "Container Volumes"
-        lemonade_models["bloom-lemonade-models<br/>ML model cache"]
+        llm_models["bloom-llm-models<br/>LLM model cache"]
+        stt_models["bloom-stt-models<br/>STT model cache"]
         wa_auth["bloom-whatsapp-data<br/>WhatsApp credentials"]
+        signal_data["bloom-signal-data<br/>Signal credentials"]
     end
 
     subgraph "System State"
@@ -221,16 +231,18 @@ graph LR
     end
 
     bloom_pkg --> config
-    config --> lemonade_models
+    config --> llm_models
 ```
 
 ## 📦 Available Services
 
 | Service | Category | Port | Type | Image / Runtime | Resources |
 |---------|----------|------|------|-----------------|-----------|
-| bloom-lemonade | ai | 8000 | Podman Quadlet | ghcr.io/lemonade-sdk/lemonade-server:latest | 2GB RAM |
+| bloom-llm | ai | 8080 | Podman Quadlet | ghcr.io/ggml-org/llama.cpp:server | 2GB RAM |
+| bloom-stt | ai | 8081 | Podman Quadlet | ghcr.io/ggml-org/whisper.cpp:main | 512MB RAM |
 | bloom-dufs | sync | 5000 | Podman Quadlet | docker.io/sigoden/dufs:latest | 64MB RAM |
 | bloom-whatsapp | communication | — | Podman Quadlet | localhost/bloom-whatsapp:latest | 128MB RAM |
+| bloom-signal | communication | 18802 | Podman Quadlet | localhost/bloom-signal:latest | 128MB RAM |
 | netbird | networking | — | System RPM service | NetBird package | 256MB RAM |
 
 ## 📦 Adding a New Service

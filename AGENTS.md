@@ -130,7 +130,7 @@ Bloom directory management, blueprint seeding, skill creation, persona evolution
 
 Channel bridge Unix socket server at `$XDG_RUNTIME_DIR/bloom/channels.sock`. JSON-newline protocol with rate limiting and heartbeat.
 
-**Commands:** `/wa` (send message to WhatsApp channel)
+**Commands:** `/wa` (send message to WhatsApp channel), `/signal` (send message to Signal channel)
 **Hooks:**
 - `session_start` — Create Unix socket server, load channel tokens
 - `agent_end` — Extract response, send back to channel socket by message ID
@@ -196,9 +196,11 @@ Canonical metadata for automation lives in `services/catalog.yaml`.
 
 | Service | Category | Port | Type |
 |---------|----------|------|------|
-| `bloom-svc-lemonade` | ai | 8000 | Podman Quadlet |
-| `bloom-svc-dufs` | sync | 5000 | Podman Quadlet |
+| `bloom-llm` | ai | 8080 | Podman Quadlet |
+| `bloom-stt` | ai | 8081 | Podman Quadlet |
+| `bloom-dufs` | sync | 5000 | Podman Quadlet |
 | `bloom-whatsapp` | communication | — | Podman Quadlet |
+| `bloom-signal` | communication | 18802 | Podman Quadlet |
 | `netbird` | networking | — | System RPM service |
 
 ## 🪞 Persona

@@ -53,7 +53,7 @@ Expected local path:
 Declare desired services in `~/Bloom/manifest.yaml` via tool calls:
 
 - `manifest_set_service(name="dufs", image="docker.io/sigoden/dufs:latest", version="0.1.0", enabled=true)`
-- `manifest_set_service(name="lemonade", image="ghcr.io/lemonade-sdk/lemonade-server:latest", version="0.1.0", enabled=true)`
+- `manifest_set_service(name="llm", image="ghcr.io/ggml-org/llama.cpp:server", version="0.1.0", enabled=true)`
 
 Preview:
 

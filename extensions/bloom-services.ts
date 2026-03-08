@@ -139,7 +139,7 @@ export default function (pi: ExtensionAPI) {
 		label: "Install Service Package",
 		description: "Install a service package from a bundled local package to Quadlet + Bloom skill paths.",
 		parameters: Type.Object({
-			name: Type.String({ description: "Service name (e.g. lemonade)" }),
+			name: Type.String({ description: "Service name (e.g. llm)" }),
 			version: Type.Optional(Type.String({ description: "Version tag for manifest", default: "latest" })),
 			start: Type.Optional(Type.Boolean({ description: "Enable/start service after install", default: true })),
 			update_manifest: Type.Optional(
@@ -214,7 +214,7 @@ export default function (pi: ExtensionAPI) {
 		label: "Test Service",
 		description: "Smoke-test installed service unit: reload, start, wait, inspect status/logs, optional cleanup.",
 		parameters: Type.Object({
-			name: Type.String({ description: "Installed service name (e.g. lemonade)" }),
+			name: Type.String({ description: "Installed service name (e.g. llm)" }),
 			start_timeout_sec: Type.Optional(Type.Number({ description: "Timeout waiting for active state", default: 120 })),
 			cleanup: Type.Optional(Type.Boolean({ description: "Stop unit(s) after test", default: false })),
 		}),
@@ -444,7 +444,7 @@ export default function (pi: ExtensionAPI) {
 		label: "Set Manifest Service",
 		description: "Add or update a service entry in the manifest.",
 		parameters: Type.Object({
-			name: Type.String({ description: "Service name (e.g. whatsapp, lemonade)" }),
+			name: Type.String({ description: "Service name (e.g. whatsapp, llm)" }),
 			image: Type.String({ description: "Container image reference" }),
 			version: Type.Optional(Type.String({ description: "Semver version tag" })),
 			enabled: Type.Optional(Type.Boolean({ description: "Whether service should be running (default: true)" })),

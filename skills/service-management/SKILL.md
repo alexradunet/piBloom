@@ -48,7 +48,7 @@ Reference packages:
 - `services/examples/demo-api/`
 - `services/examples/demo-socket-echo/`
 - `services/examples/README.md` (copy/paste quickstart commands)
-- `services/lemonade/quadlet/` (production HTTP service reference)
+- `services/llm/quadlet/` (production HTTP service reference)
 
 ## Install a Service
 
@@ -108,7 +108,9 @@ Services may depend on other components:
 | Service | Depends On | Handling |
 |---------|-----------|----------|
 | `whatsapp` | Pi channels server (`$XDG_RUNTIME_DIR/bloom/channels.sock`) | Unix socket reconnect with exponential backoff |
-| `lemonade` | None (standalone HTTP API) | — |
+| `signal` | Pi channels server (`$XDG_RUNTIME_DIR/bloom/channels.sock`) | Unix socket reconnect with exponential backoff |
+| `llm` | None (standalone HTTP API) | — |
+| `stt` | None (standalone HTTP API) | — |
 | `netbird` | Network stack (NET_ADMIN, /dev/net/tun) | Host network mode |
 | `dufs` | Local home bind mount | `%h` bind mount |
 
@@ -120,9 +122,9 @@ Service SKILL.md files include `version` and `image` fields in their frontmatter
 
 ```yaml
 ---
-name: lemonade
+name: llm
 version: 0.1.0
-image: ghcr.io/lemonade-sdk/lemonade-server:latest
+image: ghcr.io/ggml-org/llama.cpp:server
 ---
 ```
 
@@ -138,7 +140,9 @@ Update the manifest with `manifest_set_service` to record the desired version.
 
 | Name | Version | Category | Description |
 |------|---------|----------|-------------|
-| `lemonade` | 0.1.0 | ai | Local LLM + STT via Lemonade (port 8000) |
-| `whatsapp` | 0.2.0 | communication | WhatsApp messaging bridge via Baileys |
+| `llm` | 0.1.0 | ai | Local LLM via llama.cpp (port 8080) |
+| `stt` | 0.1.0 | ai | Speech-to-text via whisper.cpp (port 8081, optional) |
+| `whatsapp` | 0.3.0 | communication | WhatsApp messaging bridge via Baileys |
+| `signal` | 0.1.0 | communication | Signal messaging bridge via signal-cli (optional) |
 | `netbird` | 0.1.0 | networking | Secure mesh VPN via NetBird |
 | `dufs` | 0.1.0 | sync | WebDAV file server via dufs (port 5000) |

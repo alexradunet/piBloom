@@ -134,6 +134,7 @@ stateDiagram-v2
 ## 📦 Current Bridges
 
 - **WhatsApp (Baileys)** — channel `whatsapp`, deployed as a Podman Quadlet service
+- **Signal (signal-cli)** — channel `signal`, deployed as a Podman Quadlet service
 
 ## 🔗 Related
 

@@ -21,11 +21,12 @@ This layer defines Bloom's current competency inventory.
 ### Communication Channels
 
 - WhatsApp bridge via Baileys — receives text and media messages. Media files are saved locally with metadata forwarded to Pi.
+- Signal bridge via signal-cli — alternative EU-sovereign messaging channel with the same interface.
 - All channels flow into one Pi session.
 
 ### Service Management
 
-- Install, remove, and manage OCI-packaged service containers.
+- Install, remove, and manage containerized service packages.
 - Services discovered from ~/Bloom/Skills/ at session start.
 - Interaction via HTTP APIs and bash, guided by service skill files.
 
@@ -42,8 +43,8 @@ This layer defines Bloom's current competency inventory.
 
 ## Known Limitations
 
-- Audio can be transcribed when the Lemonade service is installed. Image/video processing are future service packages.
-- WhatsApp is the current messaging channel.
+- Audio can be transcribed when the STT service (whisper.cpp) is installed. Image/video processing are future service packages.
+- WhatsApp and Signal are the current messaging channels.
 
 ## Tool Preferences
 

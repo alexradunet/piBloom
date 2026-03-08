@@ -84,6 +84,7 @@ Use `audit_review` to inspect recent tool actions when you need to reconstruct w
    - Container images: `podman image prune` to remove unused
    - Journal logs: `sudo journalctl --vacuum-size=500M`
    - Home directory: check for large files in `$HOME`
-   - Lemonade models: check `/var/home/bloom/.local/share/lemonade/`
+   - LLM models: check bloom-llm-models volume (`podman volume inspect bloom-llm-models`)
+   - STT models: check bloom-stt-models volume (`podman volume inspect bloom-stt-models`)
 3. For /var partition: focus on container images and logs
 4. For /home partition: focus on user content and downloaded media

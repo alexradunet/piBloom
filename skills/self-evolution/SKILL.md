@@ -146,7 +146,8 @@ services/{name}/
 
 | Port | Service |
 |------|---------|
-| 8000 | Lemonade (local LLM + STT) |
+| 8080 | LLM (llama.cpp) |
+| 8081 | STT (whisper.cpp) |
 
 ### SKILL.md Format
 
@@ -175,7 +176,7 @@ Reference example packages:
 - `services/examples/demo-api/`
 - `services/examples/demo-socket-echo/`
 - `services/examples/README.md` (copy/paste quickstart commands)
-- `services/lemonade/quadlet/` (production HTTP service reference)
+- `services/llm/quadlet/` (production HTTP service reference)
 
 ### Tool-Driven Lifecycle (Recommended)
 

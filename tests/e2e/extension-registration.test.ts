@@ -49,7 +49,7 @@ describe("bloom-channels registration", () => {
 		mod.default(api as never);
 
 		expect(toolNames(api)).toEqual([]);
-		expect(commandNames(api)).toEqual(["wa"]);
+		expect(commandNames(api)).toEqual(["wa", "signal"]);
 		expect(eventNames(api)).toEqual(expect.arrayContaining(["session_start", "agent_end", "session_shutdown"]));
 	});
 });

@@ -46,7 +46,7 @@ Reference packages are included at:
 |------|---------|-------|
 | `services/examples/demo-api/` | Standard service (`PublishPort`) | Basic non-socket service package layout |
 | `services/examples/demo-socket-echo/` | Socket-activated (`.socket` + `.container`) | Reference wiring for on-demand activation |
-| `services/lemonade/quadlet/` | Production HTTP service (`PublishPort`) | Real in-tree implementation |
+| `services/llm/quadlet/` | Production HTTP service (`PublishPort`) | Real in-tree implementation |
 
 Use these as templates for frontmatter, Quadlet layout, health checks, and local install commands.
 
@@ -74,8 +74,10 @@ Copy/paste quickstart commands are in `services/examples/README.md`.
 
 | Service | Category | Port | Description |
 |---------|----------|------|-------------|
-| `lemonade` | ai | 8000 | Local LLM + STT via Lemonade |
+| `llm` | ai | 8080 | Local LLM via llama.cpp (OpenAI-compatible) |
+| `stt` | ai | 8081 | Speech-to-text via whisper.cpp (optional) |
 | `whatsapp` | communication | — | WhatsApp messaging bridge via Baileys |
+| `signal` | communication | 18802 | Signal messaging bridge via signal-cli (optional) |
 | `netbird` | networking | — | Secure mesh VPN via NetBird |
 | `dufs` | sync | 5000 | WebDAV file server via dufs |
 

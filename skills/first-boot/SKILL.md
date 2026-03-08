@@ -59,11 +59,18 @@ Offer one of these access paths:
 
 ### 3) Optional Services
 
-#### Lemonade (local LLM + speech-to-text)
+#### LLM (local language model)
 
-- Install service package: `service_install(name="lemonade", version="0.1.0")`
-- Validate: `service_test(name="lemonade")`
-- API available at `http://localhost:8000` (OpenAI-compatible)
+- Install service package: `service_install(name="llm", version="0.1.0")`
+- Download a model before starting: the bloom-llm container needs a GGUF model file in the `bloom-llm-models` volume
+- Validate: `service_test(name="llm")`
+- API available at `http://localhost:8080` (OpenAI-compatible `/v1` endpoints)
+
+#### STT (speech-to-text, optional)
+
+- Install service package: `service_install(name="stt", version="0.1.0")`
+- Validate: `service_test(name="stt")`
+- API available at `http://localhost:8081`
 
 #### WhatsApp Bridge
 
@@ -73,6 +80,14 @@ Offer one of these access paths:
 - Verify: `service_test(name="whatsapp")`
 
 The WhatsApp bridge needs the bloom-channels socket for IPC. If bloom-channels is not running, WhatsApp will reconnect automatically when it becomes available.
+
+#### Signal Bridge (optional)
+
+- Install service package: `service_install(name="signal")`
+- Link device: `journalctl --user -u bloom-signal -f` and follow linking instructions
+- Verify: `service_test(name="signal")`
+
+The Signal bridge also connects via the bloom-channels socket.
 
 ### 4) Mark Setup Complete
 

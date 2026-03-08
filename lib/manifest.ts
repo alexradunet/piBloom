@@ -141,7 +141,7 @@ export async function commandExists(cmd: string, signal?: AbortSignal): Promise<
 
 /** Run preflight checks for a service, returning a list of human-readable errors (empty = OK). */
 export async function servicePreflightErrors(
-	name: string,
+	_name: string,
 	entry: ServiceCatalogEntry | undefined,
 	signal?: AbortSignal,
 ): Promise<string[]> {

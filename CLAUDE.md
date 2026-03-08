@@ -13,7 +13,7 @@ Bloom extends Pi through three mechanisms, lightest first: **Skill → Extension
 - **Extensions**: `extensions/` — 9 TypeScript Pi extensions (bloom-persona, bloom-audit, bloom-os, bloom-repo, bloom-services, bloom-objects, bloom-garden, bloom-channels, bloom-topics)
 - **Shared lib**: `lib/shared.ts` — utilities used across extensions (parseFrontmatter, stringifyFrontmatter, getBloomDir, createLogger, truncate, errorResult, nowIso)
 - **Skills**: `skills/` — 6 Pi skill markdown files (first-boot, os-operations, object-store, service-management, self-evolution, recovery)
-- **Services**: `services/` — containerized (lemonade, dufs, whatsapp) services. NetBird is a system RPM. Metadata in `services/catalog.yaml`
+- **Services**: `services/` — containerized (llm, stt, whatsapp, signal, dufs) services. NetBird is a system RPM. Metadata in `services/catalog.yaml`
 - **Persona**: `persona/` — OpenPersona 4-layer identity (SOUL.md, BODY.md, FACULTY.md, SKILL.md) — seeded to `~/Bloom/` on first run
 - **Guardrails**: `guardrails.yaml` — bash patterns blocked by bloom-persona (rm -rf, mkfs, dd, fork bombs, eval, pipe-to-shell, force-push, etc.)
 - **User home**: `$HOME` — the user's space, accessible via dufs WebDAV

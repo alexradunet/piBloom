@@ -45,4 +45,4 @@ Use the `/wa` command in Pi to send outbound WhatsApp messages.
 
 The bridge downloads audio, image, and video messages to `/var/lib/bloom/media/` (bind-mounted into the container at `/media/bloom`).
 Media metadata is forwarded to Pi via the channel protocol with file paths.
-Pi can use installed services (e.g., Lemonade) to process media files.
+Pi can use installed services (e.g., bloom-stt for transcription) to process media files.
