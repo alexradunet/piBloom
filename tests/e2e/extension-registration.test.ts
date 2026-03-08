@@ -76,7 +76,7 @@ describe("bloom-garden registration", () => {
 // ---------------------------------------------------------------------------
 describe("bloom-objects registration", () => {
 	it("registers expected tools (no events)", async () => {
-		const mod = await import("../../extensions/bloom-objects.js");
+		const mod = await import("../../extensions/bloom-objects/index.js");
 		const api = createMockExtensionAPI();
 		mod.default(api as never);
 
