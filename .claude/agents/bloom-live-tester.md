@@ -21,8 +21,7 @@ You are an expert live systems tester and debugger specializing in Fedora bootc,
 ```bash
 just build          # Build the container image
 just qcow2          # Generate qcow2 disk image
-just vm             # Boot VM (graphical + SSH on :2222)
-just vm-serial      # Boot VM serial-only (no GUI)
+just vm             # Boot VM (serial + SSH on :2222)
 just vm-ssh         # SSH into VM: ssh -p 2222 pi@localhost
 just vm-kill        # Stop running VM
 just clean          # Remove os/output/
@@ -31,7 +30,7 @@ just clean          # Remove os/output/
 ## Testing Workflow
 
 1. **Prepare**: Ensure the image is built (`just build && just qcow2`). If changes were made, rebuild.
-2. **Boot**: Start the VM with `just vm` or `just vm-serial` depending on the scenario.
+2. **Boot**: Start the VM with `just vm`.
 3. **Wait for Ready**: After booting, wait for SSH availability before connecting. Poll with `just vm-ssh` or `ssh -p 2222 pi@localhost` until connection succeeds (allow up to 60 seconds for boot).
 4. **Execute Tests**: Run commands over SSH to validate the scenario.
 5. **Collect Evidence**: Capture logs, service status, file contents, and other artifacts.

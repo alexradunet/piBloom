@@ -58,8 +58,7 @@ Requires: `sudo dnf install just qemu-system-x86 edk2-ovmf`
 just build                     # podman build container image
 just qcow2                     # generate qcow2 disk image (BIB)
 just iso                       # generate anaconda-iso installer (BIB)
-just vm                        # boot qcow2 in QEMU (graphical + SSH :2222)
-just vm-serial                 # boot qcow2 serial-only (no GUI)
+just vm                        # boot qcow2 in QEMU (serial + SSH :2222)
 just vm-ssh                    # ssh -p 2222 pi@localhost
 just vm-kill                   # stop running VM
 just clean                     # remove os/output/
