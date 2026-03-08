@@ -292,6 +292,131 @@ export async function installServicePackage(
 }
 
 // ---------------------------------------------------------------------------
+// Local image builds & model downloads
+// ---------------------------------------------------------------------------
+
+/** Build a local container image if the image ref starts with localhost/. */
+export async function buildLocalImage(
+	name: string,
+	image: string,
+	repoDir: string,
+	signal?: AbortSignal,
+): Promise<{ ok: boolean; skipped: boolean; note?: string }> {
+	if (!image.startsWith("localhost/")) {
+		return { ok: true, skipped: true };
+	}
+
+	// Check if image already exists
+	const exists = await run("podman", ["image", "exists", image], signal);
+	if (exists.exitCode === 0) {
+		return { ok: true, skipped: true, note: "image already exists" };
+	}
+
+	// Find service source directory with a Containerfile
+	const candidates = [join(repoDir, "services", name), `/usr/local/share/bloom/services/${name}`];
+	let serviceDir: string | null = null;
+	for (const candidate of candidates) {
+		if (existsSync(join(candidate, "Containerfile"))) {
+			serviceDir = candidate;
+			break;
+		}
+	}
+	if (!serviceDir) {
+		return { ok: false, skipped: false, note: `Service source with Containerfile not found for ${name}` };
+	}
+
+	// Build in a temp directory: npm install, npm run build, podman build
+	const buildDir = mkdtempSync(join(os.tmpdir(), `bloom-build-${name}-`));
+	try {
+		// Copy source to build dir
+		const cpResult = await run("cp", ["-a", `${serviceDir}/.`, buildDir], signal);
+		if (cpResult.exitCode !== 0) {
+			return { ok: false, skipped: false, note: `Failed to copy source: ${cpResult.stderr}` };
+		}
+
+		// npm install + build if package.json exists
+		if (existsSync(join(buildDir, "package.json"))) {
+			const npmInstall = await run("npm", ["install"], signal, buildDir);
+			if (npmInstall.exitCode !== 0) {
+				return { ok: false, skipped: false, note: `npm install failed: ${npmInstall.stderr}` };
+			}
+			const npmBuild = await run("npm", ["run", "build"], signal, buildDir);
+			if (npmBuild.exitCode !== 0) {
+				return { ok: false, skipped: false, note: `npm run build failed: ${npmBuild.stderr}` };
+			}
+		}
+
+		// podman build
+		const tag = image.replace(/^localhost\//, "");
+		const podmanBuild = await run("podman", ["build", "-t", tag, "-f", "Containerfile", "."], signal, buildDir);
+		if (podmanBuild.exitCode !== 0) {
+			return { ok: false, skipped: false, note: `podman build failed: ${podmanBuild.stderr}` };
+		}
+
+		return { ok: true, skipped: false };
+	} finally {
+		rmSync(buildDir, { recursive: true, force: true });
+	}
+}
+
+/** Download required models for a service if not already present in volumes. */
+export async function downloadServiceModels(
+	models: Array<{ volume: string; path: string; url: string }>,
+	signal?: AbortSignal,
+): Promise<{ ok: boolean; downloaded: number; note?: string }> {
+	let downloaded = 0;
+
+	for (const model of models) {
+		// Ensure volume exists
+		const volCheck = await run("podman", ["volume", "inspect", model.volume], signal);
+		if (volCheck.exitCode !== 0) {
+			await run("podman", ["volume", "create", model.volume], signal);
+		}
+
+		// Check if model file already exists in volume
+		const filename = model.path.split("/").pop() ?? "model";
+		const fileCheck = await run(
+			"podman",
+			[
+				"run",
+				"--rm",
+				"-v",
+				`${model.volume}:/models:ro`,
+				"docker.io/library/busybox:latest",
+				"test",
+				"-f",
+				`/models/${filename}`,
+			],
+			signal,
+		);
+		if (fileCheck.exitCode === 0) continue;
+
+		// Download model into volume
+		const dlResult = await run(
+			"podman",
+			[
+				"run",
+				"--rm",
+				"-v",
+				`${model.volume}:/models`,
+				"docker.io/curlimages/curl:latest",
+				"-L",
+				"-o",
+				`/models/${filename}`,
+				model.url,
+			],
+			signal,
+		);
+		if (dlResult.exitCode !== 0) {
+			return { ok: false, downloaded, note: `Failed to download model ${filename}: ${dlResult.stderr}` };
+		}
+		downloaded++;
+	}
+
+	return { ok: true, downloaded };
+}
+
+// ---------------------------------------------------------------------------
 // Runtime detection
 // ---------------------------------------------------------------------------
 

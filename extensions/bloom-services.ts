@@ -13,7 +13,9 @@ import type { ExtensionAPI, ExtensionContext } from "@mariozechner/pi-coding-age
 import { Type } from "@sinclair/typebox";
 import { run } from "../lib/exec.js";
 import {
+	buildLocalImage,
 	detectRunningServices,
+	downloadServiceModels,
 	installServicePackage,
 	loadManifest,
 	loadServiceCatalog,
@@ -167,6 +169,21 @@ export default function (pi: ExtensionAPI) {
 				return errorResult(install.note ?? `Install failed for ${params.name}`);
 			}
 
+			// Build local image if needed (localhost/* images)
+			const catalogImage = catalogEntry?.image ?? "";
+			const buildResult = await buildLocalImage(params.name, catalogImage, repoDir, signal);
+			if (!buildResult.ok) {
+				return errorResult(buildResult.note ?? `Image build failed for ${params.name}`);
+			}
+
+			// Download required models
+			if (catalogEntry?.models && catalogEntry.models.length > 0) {
+				const modelResult = await downloadServiceModels(catalogEntry.models, signal);
+				if (!modelResult.ok) {
+					return errorResult(modelResult.note ?? `Model download failed for ${params.name}`);
+				}
+			}
+
 			const daemonReload = await run("systemctl", ["--user", "daemon-reload"], signal);
 			if (daemonReload.exitCode !== 0) return errorResult(`daemon-reload failed:\n${daemonReload.stderr}`);
 
@@ -192,6 +209,45 @@ export default function (pi: ExtensionAPI) {
 				saveManifest(manifest, manifestPath);
 			}
 
+			// Auto-install dependencies (e.g., stt for whatsapp/signal)
+			const deps = catalogEntry?.depends ?? [];
+			for (const dep of deps) {
+				const depUnit = join(os.homedir(), ".config", "containers", "systemd", `bloom-${dep}.container`);
+				if (existsSync(depUnit)) continue; // already installed
+
+				const depCatalog = catalog[dep];
+				const depVersion = depCatalog?.version ?? "latest";
+				const depPreflight = await servicePreflightErrors(dep, depCatalog, signal);
+				if (depPreflight.length > 0) {
+					log.warn("dependency preflight failed", { dep, errors: depPreflight });
+					continue;
+				}
+
+				const depInstall = await installServicePackage(dep, depVersion, bloomDir, repoDir, depCatalog, signal);
+				if (!depInstall.ok) {
+					log.warn("dependency install failed", { dep, note: depInstall.note });
+					continue;
+				}
+
+				const depImage = depCatalog?.image ?? "";
+				await buildLocalImage(dep, depImage, repoDir, signal);
+
+				if (depCatalog?.models && depCatalog.models.length > 0) {
+					await downloadServiceModels(depCatalog.models, signal);
+				}
+
+				await run("systemctl", ["--user", "daemon-reload"], signal);
+				await run("systemctl", ["--user", "start", `bloom-${dep}.service`], signal);
+
+				const depManifest = loadManifest(manifestPath);
+				depManifest.services[dep] = {
+					image: depImage || "unknown",
+					version: depVersion,
+					enabled: true,
+				};
+				saveManifest(depManifest, manifestPath);
+			}
+
 			return {
 				content: [
 					{
@@ -204,6 +260,7 @@ export default function (pi: ExtensionAPI) {
 					installSource: "local",
 					start,
 					manifestUpdated: updateManifest,
+					depsInstalled: deps,
 				},
 			};
 		},

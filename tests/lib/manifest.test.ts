@@ -3,7 +3,9 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
+	buildLocalImage,
 	commandCheckArgs,
+	downloadServiceModels,
 	findLocalServicePackage,
 	hasSubidRange,
 	loadManifest,
@@ -301,5 +303,44 @@ describe("hasSubidRange", () => {
 		const filePath = join(tempDir, "subuid");
 		writeFileSync(filePath, "  alex:100000:65536\n");
 		expect(hasSubidRange(filePath, "alex")).toBe(true);
+	});
+});
+
+// ---------------------------------------------------------------------------
+// buildLocalImage
+// ---------------------------------------------------------------------------
+describe("buildLocalImage", () => {
+	let tempDir: string;
+
+	beforeEach(() => {
+		tempDir = mkdtempSync(join(tmpdir(), "build-img-"));
+	});
+
+	afterEach(() => {
+		rmSync(tempDir, { recursive: true, force: true });
+	});
+
+	it("returns skip result when image does not start with localhost/", async () => {
+		const result = await buildLocalImage("llm", "ghcr.io/ggml-org/llama.cpp:server", tempDir);
+		expect(result.skipped).toBe(true);
+		expect(result.ok).toBe(true);
+	});
+
+	it("returns error when service source dir is missing", async () => {
+		const result = await buildLocalImage("signal", "localhost/bloom-signal:latest", "/tmp/__nonexistent__");
+		expect(result.skipped).toBe(false);
+		expect(result.ok).toBe(false);
+		expect(result.note).toContain("not found");
+	});
+});
+
+// ---------------------------------------------------------------------------
+// downloadServiceModels
+// ---------------------------------------------------------------------------
+describe("downloadServiceModels", () => {
+	it("returns success with 0 downloaded for empty models array", async () => {
+		const result = await downloadServiceModels([]);
+		expect(result.ok).toBe(true);
+		expect(result.downloaded).toBe(0);
 	});
 });
