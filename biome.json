@@ -48,5 +48,18 @@
 			"!.claude",
 			"!coverage"
 		]
-	}
+	},
+	"overrides": [
+		{
+			"includes": ["tests/**/*.test.ts"],
+			"linter": {
+				"rules": {
+					"suspicious": {
+						"noConsole": "off",
+						"noExplicitAny": "off"
+					}
+				}
+			}
+		}
+	]
 }
