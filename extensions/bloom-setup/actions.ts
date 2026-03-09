@@ -40,7 +40,7 @@ export const STEP_GUIDANCE: Record<StepName, string> = {
 	whisper:
 		"Ask: 'Want voice message support? This lets you send voice messages on WhatsApp/Signal and I'll transcribe them.' If yes, use service_install(name='stt') to enable whisper.",
 	llm_upgrade:
-		"Explain: 'You're running on a local Qwen 3.5 4B model right now. Want to add a cloud AI provider for better reasoning? Options: (1) Use /login for OAuth sign-in to Anthropic/OpenAI/Google, (2) Set an API key manually, (3) Keep the local model only.' Guide based on their choice.",
+		"Explain: 'You're running on a local model right now. For much better reasoning, let's connect a cloud AI provider.' Guide them step by step: (1) Run /login to sign in via OAuth to Anthropic, OpenAI, or Google. (2) Once logged in, run /model to pick a stronger model (recommend Claude Sonnet or GPT-4o). (3) If the user prefers API keys instead, help them set the environment variable. (4) If they want to stay local-only, that's fine — skip.",
 	git_identity:
 		"Ask for the user's name and email for git commits. Run: git config --global user.name '<name>' and git config --global user.email '<email>'. Confirm the settings.",
 	contributing:

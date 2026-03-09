@@ -75,11 +75,11 @@ RUN dnf install -y cmake gcc-c++ && \
     dnf clean all && \
     rm -rf /var/cache/libdnf5 /var/lib/dnf /var/log/dnf5.log /var/log/dnf.log
 
-# Download Qwen3.5-4B GGUF model
+# Download Qwen3-8B GGUF model (8B params — strong instruction following for setup wizard)
 RUN mkdir -p /usr/local/share/bloom/models && \
-    curl -L "https://huggingface.co/unsloth/Qwen3.5-4B-GGUF/resolve/main/Qwen3.5-4B-Q4_0.gguf" \
-    -o /usr/local/share/bloom/models/qwen3.5-4b.gguf && \
-    chown llm:llm /usr/local/share/bloom/models/qwen3.5-4b.gguf
+    curl -L "https://huggingface.co/unsloth/Qwen3-8B-GGUF/resolve/main/Qwen3-8B-Q4_K_M.gguf" \
+    -o /usr/local/share/bloom/models/qwen3-8b.gguf && \
+    chown llm:llm /usr/local/share/bloom/models/qwen3-8b.gguf
 
 # Local LLM service (starts before login, stopped when user switches to cloud)
 COPY os/sysconfig/bloom-llm-local.service /usr/lib/systemd/system/bloom-llm-local.service

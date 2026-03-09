@@ -1,5 +1,5 @@
 [Unit]
-Description=Bloom Local LLM (llama.cpp + Qwen3.5-4B)
+Description=Bloom Local LLM (llama.cpp + Qwen3-8B)
 After=network.target
 Before=getty@tty1.service
 
@@ -8,7 +8,7 @@ Type=simple
 User=llm
 Group=llm
 ExecStart=/usr/local/bin/llama-server \
-    --model /usr/local/share/bloom/models/qwen3.5-4b.gguf \
+    --model /usr/local/share/bloom/models/qwen3-8b.gguf \
     --host 127.0.0.1 \
     --port 8080 \
     --ctx-size 8192 \

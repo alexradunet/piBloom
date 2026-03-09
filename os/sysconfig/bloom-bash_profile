@@ -15,7 +15,7 @@ if [ -t 0 ] && [ -z "$PI_SESSION" ] && mkdir /tmp/.bloom-pi-session 2>/dev/null;
       sleep 1
     done
     printf '\n'
-    exec pi --provider bloom-local --model qwen3.5-4b "hello"
+    exec pi --provider bloom-local --model qwen3-8b "hello"
   else
     exec pi
   fi
