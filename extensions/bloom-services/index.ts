@@ -89,9 +89,9 @@ export default function (pi: ExtensionAPI) {
 		name: "service_pair",
 		label: "Pair Messaging Service",
 		description:
-			"Get a QR code for pairing WhatsApp or Signal. Returns ASCII QR art inline. For WhatsApp, scan with WhatsApp mobile app (Settings > Linked Devices). For Signal, scan with Signal app (Settings > Linked Devices > Link New Device).",
+			"Get connection details for Matrix homeserver. Returns homeserver URL, registration token, and QR code. Works with any Matrix client (Element, FluffyChat, etc.).",
 		parameters: Type.Object({
-			name: StringEnum(["whatsapp", "signal"] as const, {
+			name: StringEnum(["element"] as const, {
 				description: "Service to pair",
 			}),
 			timeout_sec: Type.Optional(Type.Number({ description: "Max seconds to wait for QR data", default: 60 })),
