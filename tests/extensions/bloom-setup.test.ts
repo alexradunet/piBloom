@@ -47,6 +47,22 @@ describe("bloom-setup registration", () => {
 });
 
 // ---------------------------------------------------------------------------
+// Provider registration
+// ---------------------------------------------------------------------------
+describe("bloom-setup provider registration", () => {
+	it("calls registerProvider with bloom-local config", async () => {
+		await loadExtension();
+		expect(api.registerProvider).toHaveBeenCalledWith(
+			"bloom-local",
+			expect.objectContaining({
+				baseUrl: "http://localhost:8080/v1",
+				api: "openai-completions",
+			}),
+		);
+	});
+});
+
+// ---------------------------------------------------------------------------
 // Tool structure validation
 // ---------------------------------------------------------------------------
 describe("bloom-setup tool structure", () => {

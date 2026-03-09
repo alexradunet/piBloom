@@ -17,6 +17,24 @@ import {
 } from "./actions.js";
 
 export default function (pi: ExtensionAPI) {
+	// Register local LLM provider (bundled Qwen3.5-4B via llama.cpp)
+	pi.registerProvider("bloom-local", {
+		baseUrl: "http://localhost:8080/v1",
+		apiKey: "local",
+		api: "openai-completions",
+		models: [
+			{
+				id: "qwen3.5-4b",
+				name: "Qwen 3.5 4B (local)",
+				reasoning: true,
+				input: ["text"],
+				cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+				contextWindow: 131072,
+				maxTokens: 8192,
+			},
+		],
+	});
+
 	pi.registerTool({
 		name: "setup_status",
 		label: "Setup Status",

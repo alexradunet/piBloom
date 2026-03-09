@@ -22,6 +22,7 @@ export interface MockExtensionAPI {
 	registerCommand: ReturnType<typeof vi.fn>;
 	sendUserMessage: ReturnType<typeof vi.fn>;
 	appendEntry: ReturnType<typeof vi.fn>;
+	registerProvider: ReturnType<typeof vi.fn>;
 	setSessionName: ReturnType<typeof vi.fn>;
 	fireEvent: (name: string, ...args: unknown[]) => Promise<unknown>;
 }
@@ -62,6 +63,8 @@ export function createMockExtensionAPI(): MockExtensionAPI {
 		appendEntry: vi.fn((customType: string, data: unknown) => {
 			entries.push({ customType, data });
 		}),
+
+		registerProvider: vi.fn(),
 
 		setSessionName: vi.fn((name: string) => {
 			_sessionName = name;
