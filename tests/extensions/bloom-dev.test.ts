@@ -8,9 +8,13 @@ import {
 	handleDevEnable,
 	handleDevInstallPackage,
 	handleDevLoop,
+	handleDevPushExtension,
+	handleDevPushService,
 	handleDevPushSkill,
+	handleDevRollback,
 	handleDevStatus,
 	handleDevSubmitPr,
+	handleDevSwitch,
 	handleDevTest,
 	isDevEnabled,
 } from "../../extensions/bloom-dev/actions.js";
@@ -308,5 +312,50 @@ describe("handleDevInstallPackage", () => {
 		const result = await handleDevInstallPackage({ source: "   " });
 		expect("isError" in result && result.isError).toBe(true);
 		expect(result.content[0].text).toContain("non-empty");
+	});
+});
+
+// ---------------------------------------------------------------------------
+// Error-path tests for validation and missing resources
+// ---------------------------------------------------------------------------
+describe("handleDevSwitch validation", () => {
+	it("rejects image ref starting with '-'", async () => {
+		const result = await handleDevSwitch("", "--malicious-flag", undefined, {} as never);
+		expect("isError" in result && result.isError).toBe(true);
+		expect(result.content[0].text).toContain("must not start with '-'");
+	});
+
+	it("rejects image ref starting with '--'", async () => {
+		const result = await handleDevSwitch("", "--rm", undefined, {} as never);
+		expect("isError" in result && result.isError).toBe(true);
+		expect(result.content[0].text).toContain("must not start with '-'");
+	});
+});
+
+describe("handleDevRollback", () => {
+	it("does not crash when called without UI context", async () => {
+		const result = await handleDevRollback("", undefined, {} as never);
+		// Without a real UI context, requireConfirmation should return an error string (no crash)
+		expect(result).toBeDefined();
+		expect(result.content).toBeDefined();
+		expect(result.content.length).toBeGreaterThan(0);
+	});
+});
+
+describe("handleDevPushService", () => {
+	it("returns error when service is not found", async () => {
+		const repoDir = join(temp.gardenDir, "repo");
+		const result = await handleDevPushService({ service_name: "nonexistent-service" }, repoDir);
+		expect("isError" in result && result.isError).toBe(true);
+		expect(result.content[0].text).toContain("not found");
+	});
+});
+
+describe("handleDevPushExtension", () => {
+	it("returns error when extension is not found", async () => {
+		const repoDir = join(temp.gardenDir, "repo");
+		const result = await handleDevPushExtension({ extension_name: "nonexistent-ext" }, repoDir);
+		expect("isError" in result && result.isError).toBe(true);
+		expect(result.content[0].text).toContain("not found");
 	});
 });

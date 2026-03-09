@@ -6,6 +6,7 @@ Wants=network-online.target
 [Container]
 Image=localhost/bloom-code-server:latest
 ContainerName=bloom-code-server
+# Host networking so code-server is directly accessible via NetBird mesh (no port forwarding needed)
 Network=host
 Volume=%h:/home/coder/project
 Environment=DISABLE_TELEMETRY=true

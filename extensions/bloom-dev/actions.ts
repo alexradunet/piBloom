@@ -168,6 +168,10 @@ export async function handleDevSwitch(
 ) {
 	const tag = imageRef ?? DEV_IMAGE_TAG;
 
+	if (tag.startsWith("-")) {
+		return errorResult("Invalid image reference: must not start with '-'");
+	}
+
 	const exists = await run("podman", ["image", "exists", tag], signal);
 	if (exists.exitCode !== 0) {
 		return errorResult(`Image ${tag} not found. Run dev_build first.`);
@@ -219,8 +223,11 @@ export async function handleDevLoop(
 	if ("isError" in buildResult && buildResult.isError) return buildResult;
 	steps.push(`Build: ${buildResult.content[0].text}`);
 
-	// Step 2: Switch
-	const switchResult = await handleDevSwitch("", params.tag, signal, ctx as ExtensionContext);
+	// Step 2: Switch (if ctx is undefined, skip confirmation inside handleDevSwitch)
+	if (!ctx) {
+		return errorResult("Cannot perform dev loop without an extension context for confirmation.");
+	}
+	const switchResult = await handleDevSwitch("", params.tag, signal, ctx);
 	if ("isError" in switchResult && switchResult.isError) return switchResult;
 	steps.push(`Switch: ${switchResult.content[0].text}`);
 
@@ -294,7 +301,7 @@ export async function handleDevSubmitPr(
 	}
 
 	if (ctx) {
-		const denied = await requireConfirmation(ctx, `Create PR "${params.title}" from local changes`, {
+		const denied = await requireConfirmation(ctx, `Create PR "${params.title}" (will stage ALL changes in repo)`, {
 			requireUi: false,
 		});
 		if (denied) return errorResult(denied);
