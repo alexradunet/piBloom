@@ -1,99 +1,68 @@
 ---
 name: first-boot
-description: Guides first-time setup of a Bloom OS installation
+description: Guided first-boot setup wizard — Pi walks the user through 14 steps to configure their Bloom device
 ---
 
 # First-Boot Setup
 
-Use this skill on the first session after a fresh Bloom OS install.
+## Prerequisite
 
-## Prerequisite Check
+If `~/.bloom/.setup-complete` exists, setup is done. Skip this skill entirely. You can still help the user reconfigure individual steps if they ask — use `setup_reset(step)` to re-enable a step.
 
-If `~/.bloom/.setup-complete` exists, setup is already complete. Skip unless user asks to re-run specific steps.
+## How This Works
 
-## What the OS Setup Wizard Already Handled
+You are paired with the `bloom-setup` extension which tracks state in `~/.bloom/setup-state.json`. Your role is conversational guidance; the extension handles state.
 
-Before Pi starts, the Bloom OS setup wizard has already configured:
-- WiFi network connection
-- User password for the `bloom` account
-- NetBird mesh networking (if user provided a setup key)
-- SSH and firewall hardening (if NetBird was configured)
+1. Call `setup_status()` to see where you are
+2. Follow the guidance for the current step
+3. After completing a step, call `setup_advance(step, "completed")`
+4. If the user says "skip", call `setup_advance(step, "skipped", "reason")`
+5. Repeat until all steps are done
 
-This skill handles the remaining software-level setup.
+## Conversation Style
 
-## Setup Style
+- **Warm and natural** — this is the user's first experience with their AI companion
+- **One thing at a time** — never dump a list of steps
+- **Pi speaks first** — on first boot, start with the welcome without waiting for user input
+- **Respect "skip"** — any step can be deferred, no pressure
+- **Show, don't tell** — when running commands, show the user what's happening
 
-- Be conversational (one step at a time)
-- Let user skip/defer steps
-- Prefer Bloom tools over long shell copy-paste blocks
-- Clarify tool-vs-shell: `service_install`, `bloom_repo`, etc. are Pi tools (not bash commands)
-- On fresh Bloom OS, user `bloom` has passwordless `sudo` for bootstrap tasks.
+## Step-Specific Notes
 
-## Setup Steps
+### welcome
+Start by calling `setup_status()`, then introduce yourself. Keep it to 2-3 short paragraphs. Cover:
+- What Bloom is (personal AI companion OS)
+- What you (Pi) can do (run commands, manage services, remember things)
+- That Bloom grows with them (self-evolution, extensions, persona)
 
-### 1) Git Identity
+### network
+Run `nmcli general status` first. If `connected` appears, just confirm: "You're online via [device]." and advance. Only scan for WiFi if there's no connection.
 
-Ask the user for their name and email, then set globally:
+### netbird
+NetBird is pre-installed in the OS image. The user needs to provide a setup key from their NetBird dashboard. Run `sudo netbird up --setup-key <KEY>`. Check `netbird status` for the mesh IP.
 
-```bash
-git config --global user.name "<name>"
-git config --global user.email "<email>"
-```
+### password
+Triggered because NetBird opens remote access. Use `sudo passwd pi`. The password prompt is interactive — tell the user to type their password when prompted.
 
-### 2) dufs Setup
+### channels
+For each chosen service, the flow is:
+1. `service_install(name="whatsapp"|"signal")`
+2. Wait for service to be ready
+3. `service_pair(name="whatsapp"|"signal")` — shows QR code
+4. Ask user to scan with their phone app
+5. `service_test(name="whatsapp"|"signal")` — verify it works
 
-- Install service package: `service_install(name="dufs", version="0.1.0")`
-- Validate service: `service_test(name="dufs")`
-- The WebDAV password is the channel token in `~/.config/bloom/channel-tokens/dufs.env` (BLOOM_CHANNEL_TOKEN)
-- Direct user to `http://localhost:5000` (username: `admin`)
-- dufs serves `$HOME` over WebDAV
+### llm_upgrade
+Three paths:
+1. **OAuth**: Tell user to run `/login` and pick their provider
+2. **API key**: Ask for the key, help them set it as an environment variable in `~/.bashrc`
+3. **Keep local**: Just advance, the bundled Qwen 3.5 4B keeps running
 
-If Bloom runs inside a VM, offer access paths:
-- QEMU port forward: host `localhost:5000` -> guest `5000`
-- SSH tunnel: `ssh -L 5000:localhost:5000 -p 2222 pi@localhost`
+### persona
+Ask one question, wait for answer, update the file, ask next question. Files to update:
+- `~/Bloom/Persona/SOUL.md` — name, formality, values
+- `~/Bloom/Persona/BODY.md` — channel preferences
+- `~/Bloom/Persona/FACULTY.md` — reasoning style
 
-### 3) Sender Allowlist (recommended before messaging services)
-
-Ask the user which phone numbers should be allowed to send messages. Write to `~/.config/bloom/bloom.env`:
-
-```bash
-mkdir -p ~/.config/bloom
-echo 'BLOOM_ALLOWED_SENDERS=+1234567890,+0987654321' > ~/.config/bloom/bloom.env
-```
-
-If left empty or unset, all senders are allowed. Both WhatsApp and Signal services read this file.
-
-### 4) Optional Services
-
-#### WhatsApp Bridge
-
-- Install: `service_install(name="whatsapp")`
-  - This auto-installs STT (whisper.cpp) as a dependency
-- Pair: `service_pair(name="whatsapp")` — displays QR code inline, scan with WhatsApp mobile app
-- Verify: `service_test(name="whatsapp")`
-
-#### Signal Bridge
-
-- Ask the user for their phone number (E.164 format, e.g. +40749599297)
-- Create config: write `SIGNAL_ACCOUNT=+<number>` to `~/.config/bloom/signal.env`
-- Install: `service_install(name="signal")`
-  - This auto-installs STT (whisper.cpp) as a dependency
-- Pair: `service_pair(name="signal")` — displays QR code inline, scan with Signal mobile app (Settings > Linked Devices > Link New Device)
-- Verify: `service_test(name="signal")`
-
-#### LLM (optional, local language model)
-
-- Install: `service_install(name="llm", version="0.1.0")`
-- Note: requires a GGUF model file in the `bloom-llm-models` volume
-- API at `http://localhost:8080` (OpenAI-compatible)
-
-### 5) Mark Setup Complete
-
-```bash
-touch ~/.bloom/.setup-complete
-```
-
-## Notes
-
-- Revisit skipped steps on demand
-- Confirm each critical step before moving on
+### test_message
+Only if channels step was completed (not skipped). Check setup state to see if channels was completed before attempting.
