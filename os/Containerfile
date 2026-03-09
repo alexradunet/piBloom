@@ -111,14 +111,12 @@ RUN mkdir -p /usr/local/share/bloom/persona
 COPY os/sysconfig/bloom-greeting.sh /usr/local/bin/bloom-greeting.sh
 RUN chmod +x /usr/local/bin/bloom-greeting.sh
 
-# First-boot setup wizard (runs once on VT1, creates password, configures WiFi/NetBird)
-COPY os/sysconfig/bloom-setup.sh /usr/local/bin/bloom-setup.sh
-RUN chmod +x /usr/local/bin/bloom-setup.sh
-COPY os/sysconfig/bloom-setup.service /usr/lib/systemd/system/bloom-setup.service
-RUN systemctl enable bloom-setup.service
-
-# Enable SSH for remote access (hardened by wizard if NetBird is configured)
+# Enable SSH for remote access
 RUN systemctl enable sshd.service
+
+# Auto-login on VT1 — Pi handles setup and authentication
+RUN mkdir -p /usr/lib/systemd/system/getty@tty1.service.d
+COPY os/sysconfig/getty-autologin.conf /usr/lib/systemd/system/getty@tty1.service.d/autologin.conf
 
 # Nginx reverse proxy — route subdomains to backend services
 COPY os/sysconfig/bloom-nginx.conf /etc/nginx/conf.d/bloom.conf
@@ -127,7 +125,7 @@ RUN rm -f /etc/nginx/conf.d/default.conf
 RUN setsebool -P httpd_can_network_connect 1
 RUN systemctl enable nginx.service
 
-# Boot to multi-user target — bloom-setup handles first boot, getty handles login
+# Boot to multi-user target — getty handles login
 RUN systemctl set-default multi-user.target
 
 # Update check timer
@@ -157,8 +155,12 @@ LABEL com.github.containers.toolbox="false"
 LABEL bloom.version="0.0.1"
 LABEL description="Bloom — Pi-native AI companion OS"
 
+# Login branding — clean Bloom identity
+RUN printf 'Bloom OS\n\n' > /etc/issue && \
+    printf '' > /etc/motd
+
 # Set hostname (shows in login prompt and shell PS1)
-RUN echo "pibloom" > /etc/hostname
+RUN echo "bloom" > /etc/hostname
 
 # Validate bootc image (must be after all labels)
 RUN bootc container lint

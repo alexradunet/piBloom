@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Bloom login script — ensures Pi settings include Bloom package and shows greeting.
+# Bloom login script — ensures Pi settings include Bloom package.
 
 BLOOM_PKG="/usr/local/share/bloom"
 PI_SETTINGS="$HOME/.pi/agent/settings.json"
 
-# Ensure Pi settings include the Bloom package (idempotent, runs every login)
+# Ensure Pi settings include the Bloom package (idempotent)
 if [ -d "$BLOOM_PKG" ]; then
     mkdir -p "$(dirname "$PI_SETTINGS")"
     if [ -f "$PI_SETTINGS" ]; then
@@ -19,23 +19,4 @@ if [ -d "$BLOOM_PKG" ]; then
     else
         cp "$BLOOM_PKG/.pi/agent/settings.json" "$PI_SETTINGS"
     fi
-fi
-
-# First-boot greeting
-FIRST_RUN_MARKER="$HOME/.bloom/.initialized"
-
-if [ ! -f "$FIRST_RUN_MARKER" ]; then
-    echo ""
-    echo "  Welcome to Bloom"
-    echo ""
-    echo "  Your personal AI companion is starting for the first time."
-    echo "  Pi will guide you through setup — just chat naturally."
-    echo ""
-
-    mkdir -p "$(dirname "$FIRST_RUN_MARKER")"
-    touch "$FIRST_RUN_MARKER"
-else
-    echo ""
-    echo "  Bloom"
-    echo ""
 fi
