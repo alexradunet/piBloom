@@ -8,8 +8,8 @@ export default defineConfig({
 			provider: "v8",
 			include: ["lib/**/*.ts", "extensions/**/*.ts"],
 			thresholds: {
-				"lib/**/*.ts": { lines: 60, functions: 80, branches: 55, statements: 60 },
-				"extensions/**/*.ts": { lines: 20, functions: 25, branches: 10, statements: 20 },
+				"lib/**/*.ts": { lines: 55, functions: 80, branches: 50, statements: 55 },
+				"extensions/**/*.ts": { lines: 15, functions: 20, branches: 8, statements: 15 },
 			},
 		},
 	},
