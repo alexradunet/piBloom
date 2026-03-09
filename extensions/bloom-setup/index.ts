@@ -1,0 +1,75 @@
+/**
+ * bloom-setup — First-boot setup wizard: guides user through 14 setup steps.
+ *
+ * @tools setup_status, setup_advance, setup_reset
+ * @hooks session_start
+ */
+import { StringEnum } from "@mariozechner/pi-ai";
+import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
+import { Type } from "@sinclair/typebox";
+import { STEP_ORDER } from "../../lib/setup.js";
+import {
+	getSetupSystemPrompt,
+	handleSetupAdvance,
+	handleSetupReset,
+	handleSetupStatus,
+	isSetupDone,
+} from "./actions.js";
+
+export default function (pi: ExtensionAPI) {
+	pi.registerTool({
+		name: "setup_status",
+		label: "Setup Status",
+		description:
+			"Show current first-boot setup progress: which steps are complete, skipped, or pending, and guidance for the next step.",
+		parameters: Type.Object({}),
+		async execute() {
+			return handleSetupStatus();
+		},
+	});
+
+	pi.registerTool({
+		name: "setup_advance",
+		label: "Advance Setup Step",
+		description: "Mark a setup step as completed or skipped, persist state, and return guidance for the next step.",
+		parameters: Type.Object({
+			step: StringEnum([...STEP_ORDER], {
+				description: "The setup step to advance",
+			}),
+			result: StringEnum(["completed", "skipped"] as const, {
+				description: "Whether the step was completed or skipped",
+			}),
+			reason: Type.Optional(Type.String({ description: "Reason for skipping (required when result is 'skipped')" })),
+		}),
+		async execute(_toolCallId, params) {
+			return handleSetupAdvance(params);
+		},
+	});
+
+	pi.registerTool({
+		name: "setup_reset",
+		label: "Reset Setup Step",
+		description:
+			"Reset a specific setup step to pending, or reset the entire setup. Useful if the user wants to redo a step.",
+		parameters: Type.Object({
+			step: Type.Optional(
+				StringEnum([...STEP_ORDER], {
+					description: "Step to reset (omit for full reset)",
+				}),
+			),
+		}),
+		async execute(_toolCallId, params) {
+			return handleSetupReset(params);
+		},
+	});
+
+	// Inject first-boot skill into system prompt when setup is incomplete
+	pi.on("session_start", async () => {
+		if (isSetupDone()) return;
+
+		const prompt = getSetupSystemPrompt();
+		if (prompt) {
+			return { systemPrompt: prompt };
+		}
+	});
+}
