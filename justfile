@@ -47,7 +47,7 @@ vm:
 		-machine q35 \
 		-cpu host \
 		-enable-kvm \
-		-m 16G \
+		-m 12G \
 		-smp 2 \
 		-drive if=pflash,format=raw,readonly=on,file={{ ovmf }} \
 		-drive if=pflash,format=raw,snapshot=on,file={{ ovmf_vars }} \
@@ -63,7 +63,7 @@ vm-serial:
 		-machine q35 \
 		-cpu host \
 		-enable-kvm \
-		-m 16G \
+		-m 12G \
 		-smp 2 \
 		-drive if=pflash,format=raw,readonly=on,file={{ ovmf }} \
 		-drive if=pflash,format=raw,snapshot=on,file={{ ovmf_vars }} \
