@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # detect-display.sh — Auto-detect GPU or headless mode for Sway.
 # Writes environment variables to /run/bloom/display-env.
 # Called as ExecStartPre from bloom-sway.service.

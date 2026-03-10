@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # start-sway.sh — Detect display mode, then launch Sway.
 # Wrapper needed because systemd reads EnvironmentFile before ExecStartPre runs.
 
