@@ -1,7 +1,7 @@
 # Bloom OS — Fedora bootc 42 with Pi coding agent
 # Build: podman build -f os/Containerfile -t bloom-os:latest .
 # Install: sudo bootc install to-disk /dev/sdX --source-imgref containers-storage:bloom-os:latest
-FROM quay.io/fedora/fedora-bootc:42@sha256:a226d1fa0e301ad7da7fa2d49f794c43f8a6c3297caeee85ca3e84c8e555c397
+FROM quay.io/fedora/fedora-bootc:42
 
 # System + development packages
 RUN dnf install -y \
