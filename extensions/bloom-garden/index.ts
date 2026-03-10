@@ -29,7 +29,6 @@ export default function (pi: ExtensionAPI) {
 	pi.on("session_start", (_event, ctx) => {
 		ensureBloom(bloomDir);
 		seedBlueprints(bloomDir, packageDir);
-		process.env._BLOOM_DIR_RESOLVED = bloomDir;
 
 		const versions = readBlueprintVersions(bloomDir);
 		const updates = Object.keys(versions.updatesAvailable);

@@ -202,20 +202,12 @@ describe("getBloomDir", () => {
 		process.env = { ...origEnv };
 	});
 
-	it("returns _BLOOM_DIR_RESOLVED when set", () => {
-		process.env._BLOOM_DIR_RESOLVED = "/resolved";
-		process.env.BLOOM_DIR = "/fallback";
-		expect(getBloomDir()).toBe("/resolved");
-	});
-
-	it("falls back to BLOOM_DIR", () => {
-		delete process.env._BLOOM_DIR_RESOLVED;
+	it("returns BLOOM_DIR when set", () => {
 		process.env.BLOOM_DIR = "/custom";
 		expect(getBloomDir()).toBe("/custom");
 	});
 
-	it("defaults to ~/Bloom", () => {
-		delete process.env._BLOOM_DIR_RESOLVED;
+	it("defaults to ~/Bloom when BLOOM_DIR is not set", () => {
 		delete process.env.BLOOM_DIR;
 		const result = getBloomDir();
 		expect(result).toMatch(/\/Bloom$/);

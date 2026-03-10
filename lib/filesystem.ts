@@ -15,7 +15,7 @@ export function safePath(root: string, ...segments: string[]): string {
 	return resolved;
 }
 
-/** Resolve the Bloom directory. Checks `_BLOOM_DIR_RESOLVED`, then `BLOOM_DIR`, then falls back to `~/Bloom`. */
+/** Resolve the Bloom directory. Checks `BLOOM_DIR` env var, then falls back to `~/Bloom`. */
 export function getBloomDir(): string {
-	return process.env._BLOOM_DIR_RESOLVED ?? process.env.BLOOM_DIR ?? path.join(os.homedir(), "Bloom");
+	return process.env.BLOOM_DIR ?? path.join(os.homedir(), "Bloom");
 }
