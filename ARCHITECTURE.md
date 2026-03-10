@@ -35,6 +35,7 @@ extensions/bloom-{name}/
 
 1. **`index.ts` is wiring only.** It registers tools, hooks, and commands with the Pi SDK. Zero business logic. If a reviewer sees an `if` statement doing domain work, it belongs in `actions.ts` or `lib/`.
 2. **`actions.ts` orchestrates.** It imports pure functions from `lib/`, calls them, and formats results for Pi. Side effects (fs, exec, net) happen here, not in `lib/`.
+   For extensions with 8+ tools, `actions.ts` may be split into focused files: `actions-{concern}.ts` (e.g., `actions-install.ts`, `actions-manifest.ts`). Each file handles a related group of tool actions. The `index.ts` imports from whichever action file defines the handler.
 3. **`types.ts` defines interfaces.** Extension-specific types. Shared types go in `lib/`.
 4. **Tests live in `tests/`.** Organized by type: `tests/extensions/`, `tests/lib/`, `tests/integration/`, `tests/e2e/`.
 
