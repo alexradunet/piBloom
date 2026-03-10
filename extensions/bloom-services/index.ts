@@ -12,12 +12,8 @@ import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import { Type } from "@sinclair/typebox";
 import { getBloomDir } from "../../lib/filesystem.js";
 import { handleInstall } from "./actions-install.js";
-import {
-	handleManifestApply,
-	handleManifestSetService,
-	handleManifestShow,
-	handleManifestSync,
-} from "./actions-manifest.js";
+import { handleManifestApply } from "./actions-apply.js";
+import { handleManifestSetService, handleManifestShow, handleManifestSync } from "./actions-manifest.js";
 import { handleScaffold } from "./actions-scaffold.js";
 import { handlePair, handleSessionStart, handleTest } from "./actions-test.js";
 
