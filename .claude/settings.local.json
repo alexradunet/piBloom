@@ -1,7 +1,16 @@
 {
   "permissions": {
     "allow": [
-      "Bash(git:*)"
+      "Bash(git:*)",
+      "Bash(npm outdated:*)",
+      "mcp__plugin_context7_context7__resolve-library-id",
+      "Bash(npm view:*)",
+      "Bash(node -e \"const pkg = require\\('./node_modules/vitest/package.json'\\); console.log\\('vitest installed:', pkg.version\\)\" && node -e \"const pkg = require\\('./node_modules/typescript/package.json'\\); console.log\\('typescript installed:', pkg.version\\)\" && npx @biomejs/biome --version 2>&1 | head -1)",
+      "Bash(ls -la /home/alex/pi-bloom/lib/services* 2>&1 || echo \"No services files found\")",
+      "Bash(python3 -c \"import secrets, string; chars = string.ascii_letters + string.digits + '!@#$%'; print\\(''.join\\(secrets.choice\\(chars\\) for _ in range\\(20\\)\\)\\)\")",
+      "Bash(podman search:*)",
+      "Bash(npm install:*)",
+      "Bash(npm run:*)"
     ]
   }
 }

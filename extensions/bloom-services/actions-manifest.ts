@@ -6,15 +6,9 @@ import os from "node:os";
 import { join } from "node:path";
 import type { ExtensionContext } from "@mariozechner/pi-coding-agent";
 import { run } from "../../lib/exec.js";
-import {
-	detectRunningServices,
-	installServicePackage,
-	loadManifest,
-	loadServiceCatalog,
-	type Manifest,
-	saveManifest,
-	servicePreflightErrors,
-} from "../../lib/services.js";
+import { loadServiceCatalog, servicePreflightErrors } from "../../lib/services-catalog.js";
+import { detectRunningServices, installServicePackage } from "../../lib/services-install.js";
+import { type Manifest, loadManifest, saveManifest } from "../../lib/services-manifest.js";
 import { errorResult, requireConfirmation, truncate } from "../../lib/shared.js";
 
 export function handleManifestShow(manifestPath: string) {

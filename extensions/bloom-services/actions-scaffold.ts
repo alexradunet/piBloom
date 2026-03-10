@@ -5,7 +5,7 @@ import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import { dirname, join } from "node:path";
 import type { ExtensionContext } from "@mariozechner/pi-coding-agent";
-import { validatePinnedImage, validateServiceName } from "../../lib/services.js";
+import { validatePinnedImage, validateServiceName } from "../../lib/services-validation.js";
 import { errorResult } from "../../lib/shared.js";
 
 /** Walk up from ctx.cwd to find the repo dir containing services/ and package.json. */

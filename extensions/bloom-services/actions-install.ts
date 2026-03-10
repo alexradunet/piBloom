@@ -6,16 +6,10 @@ import os from "node:os";
 import { join } from "node:path";
 import { run } from "../../lib/exec.js";
 import { parseFrontmatter } from "../../lib/frontmatter.js";
-import {
-	buildLocalImage,
-	downloadServiceModels,
-	installServicePackage,
-	loadManifest,
-	loadServiceCatalog,
-	saveManifest,
-	servicePreflightErrors,
-	validateServiceName,
-} from "../../lib/services.js";
+import { loadServiceCatalog, servicePreflightErrors } from "../../lib/services-catalog.js";
+import { buildLocalImage, downloadServiceModels, installServicePackage } from "../../lib/services-install.js";
+import { loadManifest, saveManifest } from "../../lib/services-manifest.js";
+import { validateServiceName } from "../../lib/services-validation.js";
 import { createLogger, errorResult } from "../../lib/shared.js";
 
 const log = createLogger("bloom-services");
