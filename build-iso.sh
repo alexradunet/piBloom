@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Bloom OS — build ISO for Hyper-V deployment
 # Usage: ./build-iso.sh
 # Output: os/output/bootiso/install.iso
@@ -13,7 +13,7 @@ BIB_CONFIG="os/bib-config.toml"
 STORAGE="/var/lib/containers/storage"
 
 # Ensure bib-config.toml exists
-if [ ! -f "$BIB_CONFIG" ]; then
+if [[ ! -f "$BIB_CONFIG" ]]; then
     echo "Creating $BIB_CONFIG from example..."
     cp os/bib-config.toml.example "$BIB_CONFIG"
     echo "Edit $BIB_CONFIG to add your SSH key if needed, then re-run."
@@ -35,16 +35,18 @@ sudo podman run --rm -it --privileged --pull=newer \
 
 sudo chown -R "$(id -u):$(id -g)" "$OUTPUT" || true
 
-echo ""
-echo "==> Done! ISO at: $OUTPUT/bootiso/install.iso"
-echo ""
-echo "Copy to Windows:"
-echo "  cp $OUTPUT/bootiso/install.iso /mnt/c/Users/\$USER/Downloads/bloom-os.iso"
-echo ""
-echo "Then in PowerShell (Admin):"
-echo '  New-VM -Name "BloomOS" -MemoryStartupBytes 4GB -Generation 2 -NewVHDPath "C:\VMs\BloomOS.vhdx" -NewVHDSizeBytes 64GB'
-echo '  Set-VMFirmware -VMName "BloomOS" -EnableSecureBoot Off'
-echo '  Add-VMDvdDrive -VMName "BloomOS" -Path "C:\Users\$env:USERNAME\Downloads\bloom-os.iso"'
-echo '  Set-VMFirmware -VMName "BloomOS" -FirstBootDevice (Get-VMDvdDrive -VMName "BloomOS")'
-echo '  Set-VMProcessor -VMName "BloomOS" -Count 2'
-echo '  Start-VM -VMName "BloomOS"'
+cat <<'EOF'
+
+==> Done! ISO at: os/output/bootiso/install.iso
+
+Copy to Windows:
+  cp os/output/bootiso/install.iso /mnt/c/Users/$USER/Downloads/bloom-os.iso
+
+Then in PowerShell (Admin):
+  New-VM -Name "BloomOS" -MemoryStartupBytes 4GB -Generation 2 -NewVHDPath "C:\VMs\BloomOS.vhdx" -NewVHDSizeBytes 64GB
+  Set-VMFirmware -VMName "BloomOS" -EnableSecureBoot Off
+  Add-VMDvdDrive -VMName "BloomOS" -Path "C:\Users\$env:USERNAME\Downloads\bloom-os.iso"
+  Set-VMFirmware -VMName "BloomOS" -FirstBootDevice (Get-VMDvdDrive -VMName "BloomOS")
+  Set-VMProcessor -VMName "BloomOS" -Count 2
+  Start-VM -VMName "BloomOS"
+EOF

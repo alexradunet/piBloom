@@ -11,17 +11,15 @@ import { StringEnum } from "@mariozechner/pi-ai";
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import { Type } from "@sinclair/typebox";
 import { getBloomDir } from "../../lib/filesystem.js";
+import { handleInstall } from "./actions-install.js";
 import {
-	handleInstall,
 	handleManifestApply,
 	handleManifestSetService,
 	handleManifestShow,
 	handleManifestSync,
-	handlePair,
-	handleScaffold,
-	handleSessionStart,
-	handleTest,
-} from "./actions.js";
+} from "./actions-manifest.js";
+import { handleScaffold } from "./actions-scaffold.js";
+import { handlePair, handleSessionStart, handleTest } from "./actions-test.js";
 
 export default function (pi: ExtensionAPI) {
 	const bloomDir = getBloomDir();

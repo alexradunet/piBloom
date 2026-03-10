@@ -83,12 +83,7 @@ export function readEntries(days: number): AuditEntry[] {
 }
 
 /** Handle the audit_review tool call. */
-export function handleAuditReview(params: {
-	days?: number;
-	limit?: number;
-	tool?: string;
-	include_inputs?: boolean;
-}) {
+export function handleAuditReview(params: { days?: number; limit?: number; tool?: string; include_inputs?: boolean }) {
 	const days = Math.max(1, Math.min(30, Math.round(params.days ?? 1)));
 	const limit = Math.max(1, Math.min(500, Math.round(params.limit ?? 50)));
 	const byTool = params.tool?.trim();
@@ -103,7 +98,7 @@ export function handleAuditReview(params: {
 	if (entries.length === 0) {
 		return {
 			content: [{ type: "text" as const, text: "No audit entries found for the selected range/filter." }],
-			details: { days, tool: byTool ?? null, count: 0 },
+			details: { days, limit, tool: byTool ?? null, count: 0 },
 		};
 	}
 

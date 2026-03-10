@@ -3,21 +3,25 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
 	handleDevBuild,
+	handleDevLoop,
+	handleDevRollback,
+	handleDevSwitch,
+} from "../../extensions/bloom-dev/actions-build.js";
+import {
 	handleDevCodeServer,
 	handleDevDisable,
 	handleDevEnable,
+	handleDevStatus,
+	isDevEnabled,
+} from "../../extensions/bloom-dev/actions-lifecycle.js";
+import {
 	handleDevInstallPackage,
-	handleDevLoop,
 	handleDevPushExtension,
 	handleDevPushService,
 	handleDevPushSkill,
-	handleDevRollback,
-	handleDevStatus,
 	handleDevSubmitPr,
-	handleDevSwitch,
 	handleDevTest,
-	isDevEnabled,
-} from "../../extensions/bloom-dev/actions.js";
+} from "../../extensions/bloom-dev/actions-pr.js";
 import type { DevBuildResult, DevStatus, DevTestResult } from "../../extensions/bloom-dev/types.js";
 import { createMockExtensionAPI, type MockExtensionAPI } from "../helpers/mock-extension-api.js";
 import { createTempGarden, type TempGarden } from "../helpers/temp-garden.js";

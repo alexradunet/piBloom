@@ -51,12 +51,6 @@ Forwarded host ports:
 - `localhost:2222 -> guest:22` (SSH)
 - `localhost:5000 -> guest:5000` (dufs WebDAV)
 
-Headless mode:
-
-```bash
-just vm-serial
-```
-
 ### 🚀 5) Log in
 
 Default user comes from `os/bib-config.toml`:

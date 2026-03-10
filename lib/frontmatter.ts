@@ -1,3 +1,4 @@
+/** YAML frontmatter parsing and serialization for markdown files. */
 import matter from "@11ty/gray-matter";
 import jsYaml from "js-yaml";
 

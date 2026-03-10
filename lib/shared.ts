@@ -1,3 +1,4 @@
+/** Shared utilities: text truncation, error formatting, and Bloom directory resolution. */
 import type { ExtensionContext } from "@mariozechner/pi-coding-agent";
 import { truncateHead } from "@mariozechner/pi-coding-agent";
 

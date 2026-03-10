@@ -119,5 +119,5 @@ Run:
 
 - [Emoji Legend](LEGEND.md) — Notation reference
 - [Quick Deploy](quick_deploy.md) — OS build and deployment
-- [Fleet Bootstrap Checklist](fleet-bootstrap-checklist.md) — PR-ready device setup
+- [Fleet PR Workflow](fleet-pr-workflow.md) — Fleet contribution and PR workflow
 - [AGENTS.md](../AGENTS.md) — Extension, tool, and hook reference

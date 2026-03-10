@@ -1,3 +1,4 @@
+/** Safe filesystem operations: path traversal protection, temp dirs, and home resolution. */
 import os from "node:os";
 import path from "node:path";
 

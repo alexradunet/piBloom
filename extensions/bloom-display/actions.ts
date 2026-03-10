@@ -1,6 +1,7 @@
 /**
  * Handler / business logic for bloom-display.
  */
+import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { run } from "../../lib/exec.js";
 import { errorResult, truncate } from "../../lib/shared.js";
@@ -26,7 +27,6 @@ export async function handleScreenshot(
 	if (result.exitCode !== 0) {
 		return errorResult(`Screenshot failed:\n${result.stderr}`);
 	}
-	const { readFile } = await import("node:fs/promises");
 	const buf = await readFile("/tmp/bloom-screenshot.png");
 	const base64 = buf.toString("base64");
 	return {

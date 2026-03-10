@@ -1,0 +1,192 @@
+/**
+ * Test, PR submission, and artifact push handlers: run tests, submit PRs, push skills/services/extensions, install packages.
+ *
+ * @module actions-pr
+ */
+import { cpSync, existsSync, mkdirSync } from "node:fs";
+import { join } from "node:path";
+import type { ExtensionContext } from "@mariozechner/pi-coding-agent";
+import { run } from "../../lib/exec.js";
+import { getBloomDir } from "../../lib/filesystem.js";
+import { slugifyBranchPart } from "../../lib/git.js";
+import { errorResult, requireConfirmation, truncate } from "../../lib/shared.js";
+import type { DevTestResult } from "./types.js";
+
+/** Run tests and linting against the local repo. */
+export async function handleDevTest(repoDir: string, signal?: AbortSignal) {
+	const packageJson = join(repoDir, "package.json");
+	if (!existsSync(packageJson)) {
+		return errorResult(`package.json not found at ${packageJson}. Is the repo cloned?`);
+	}
+
+	const testResult = await run("npm", ["run", "test", "--", "--run"], signal, repoDir);
+	const testsPassed = testResult.exitCode === 0;
+	const testOutput = truncate(testResult.stdout + (testResult.stderr ? `\n${testResult.stderr}` : ""));
+
+	const lintResult = await run("npm", ["run", "check"], signal, repoDir);
+	const lintPassed = lintResult.exitCode === 0;
+	const lintOutput = truncate(lintResult.stdout + (lintResult.stderr ? `\n${lintResult.stderr}` : ""));
+
+	const success = testsPassed && lintPassed;
+	const lines: string[] = [];
+	lines.push(`Tests: ${testsPassed ? "PASSED" : "FAILED"}`);
+	lines.push(`Lint: ${lintPassed ? "PASSED" : "FAILED"}`);
+	if (!testsPassed) lines.push(`\n--- Test output ---\n${testOutput}`);
+	if (!lintPassed) lines.push(`\n--- Lint output ---\n${lintOutput}`);
+
+	const details: DevTestResult = { success, testsPassed, lintPassed, testOutput, lintOutput };
+	return {
+		content: [{ type: "text" as const, text: lines.join("\n") }],
+		details,
+		...(success ? {} : { isError: true }),
+	};
+}
+
+/** Submit a pull request from local changes, including test results in the body. */
+export async function handleDevSubmitPr(
+	params: { title: string; body?: string; branch?: string },
+	repoDir: string,
+	signal?: AbortSignal,
+	ctx?: ExtensionContext,
+) {
+	const gitDir = join(repoDir, ".git");
+	if (!existsSync(gitDir)) {
+		return errorResult(`No .git directory found at ${repoDir}. Is the repo cloned?`);
+	}
+
+	if (ctx) {
+		const denied = await requireConfirmation(ctx, `Create PR "${params.title}" (will stage ALL changes in repo)`, {
+			requireUi: false,
+		});
+		if (denied) return errorResult(denied);
+	}
+
+	// Run tests for PR body
+	const testResult = await handleDevTest(repoDir, signal);
+	const testSummary =
+		"isError" in testResult && testResult.isError ? `Tests: FAILED\n${testResult.content[0].text}` : `Tests: PASSED`;
+
+	// Branch
+	const branch = params.branch || `dev/${slugifyBranchPart(params.title) || "patch"}`;
+	const checkout = await run("git", ["-C", repoDir, "checkout", "-b", branch], signal);
+	if (checkout.exitCode !== 0) {
+		return errorResult(`Failed to create branch ${branch}: ${checkout.stderr}`);
+	}
+
+	// Stage and commit
+	const add = await run("git", ["-C", repoDir, "add", "-A"], signal);
+	if (add.exitCode !== 0) {
+		return errorResult(`Failed to stage changes: ${add.stderr}`);
+	}
+
+	const commit = await run("git", ["-C", repoDir, "commit", "-m", params.title], signal);
+	if (commit.exitCode !== 0) {
+		return errorResult(`Failed to commit: ${commit.stderr}`);
+	}
+
+	// Push
+	const push = await run("git", ["-C", repoDir, "push", "-u", "origin", branch], signal);
+	if (push.exitCode !== 0) {
+		return errorResult(`Failed to push branch ${branch}: ${push.stderr}`);
+	}
+
+	// Create PR
+	const body = [params.body || `## Summary\n${params.title}`, "", "## Test Results", testSummary].join("\n");
+
+	const pr = await run("gh", ["pr", "create", "--title", params.title, "--body", body], signal, repoDir);
+	if (pr.exitCode !== 0) {
+		return errorResult(`Failed to create PR: ${pr.stderr}`);
+	}
+
+	const prUrl = pr.stdout.trim();
+	return {
+		content: [{ type: "text" as const, text: `PR created: ${prUrl}\nBranch: ${branch}` }],
+		details: { prUrl, branch },
+	};
+}
+
+/** Push a skill from ~/Bloom/Skills/ into the repo and submit a PR. */
+export async function handleDevPushSkill(
+	params: { skill_name: string; title?: string },
+	repoDir: string,
+	signal?: AbortSignal,
+	ctx?: ExtensionContext,
+) {
+	const bloomDir = getBloomDir();
+	const skillSrc = join(bloomDir, "Skills", params.skill_name);
+	if (!existsSync(skillSrc)) {
+		return errorResult(`Skill not found at ${skillSrc}`);
+	}
+
+	const skillDest = join(repoDir, "skills", params.skill_name);
+	mkdirSync(skillDest, { recursive: true });
+	cpSync(skillSrc, skillDest, { recursive: true });
+
+	const title = params.title || `feat(skills): add ${params.skill_name}`;
+	return handleDevSubmitPr({ title }, repoDir, signal, ctx);
+}
+
+/** Push a service into the repo and submit a PR. */
+export async function handleDevPushService(
+	params: { service_name: string; title?: string },
+	repoDir: string,
+	signal?: AbortSignal,
+	ctx?: ExtensionContext,
+) {
+	const bloomDir = getBloomDir();
+	const candidates = [join(bloomDir, "services", params.service_name), join(repoDir, "services", params.service_name)];
+	const serviceSrc = candidates.find((p) => existsSync(p));
+	if (!serviceSrc) {
+		return errorResult(`Service ${params.service_name} not found in ~/Bloom/services/ or repo services/`);
+	}
+
+	const serviceDest = join(repoDir, "services", params.service_name);
+	if (serviceSrc !== serviceDest) {
+		mkdirSync(serviceDest, { recursive: true });
+		cpSync(serviceSrc, serviceDest, { recursive: true });
+	}
+
+	const title = params.title || `feat(services): add ${params.service_name}`;
+	return handleDevSubmitPr({ title }, repoDir, signal, ctx);
+}
+
+/** Push an extension into the repo and submit a PR. */
+export async function handleDevPushExtension(
+	params: { extension_name: string; source_path?: string; title?: string },
+	repoDir: string,
+	signal?: AbortSignal,
+	ctx?: ExtensionContext,
+) {
+	const bloomDir = getBloomDir();
+	const candidates = [params.source_path, join(bloomDir, "extensions", params.extension_name)].filter(
+		Boolean,
+	) as string[];
+	const extSrc = candidates.find((p) => existsSync(p));
+	if (!extSrc) {
+		return errorResult(`Extension ${params.extension_name} not found`);
+	}
+
+	const extDest = join(repoDir, "extensions", params.extension_name);
+	mkdirSync(extDest, { recursive: true });
+	cpSync(extSrc, extDest, { recursive: true });
+
+	const title = params.title || `feat(extensions): add ${params.extension_name}`;
+	return handleDevSubmitPr({ title }, repoDir, signal, ctx);
+}
+
+/** Install a Pi package from a local path or URL. */
+export async function handleDevInstallPackage(params: { source: string }, signal?: AbortSignal) {
+	if (!params.source.trim()) {
+		return errorResult("source must be a non-empty path or URL.");
+	}
+
+	const result = await run("pi", ["install", params.source], signal);
+	if (result.exitCode !== 0) {
+		return errorResult(`pi install failed: ${truncate(result.stderr || result.stdout)}`);
+	}
+
+	return {
+		content: [{ type: "text" as const, text: `Package installed from ${params.source}.\n${truncate(result.stdout)}` }],
+		details: { source: params.source, success: true },
+	};
+}

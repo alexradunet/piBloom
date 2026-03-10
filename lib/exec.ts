@@ -1,3 +1,4 @@
+/** Shell command execution via execa with signal/env support. */
 import { execa } from "execa";
 
 /** Result of running a shell command via {@link run}. */

@@ -19,7 +19,7 @@ Bloom extends Pi through three mechanisms, lightest first: **Skill → Extension
 Always prefer the lightest option. See `docs/service-architecture.md` for details.
 
 For reproducible releases and artifact trust rules, see `docs/supply-chain.md`.
-For multi-device code contribution and PR flow, see `docs/fleet-pr-workflow.md`, `docs/fleet-bootstrap-checklist.md`, and `docs/fleet-pr-workflow-plan.md`.
+For multi-device code contribution and PR flow, see `docs/fleet-pr-workflow.md`.
 
 ## 🧩 Extensions
 
@@ -296,7 +296,7 @@ pi install ./
 
 - OS build/deploy/install: `docs/quick_deploy.md`
 - First-boot setup flow: `docs/pibloom-setup.md`
-- Fleet PR bootstrap: `docs/fleet-bootstrap-checklist.md`
+- Fleet PR workflow: `docs/fleet-pr-workflow.md`
 - Channel protocol: `docs/channel-protocol.md`
 - Service architecture: `docs/service-architecture.md`
 - Supply chain trust: `docs/supply-chain.md`

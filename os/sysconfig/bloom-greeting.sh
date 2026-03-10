@@ -7,9 +7,9 @@ BLOOM_PKG="/usr/local/share/bloom"
 PI_SETTINGS="$HOME/.pi/agent/settings.json"
 
 # Ensure Pi settings include the Bloom package (idempotent)
-if [ -d "$BLOOM_PKG" ]; then
+if [[ -d "$BLOOM_PKG" ]]; then
     mkdir -p "$(dirname "$PI_SETTINGS")"
-    if [ -f "$PI_SETTINGS" ]; then
+    if [[ -f "$PI_SETTINGS" ]]; then
         if command -v jq >/dev/null 2>&1; then
             if ! jq -e '.packages // [] | index("'"$BLOOM_PKG"'")' "$PI_SETTINGS" >/dev/null 2>&1; then
                 jq '.packages = ((.packages // []) + ["'"$BLOOM_PKG"'"] | unique)' "$PI_SETTINGS" > "${PI_SETTINGS}.tmp" && \

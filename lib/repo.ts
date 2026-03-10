@@ -1,3 +1,4 @@
+/** Git remote helpers for the bloom-repo extension. */
 import { run } from "./exec.js";
 
 /** Get the URL of a named git remote. Returns null if the remote doesn't exist. */

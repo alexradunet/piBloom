@@ -1,0 +1,287 @@
+/** Service package installation, local image builds, model downloads, and runtime detection. */
+import { randomBytes } from "node:crypto";
+import {
+	existsSync,
+	mkdirSync,
+	mkdtempSync,
+	readdirSync,
+	readFileSync,
+	rmSync,
+	statSync,
+	writeFileSync,
+} from "node:fs";
+import os from "node:os";
+import { join } from "node:path";
+import { run } from "./exec.js";
+import type { ServiceCatalogEntry } from "./services-manifest.js";
+
+// ---------------------------------------------------------------------------
+// Service package installation
+// ---------------------------------------------------------------------------
+
+/** Find a bundled service package on disk (repo, system share, or cwd). Returns paths or null. */
+export function findLocalServicePackage(
+	name: string,
+	repoDir: string,
+): { serviceDir: string; quadletDir: string; skillPath: string } | null {
+	const candidates = [
+		join(repoDir, "services", name),
+		`/usr/local/share/bloom/services/${name}`,
+		join(process.cwd(), "services", name),
+	];
+	for (const serviceDir of candidates) {
+		const quadletDir = join(serviceDir, "quadlet");
+		const skillPath = join(serviceDir, "SKILL.md");
+		if (existsSync(quadletDir) && existsSync(skillPath)) {
+			return { serviceDir, quadletDir, skillPath };
+		}
+	}
+	return null;
+}
+
+/** Install a service from a bundled local package. Copies Quadlet files, SKILL.md, and generates channel tokens. */
+export async function installServicePackage(
+	name: string,
+	_version: string,
+	bloomDir: string,
+	repoDir: string,
+	_entry: ServiceCatalogEntry | undefined,
+	signal?: AbortSignal,
+): Promise<{ ok: boolean; source: "local"; ref: string; note?: string }> {
+	const localPackage = findLocalServicePackage(name, repoDir);
+	if (!localPackage) {
+		return {
+			ok: false,
+			source: "local",
+			ref: name,
+			note: `No local service package found for ${name}. Searched repo dir, /usr/local/share/bloom, and cwd.`,
+		};
+	}
+
+	const tempDir = mkdtempSync(join(os.tmpdir(), `bloom-manifest-${name}-`));
+
+	try {
+		const localTempQuadlet = join(tempDir, "quadlet");
+		mkdirSync(localTempQuadlet, { recursive: true });
+		for (const fileName of readdirSync(localPackage.quadletDir)) {
+			const src = join(localPackage.quadletDir, fileName);
+			if (!statSync(src).isFile()) continue;
+			writeFileSync(join(localTempQuadlet, fileName), readFileSync(src));
+		}
+		writeFileSync(join(tempDir, "SKILL.md"), readFileSync(localPackage.skillPath));
+
+		const quadletSrc = join(tempDir, "quadlet");
+		const skillSrc = join(tempDir, "SKILL.md");
+		if (!existsSync(quadletSrc) || !existsSync(skillSrc)) {
+			return {
+				ok: false,
+				source: "local",
+				ref: name,
+				note: `Service package for ${name} missing quadlet/ or SKILL.md`,
+			};
+		}
+
+		const systemdDir = join(os.homedir(), ".config", "containers", "systemd");
+		const userSystemdDir = join(os.homedir(), ".config", "systemd", "user");
+		const skillDir = join(bloomDir, "Skills", name);
+		mkdirSync(systemdDir, { recursive: true });
+		mkdirSync(userSystemdDir, { recursive: true });
+		mkdirSync(skillDir, { recursive: true });
+
+		const networkDest = join(systemdDir, "bloom.network");
+		if (!existsSync(networkDest)) {
+			const networkCandidates = [
+				"/usr/share/containers/systemd/bloom.network",
+				"/usr/local/share/bloom/os/sysconfig/bloom.network",
+				join(repoDir, "os", "sysconfig", "bloom.network"),
+			];
+			for (const candidate of networkCandidates) {
+				if (!existsSync(candidate)) continue;
+				writeFileSync(networkDest, readFileSync(candidate));
+				break;
+			}
+		}
+
+		for (const fileName of readdirSync(quadletSrc)) {
+			const src = join(quadletSrc, fileName);
+			if (!statSync(src).isFile()) continue;
+			const destDir = fileName.endsWith(".socket") ? userSystemdDir : systemdDir;
+			writeFileSync(join(destDir, fileName), readFileSync(src));
+		}
+		writeFileSync(join(skillDir, "SKILL.md"), readFileSync(skillSrc));
+
+		const expectedSocket = join(quadletSrc, `bloom-${name}.socket`);
+		const installedSocket = join(userSystemdDir, `bloom-${name}.socket`);
+		if (!existsSync(expectedSocket) && existsSync(installedSocket)) {
+			await run("systemctl", ["--user", "disable", "--now", `bloom-${name}.socket`], signal);
+			rmSync(installedSocket, { force: true });
+		}
+
+		const tokenDir = join(os.homedir(), ".config", "bloom", "channel-tokens");
+		mkdirSync(tokenDir, { recursive: true });
+		const tokenPath = join(tokenDir, name);
+		const tokenEnvPath = join(tokenDir, `${name}.env`);
+		if (!existsSync(tokenPath)) {
+			const token = randomBytes(32).toString("hex");
+			writeFileSync(tokenPath, `${token}\n`);
+			writeFileSync(tokenEnvPath, `BLOOM_CHANNEL_TOKEN=${token}\n`);
+		}
+
+		return { ok: true, source: "local", ref: name };
+	} finally {
+		rmSync(tempDir, { recursive: true, force: true });
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Local image builds & model downloads
+// ---------------------------------------------------------------------------
+
+/** Build a local container image if the image ref starts with localhost/. */
+export async function buildLocalImage(
+	name: string,
+	image: string,
+	repoDir: string,
+	signal?: AbortSignal,
+): Promise<{ ok: boolean; skipped: boolean; note?: string }> {
+	if (!image.startsWith("localhost/")) {
+		return { ok: true, skipped: true };
+	}
+
+	// Check if image already exists
+	const exists = await run("podman", ["image", "exists", image], signal);
+	if (exists.exitCode === 0) {
+		return { ok: true, skipped: true, note: "image already exists" };
+	}
+
+	// Find service source directory with a Containerfile
+	const candidates = [join(repoDir, "services", name), `/usr/local/share/bloom/services/${name}`];
+	let serviceDir: string | null = null;
+	for (const candidate of candidates) {
+		if (existsSync(join(candidate, "Containerfile"))) {
+			serviceDir = candidate;
+			break;
+		}
+	}
+	if (!serviceDir) {
+		return { ok: false, skipped: false, note: `Service source with Containerfile not found for ${name}` };
+	}
+
+	// Build in a temp directory: npm install, npm run build, podman build
+	const buildDir = mkdtempSync(join(os.tmpdir(), `bloom-build-${name}-`));
+	try {
+		// Copy source to build dir
+		const cpResult = await run("cp", ["-a", `${serviceDir}/.`, buildDir], signal);
+		if (cpResult.exitCode !== 0) {
+			return { ok: false, skipped: false, note: `Failed to copy source: ${cpResult.stderr}` };
+		}
+
+		// npm install + build if package.json exists
+		if (existsSync(join(buildDir, "package.json"))) {
+			const npmInstall = await run("npm", ["install"], signal, buildDir);
+			if (npmInstall.exitCode !== 0) {
+				return { ok: false, skipped: false, note: `npm install failed: ${npmInstall.stderr}` };
+			}
+			const npmBuild = await run("npm", ["run", "build"], signal, buildDir);
+			if (npmBuild.exitCode !== 0) {
+				return { ok: false, skipped: false, note: `npm run build failed: ${npmBuild.stderr}` };
+			}
+		}
+
+		// podman build — use full image reference as tag so it matches `podman image exists` checks
+		const podmanBuild = await run("podman", ["build", "-t", image, "-f", "Containerfile", "."], signal, buildDir);
+		if (podmanBuild.exitCode !== 0) {
+			return { ok: false, skipped: false, note: `podman build failed: ${podmanBuild.stderr}` };
+		}
+
+		return { ok: true, skipped: false };
+	} finally {
+		rmSync(buildDir, { recursive: true, force: true });
+	}
+}
+
+/** Download required models for a service if not already present in volumes. */
+export async function downloadServiceModels(
+	models: Array<{ volume: string; path: string; url: string }>,
+	signal?: AbortSignal,
+): Promise<{ ok: boolean; downloaded: number; note?: string }> {
+	let downloaded = 0;
+
+	for (const model of models) {
+		// Ensure volume exists
+		const volCheck = await run("podman", ["volume", "inspect", model.volume], signal);
+		if (volCheck.exitCode !== 0) {
+			await run("podman", ["volume", "create", model.volume], signal);
+		}
+
+		// Check if model file already exists in volume
+		const filename = model.path.split("/").pop() ?? "model";
+		const fileCheck = await run(
+			"podman",
+			[
+				"run",
+				"--rm",
+				"-v",
+				`${model.volume}:/models:ro`,
+				"docker.io/library/busybox:latest",
+				"test",
+				"-f",
+				`/models/${filename}`,
+			],
+			signal,
+		);
+		if (fileCheck.exitCode === 0) continue;
+
+		// Download model into volume
+		const dlResult = await run(
+			"podman",
+			[
+				"run",
+				"--rm",
+				"-v",
+				`${model.volume}:/models`,
+				"docker.io/curlimages/curl:latest",
+				"-L",
+				"-o",
+				`/models/${filename}`,
+				model.url,
+			],
+			signal,
+		);
+		if (dlResult.exitCode !== 0) {
+			return { ok: false, downloaded, note: `Failed to download model ${filename}: ${dlResult.stderr}` };
+		}
+		downloaded++;
+	}
+
+	return { ok: true, downloaded };
+}
+
+// ---------------------------------------------------------------------------
+// Runtime detection
+// ---------------------------------------------------------------------------
+
+/** Detect currently running bloom-* containers via podman. Returns a map of service name to image/state. */
+export async function detectRunningServices(
+	signal?: AbortSignal,
+): Promise<Map<string, { image: string; state: string }>> {
+	const result = await run("podman", ["ps", "-a", "--format", "json", "--filter", "name=bloom-"], signal);
+	const detected = new Map<string, { image: string; state: string }>();
+	if (result.exitCode !== 0) return detected;
+	try {
+		const containers = JSON.parse(result.stdout || "[]") as Array<{
+			Names?: string[];
+			Image?: string;
+			State?: string;
+		}>;
+		for (const c of containers) {
+			const name = (c.Names ?? [])[0]?.replace(/^bloom-/, "") ?? "";
+			if (name) {
+				detected.set(name, { image: c.Image ?? "unknown", state: c.State ?? "unknown" });
+			}
+		}
+	} catch {
+		// parse error
+	}
+	return detected;
+}

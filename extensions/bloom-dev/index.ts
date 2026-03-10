@@ -10,23 +10,22 @@ import { StringEnum } from "@mariozechner/pi-ai";
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import { Type } from "@sinclair/typebox";
 import { errorResult } from "../../lib/shared.js";
+import { handleDevBuild, handleDevLoop, handleDevRollback, handleDevSwitch } from "./actions-build.js";
 import {
-	handleDevBuild,
 	handleDevCodeServer,
 	handleDevDisable,
 	handleDevEnable,
+	handleDevStatus,
+	isDevEnabled,
+} from "./actions-lifecycle.js";
+import {
 	handleDevInstallPackage,
-	handleDevLoop,
 	handleDevPushExtension,
 	handleDevPushService,
 	handleDevPushSkill,
-	handleDevRollback,
-	handleDevStatus,
 	handleDevSubmitPr,
-	handleDevSwitch,
 	handleDevTest,
-	isDevEnabled,
-} from "./actions.js";
+} from "./actions-pr.js";
 
 const bloomRuntime = join(os.homedir(), ".bloom");
 
