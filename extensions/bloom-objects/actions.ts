@@ -144,4 +144,3 @@ export function linkObjects(params: { ref_a: string; ref_b: string }) {
 		details: {},
 	};
 }
-

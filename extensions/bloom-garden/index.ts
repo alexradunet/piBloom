@@ -9,7 +9,6 @@
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import { Type } from "@sinclair/typebox";
 import { getBloomDir } from "../../lib/filesystem.js";
-import { handleUpdateBlueprints, readBlueprintVersions, seedBlueprints } from "./actions-blueprints.js";
 import {
 	discoverSkillPaths,
 	ensureBloom,
@@ -19,6 +18,7 @@ import {
 	handleSkillCreate,
 	handleSkillList,
 } from "./actions.js";
+import { handleUpdateBlueprints, readBlueprintVersions, seedBlueprints } from "./actions-blueprints.js";
 
 export default function (pi: ExtensionAPI) {
 	const bloomDir = getBloomDir();

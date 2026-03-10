@@ -4,8 +4,8 @@
 import { createHash } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
-import type { BlueprintVersions } from "./types.js";
 import { getPackageVersion } from "./actions.js";
+import type { BlueprintVersions } from "./types.js";
 
 const PERSONA_FILES = ["SOUL.md", "BODY.md", "FACULTY.md", "SKILL.md"];
 

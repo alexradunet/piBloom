@@ -7,9 +7,9 @@
 import { StringEnum } from "@mariozechner/pi-ai";
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import { Type } from "@sinclair/typebox";
+import { handleStatus, handleSync } from "./actions.js";
 import { handleConfigure } from "./actions-configure.js";
 import { handleSubmitPr } from "./actions-submit-pr.js";
-import { handleStatus, handleSync } from "./actions.js";
 
 export { parseGithubSlugFromUrl, slugifyBranchPart } from "../../lib/git.js";
 
