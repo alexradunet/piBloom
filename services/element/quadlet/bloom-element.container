@@ -6,6 +6,7 @@ Requires=bloom-matrix.service
 [Container]
 Image=localhost/bloom-element:latest
 ContainerName=bloom-element
+User=0
 
 # Bridge network for isolation
 Network=bloom.network

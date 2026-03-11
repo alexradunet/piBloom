@@ -6,6 +6,7 @@ Wants=network-online.target
 [Container]
 Image=localhost/bloom-TEMPLATE:latest
 ContainerName=bloom-TEMPLATE
+User=0
 
 # Bridge network for isolation
 Network=bloom.network

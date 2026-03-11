@@ -108,12 +108,17 @@ export async function installServicePackage(
 		}
 
 		// Ensure service-specific env file exists so the container can start
-		// (service_pair will populate credentials later)
 		const configDir = join(os.homedir(), ".config", "bloom");
 		const serviceEnvPath = join(configDir, `${name}.env`);
 		if (!existsSync(serviceEnvPath)) {
 			mkdirSync(configDir, { recursive: true });
-			writeFileSync(serviceEnvPath, "");
+			// Matrix needs a registration token for account creation
+			if (name === "matrix") {
+				const regToken = randomBytes(24).toString("base64url");
+				writeFileSync(serviceEnvPath, `CONTINUWUITY_REGISTRATION_TOKEN=${regToken}\n`);
+			} else {
+				writeFileSync(serviceEnvPath, "");
+			}
 		}
 
 		return { ok: true, source: "local", ref: name };
