@@ -108,9 +108,9 @@ RUN mkdir -p /usr/local/share/bloom/persona
 COPY os/sysconfig/bloom-greeting.sh /usr/local/bin/bloom-greeting.sh
 RUN chmod +x /usr/local/bin/bloom-greeting.sh
 
-# Persistent Pi agent service — listens on Matrix when no interactive session is active
-# Installed as a user service template; enabled after first-boot setup completes
-COPY os/sysconfig/bloom-pi-agent.service /usr/lib/systemd/user/bloom-pi-agent.service
+# Pi daemon — always-on Matrix room agent (SDK-based, one session per room)
+# Enabled after first-boot setup completes via bloom-setup
+COPY os/sysconfig/pi-daemon.service /usr/lib/systemd/user/pi-daemon.service
 
 # Enable SSH for remote access
 RUN systemctl enable sshd.service
