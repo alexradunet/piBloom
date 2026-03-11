@@ -7,7 +7,6 @@ services:
     image: docker.io/sigoden/dufs:v0.38.0
     optional: false
     port: 5000
-    websocket: true
     preflight:
       commands: [podman, systemctl]
   cinny:
@@ -24,7 +23,6 @@ services:
     image: localhost/bloom-code-server:latest
     optional: true
     port: 8443
-    websocket: true
     preflight:
       commands: [podman, systemctl]
 
