@@ -1,7 +1,7 @@
 /**
  * bloom-services — Service lifecycle: scaffold, install, test, and declarative manifest management.
  *
- * @tools service_scaffold, service_install, service_test, service_pair, manifest_show, manifest_sync, manifest_set_service, manifest_apply
+ * @tools service_scaffold, service_install, service_test, manifest_show, manifest_sync, manifest_set_service, manifest_apply
  * @hooks session_start
  * @see {@link ../../AGENTS.md#bloom-services} Extension reference
  */
@@ -15,7 +15,7 @@ import { handleManifestApply } from "./actions-apply.js";
 import { handleInstall } from "./actions-install.js";
 import { handleManifestSetService, handleManifestShow, handleManifestSync } from "./actions-manifest.js";
 import { handleScaffold } from "./actions-scaffold.js";
-import { handlePair, handleSessionStart, handleTest } from "./actions-test.js";
+import { handleSessionStart, handleTest } from "./actions-test.js";
 
 export default function (pi: ExtensionAPI) {
 	const bloomDir = getBloomDir();
@@ -76,22 +76,6 @@ export default function (pi: ExtensionAPI) {
 		}),
 		async execute(_toolCallId, params, signal) {
 			return handleTest(params, signal);
-		},
-	});
-
-	pi.registerTool({
-		name: "service_pair",
-		label: "Pair Messaging Service",
-		description:
-			"Create Matrix accounts and return login credentials. Auto-registers both the user account and the Pi bot account on the local Continuwuity homeserver. The user can then log in with any Matrix client (Element X, FluffyChat, etc.).",
-		parameters: Type.Object({
-			name: StringEnum(["element"] as const, {
-				description: "Service to pair",
-			}),
-			username: Type.String({ description: "Username for the human account (e.g. alex)" }),
-		}),
-		async execute(_toolCallId, params, signal) {
-			return handlePair(params, signal);
 		},
 	});
 
