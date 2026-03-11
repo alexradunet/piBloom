@@ -52,6 +52,8 @@ RUN printf '[netbird]\nname=netbird\nbaseurl=https://pkgs.netbird.io/yum/\nenabl
 # Remove empty state files left by post-install scriptlet (causes JSON parse crash on boot)
 RUN rm -f /var/lib/netbird/active_profile.json /var/lib/netbird/default.json
 RUN systemctl enable netbird
+# Trust the NetBird tunnel interface — traffic on wt0 is already authenticated by NetBird
+RUN firewall-offline-cmd --zone=trusted --add-interface=wt0
 
 # Wheel group sudo (Anaconda creates user at install time)
 COPY os/sysconfig/bloom-sudoers /etc/sudoers.d/10-bloom
