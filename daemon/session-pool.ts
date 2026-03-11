@@ -64,7 +64,7 @@ export class SessionPool {
 		const sessionDir = this.options.sessionDir;
 		if (!existsSync(sessionDir)) mkdirSync(sessionDir, { recursive: true });
 
-		let sessionManager: InstanceType<typeof SessionManager>;
+		let sessionManager: SessionManager;
 		if (entry?.sessionPath && existsSync(entry.sessionPath)) {
 			try {
 				sessionManager = SessionManager.open(entry.sessionPath, sessionDir);
