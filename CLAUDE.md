@@ -15,7 +15,7 @@ Bloom extends Pi through three mechanisms, lightest first: **Skill → Extension
 - **Extensions**: `extensions/bloom-{name}/` — directory per extension with `index.ts` (wiring), `actions.ts` (handlers), `types.ts`
 - **lib/**: Pure logic organized by capability (`containers.ts`, `filesystem.ts`, `shared.ts`, etc.)
 - **Skills**: `skills/` — 6 Pi skill markdown files (first-boot, os-operations, object-store, service-management, self-evolution, recovery)
-- **Services**: `services/` — containerized (matrix, element, dufs) services. Scaffolded from template. NetBird is a system RPM. Metadata in `services/catalog.yaml`
+- **Services**: `services/` — containerized (dufs) services. Scaffolded from template. Matrix and NetBird are native OS services. Bridge metadata in `services/catalog.yaml`
 - **Persona**: `persona/` — OpenPersona 4-layer identity (SOUL.md, BODY.md, FACULTY.md, SKILL.md) — seeded to `~/Bloom/` on first run
 - **Guardrails**: `guardrails.yaml` — bash patterns blocked by bloom-persona (rm -rf, mkfs, dd, fork bombs, eval, pipe-to-shell, force-push, etc.)
 - **User home**: `$HOME` — the user's space, accessible via dufs WebDAV
@@ -36,7 +36,9 @@ Bloom extends Pi through three mechanisms, lightest first: **Skill → Extension
 | `~/.pi/` | Pi agent state, sessions | No |
 | `~/.pi/bloom-context.json` | Compaction context persistence | No |
 | `~/.config/containers/systemd/` | Quadlet container units | No |
-| `$XDG_RUNTIME_DIR/bloom/channels.sock` | Channel bridge Unix socket | No |
+| `~/.config/bloom/matrix-credentials.json` | Pi's Matrix login credentials | No |
+| `/var/lib/continuwuity/` | Matrix homeserver data | No |
+| `/etc/bloom/appservices/` | Bridge appservice registrations | No |
 
 ## Build and Test
 

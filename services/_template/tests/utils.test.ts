@@ -1,35 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isChannelMessage, isSenderAllowed, parseAllowedSenders } from "../src/utils.js";
-
-// ---------------------------------------------------------------------------
-// isChannelMessage
-// ---------------------------------------------------------------------------
-describe("isChannelMessage", () => {
-	it("returns true for valid object with type string", () => {
-		expect(isChannelMessage({ type: "response", to: "id", text: "hi" })).toBe(true);
-	});
-
-	it("returns true for minimal valid object", () => {
-		expect(isChannelMessage({ type: "ping" })).toBe(true);
-	});
-
-	it("returns false for null", () => {
-		expect(isChannelMessage(null)).toBe(false);
-	});
-
-	it("returns false for non-object", () => {
-		expect(isChannelMessage("string")).toBe(false);
-		expect(isChannelMessage(42)).toBe(false);
-	});
-
-	it("returns false for missing type", () => {
-		expect(isChannelMessage({ to: "id" })).toBe(false);
-	});
-
-	it("returns false for non-string type", () => {
-		expect(isChannelMessage({ type: 123 })).toBe(false);
-	});
-});
+import { isSenderAllowed, parseAllowedSenders } from "../src/utils.js";
 
 // ---------------------------------------------------------------------------
 // parseAllowedSenders

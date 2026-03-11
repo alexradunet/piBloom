@@ -98,10 +98,21 @@ export async function installServicePackage(
 
 		// Ensure service-specific env file exists so the container can start
 		const configDir = join(os.homedir(), ".config", "bloom");
+		mkdirSync(configDir, { recursive: true });
 		const serviceEnvPath = join(configDir, `${name}.env`);
 		if (!existsSync(serviceEnvPath)) {
-			mkdirSync(configDir, { recursive: true });
 			writeFileSync(serviceEnvPath, "");
+		}
+
+		// Copy extra config files (e.g., cinny-config.json) from service package
+		for (const fileName of readdirSync(localPackage.serviceDir)) {
+			if (!fileName.endsWith(".json") && !fileName.endsWith(".toml")) continue;
+			const src = join(localPackage.serviceDir, fileName);
+			if (!statSync(src).isFile()) continue;
+			const dest = join(configDir, fileName);
+			if (!existsSync(dest)) {
+				writeFileSync(dest, readFileSync(src));
+			}
 		}
 
 		return { ok: true, source: "local", ref: name };

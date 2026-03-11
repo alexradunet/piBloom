@@ -117,7 +117,7 @@ export default function (pi: ExtensionAPI) {
 		label: "Set Manifest Service",
 		description: "Add or update a service entry in the manifest.",
 		parameters: Type.Object({
-			name: Type.String({ description: "Service name (e.g. element, llm)" }),
+			name: Type.String({ description: "Service name (e.g. dufs, llm)" }),
 			image: Type.String({ description: "Container image reference" }),
 			version: Type.Optional(Type.String({ description: "Semver version tag" })),
 			enabled: Type.Optional(Type.Boolean({ description: "Whether service should be running (default: true)" })),

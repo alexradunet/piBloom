@@ -26,7 +26,17 @@ Related declarative tools:
 - `manifest_set_service` — declare desired service state in `~/Bloom/manifest.yaml`
 - `manifest_apply` — apply desired state (install missing, start enabled, stop disabled)
 
-## End-to-End Example (Scaffold → Test → Install)
+## Bridge Management
+
+External messaging bridges (WhatsApp, Telegram, Signal) connect to the native Matrix homeserver:
+
+- `bridge_create` — pull bridge image, generate Quadlet and config, register appservice
+- `bridge_remove` — stop and remove a bridge
+- `bridge_status` — list running bridge containers
+
+Bridge metadata is in `services/catalog.yaml` under `bridges:`.
+
+## End-to-End Example (Scaffold -> Test -> Install)
 
 Use this sequence when creating a new service package:
 
@@ -82,63 +92,25 @@ rm -rf ~/Bloom/Skills/{name}
 systemctl --user daemon-reload
 ```
 
-## List Installed Services
-
-```bash
-ls ~/.config/containers/systemd/bloom-*.container
-```
-
-## Check Service Health
-
-```bash
-systemctl --user status bloom-{name}
-systemctl --user status bloom-{name}.socket  # if socket-activated
-```
-
-## View Service Logs
-
-```bash
-journalctl --user -u bloom-{name} -n 50
-```
-
 ## Service Dependencies
-
-Services may depend on other components:
 
 | Service | Depends On | Handling |
 |---------|-----------|----------|
-| `matrix` | None (standalone Matrix homeserver) | — |
-| `element` | Pi channels server (`$XDG_RUNTIME_DIR/bloom/channels.sock`), bloom-matrix | Unix socket reconnect with exponential backoff |
-| `netbird` | Network stack (NET_ADMIN, /dev/net/tun) | Host network mode |
 | `dufs` | Local home bind mount | `%h` bind mount |
+| `netbird` | Network stack (NET_ADMIN, /dev/net/tun) | Host network mode |
 
-Pi's channels server is a user-space interactive process, not a systemd service. Service bridges handle unavailability via reconnect logic.
+## OS-Level Infrastructure (Not Managed as Services)
 
-## Versioning
+These are baked into the OS image and run as native systemd services:
 
-Service SKILL.md files include `version` and `image` fields in their frontmatter:
+| Service | Unit | Purpose |
+|---------|------|---------|
+| Matrix (Continuwuity) | `bloom-matrix.service` | Communication backbone |
+| NetBird | `netbird.service` | Mesh networking |
+| Nginx | `nginx.service` | Reverse proxy, Cinny web client |
 
-```yaml
----
-name: matrix
-version: 0.1.0
-image: forgejo.ellis.link/continuwuation/continuwuity:latest
----
-```
-
-### Check Installed Version
-
-The manifest at `~/Bloom/manifest.yaml` tracks installed service versions. Use `manifest_show` to view current state.
-
-### Pin a Service Version
-
-Update the manifest with `manifest_set_service` to record the desired version.
-
-## Known Services
+## Known Container Services
 
 | Name | Version | Category | Description |
 |------|---------|----------|-------------|
-| `matrix` | 0.1.0 | communication | Continuwuity Matrix homeserver (port 6167) |
-| `element` | 0.1.0 | communication | Matrix bridge for Pi messaging |
-| `netbird` | 0.1.0 | networking | Secure mesh VPN via NetBird |
 | `dufs` | 0.1.0 | sync | WebDAV file server via dufs (port 5000) |

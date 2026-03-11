@@ -1,0 +1,35 @@
+[Unit]
+Description=Bloom Cinny Matrix Web Client
+After=network-online.target
+Wants=network-online.target
+
+[Container]
+Image=ghcr.io/cinnyapp/cinny:v4.3.0
+ContainerName=bloom-cinny
+
+Network=bloom.network
+
+# Serve on localhost only — nginx proxies /cinny to this
+PublishPort=127.0.0.1:18810:80
+
+# Custom config pointing to local homeserver
+Volume=%h/.config/bloom/cinny-config.json:/usr/share/nginx/html/config.json:ro,Z
+
+PodmanArgs=--memory=64m
+PodmanArgs=--security-opt label=disable
+HealthCmd=wget -qO- http://localhost:80/ || exit 1
+HealthInterval=30s
+HealthRetries=3
+HealthTimeout=10s
+HealthStartPeriod=30s
+NoNewPrivileges=true
+LogDriver=journald
+
+[Service]
+Restart=on-failure
+RestartSec=10
+TimeoutStartSec=120
+TimeoutStopSec=30
+
+[Install]
+WantedBy=default.target

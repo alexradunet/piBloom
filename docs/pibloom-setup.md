@@ -1,6 +1,6 @@
 # piBloom First-Boot Setup
 
-> 📖 [Emoji Legend](LEGEND.md)
+> [Emoji Legend](LEGEND.md)
 
 This guide is for the first interactive session on a freshly installed Bloom OS machine.
 
@@ -9,34 +9,35 @@ This guide is for the first interactive session on a freshly installed Bloom OS 
 
 ```mermaid
 flowchart TD
-    Start([🚀 First Boot]) --> LLM[1. 🤖 Configure LLM provider]
-    LLM --> Auth[2. 🛡️ GitHub auth]
-    Auth --> Repo[3. 🤖 Configure device repo]
-    Repo --> Services[4. 📦 Install services via manifest]
-    Services --> Follow[5. 📦 Service-specific setup]
-    Follow --> Mark[6. 🚀 Mark setup complete]
-    Mark --> Health[7. 💻 Health check]
-    Health --> Done([✅ Ready])
+    Start([First Boot]) --> LLM[1. Configure LLM provider]
+    LLM --> Auth[2. GitHub auth]
+    Auth --> Repo[3. Configure device repo]
+    Repo --> Services[4. Install services via manifest]
+    Services --> Matrix[5. Matrix setup]
+    Matrix --> Follow[6. Service-specific setup]
+    Follow --> Mark[7. Mark setup complete]
+    Mark --> Health[8. Health check]
+    Health --> Done([Ready])
 ```
 
-## 0) 💻 Prerequisite
+## 0) Prerequisite
 
 If `~/.bloom/.setup-complete` exists, first-boot was already completed.
 
 Fresh Bloom OS images grant user `bloom` passwordless `sudo` for bootstrap operations.
 
-## 1) 🤖 LLM provider and API key
+## 1) LLM provider and API key
 
 Configure your preferred provider in Pi (OpenAI, Anthropic, etc.) and validate with a short prompt.
 
-## 2) 🛡️ GitHub auth (for PR-based self-evolution)
+## 2) GitHub auth (for PR-based self-evolution)
 
 ```bash
 gh auth login
 gh auth status
 ```
 
-## 3) 🤖 Configure device repo for PR flow
+## 3) Configure device repo for PR flow
 
 Use Pi tools (recommended):
 
@@ -48,7 +49,7 @@ Expected local path:
 
 - `~/.bloom/pi-bloom`
 
-## 4) 📦 Configure optional service modules (manifest-first)
+## 4) Configure optional service modules (manifest-first)
 
 Declare desired services in `~/Bloom/manifest.yaml` via tool calls:
 
@@ -62,9 +63,30 @@ Apply:
 
 - `manifest_apply(install_missing=true)`
 
-## 5) 📦 Service-specific follow-up
+## 5) Matrix setup
 
-### 📦 NetBird
+Matrix homeserver (`bloom-matrix.service`) is baked into the OS image and starts automatically.
+
+Verify it's running:
+
+```bash
+systemctl status bloom-matrix
+```
+
+Install Cinny web client:
+
+- `service_install(name="cinny")` or `manifest_set_service(name="cinny", image="ghcr.io/cinnyapp/cinny:v4.3.0", version="0.1.0", enabled=true)`
+
+Pi creates its bot account automatically, then guides the user through:
+
+1. Opening Cinny at `http://<host>/cinny/`
+2. Registering with the registration token
+3. Creating a DM with `@pi:bloom`
+4. Verifying messaging works
+
+## 6) Service-specific follow-up
+
+### NetBird
 
 NetBird is installed as a system RPM service on the OS image.
 
@@ -80,33 +102,20 @@ Check status:
 sudo netbird status
 ```
 
-Logs:
+### Messaging Bridges (Optional)
 
-```bash
-sudo journalctl -u netbird -f
-```
+To connect WhatsApp, Telegram, or Signal, use Pi's bridge tools:
 
-### 📦 Matrix + Element
+- `bridge_create(bridge="whatsapp")` — pulls mautrix-whatsapp, creates Quadlet, registers appservice
+- `bridge_status` — check bridge container states
 
-Matrix messaging uses a self-hosted Continuwuity homeserver (bloom-matrix) and Element bot bridge (bloom-element).
-
-Install via manifest or directly:
-
-- `manifest_set_service(name="matrix", image="forgejo.ellis.link/continuwuation/continuwuity:latest", version="0.1.0", enabled=true)`
-- `manifest_set_service(name="element", image="localhost/bloom-element:latest", version="0.1.0", enabled=true)`
-- Or: `service_install(name="matrix")` then `service_install(name="element")`
-
-Get connection details:
-
-- `service_pair(name="element")`
-
-## 6) 🚀 Mark setup complete
+## 7) Mark setup complete
 
 ```bash
 touch ~/.bloom/.setup-complete
 ```
 
-## 7) 💻 Health check
+## 8) Health check
 
 Run:
 
@@ -114,7 +123,7 @@ Run:
 - `manifest_show`
 - `manifest_sync(mode="detect")`
 
-## 🔗 Related
+## Related
 
 - [Emoji Legend](LEGEND.md) — Notation reference
 - [Quick Deploy](quick_deploy.md) — OS build and deployment

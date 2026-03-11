@@ -42,9 +42,7 @@ export default function (pi: ExtensionAPI) {
 			action: StringEnum(["status", "logs", "deploy"] as const, {
 				description: "status: list running bloom-* containers. logs: view service logs. deploy: start a Quadlet unit.",
 			}),
-			service: Type.Optional(
-				Type.String({ description: "Service name, required for logs/deploy (e.g. bloom-dufs)" }),
-			),
+			service: Type.Optional(Type.String({ description: "Service name, required for logs/deploy (e.g. bloom-dufs)" })),
 			lines: Type.Optional(Type.Number({ description: "Log lines to return (default 50)", default: 50 })),
 		}),
 		async execute(_toolCallId, params, signal, _onUpdate, ctx) {

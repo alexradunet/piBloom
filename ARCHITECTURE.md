@@ -27,7 +27,7 @@ Some services are foundational to the system's identity and run as native system
 **Current OS-level infrastructure:**
 - **Continuity** (Matrix homeserver) — `bloom-matrix.service`, communication backbone
 - **NetBird** — mesh networking, device reachability
-- **Nginx** — reverse proxy, serves Cinny web client
+- **Nginx** — reverse proxy for Matrix API and container services
 
 These are analogous to systemd, podman, and SSH — they're part of the OS, not optional services.
 
@@ -92,7 +92,7 @@ services/{name}/
   Containerfile              # build definition
   package.json               # dependencies, scripts
   src/
-    index.ts                 # entry: health server, channel client, main loop
+    index.ts                 # entry: health server, main loop
     transport.ts             # service-specific send/receive
     utils.ts                 # service-specific helpers
   tests/

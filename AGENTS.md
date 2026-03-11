@@ -34,7 +34,7 @@ sequenceDiagram
     Ext->>Hooks: Register before_agent_start hooks
     Ext->>Hooks: Register tool_call / tool_result hooks
     Pi->>Hooks: Fire session_start
-    Note over Hooks: bloom-persona sets session name<br/>bloom-audit rotates logs<br/>bloom-garden seeds blueprints<br/>bloom-channels starts socket
+    Note over Hooks: bloom-persona sets session name<br/>bloom-audit rotates logs<br/>bloom-garden seeds blueprints<br/>bloom-channels connects to Matrix
     Pi->>Hooks: Fire before_agent_start
     Note over Hooks: bloom-persona injects identity<br/>bloom-os injects update status<br/>bloom-topics injects topic guidance
     Pi-->>Pi: Ready
@@ -104,9 +104,9 @@ Repository management: configure, sync, submit PRs, check status.
 
 ### 📦 bloom-services
 
-Service lifecycle: scaffold, install, test, and declarative manifest management.
+Service lifecycle: scaffold, install, test, bridge management, and declarative manifest management.
 
-**Tools:** `service_scaffold`, `service_install`, `service_test`, `service_pair`, `manifest_show`, `manifest_sync`, `manifest_set_service`, `manifest_apply`
+**Tools:** `service_scaffold`, `service_install`, `service_test`, `bridge_create`, `bridge_remove`, `bridge_status`, `manifest_show`, `manifest_sync`, `manifest_set_service`, `manifest_apply`
 **Hooks:**
 - `session_start` — Set UI status, check manifest drift, display status widget
 
@@ -128,13 +128,13 @@ Bloom directory management, blueprint seeding, skill creation, persona evolution
 
 ### 📡 bloom-channels
 
-Channel bridge Unix socket server at `$XDG_RUNTIME_DIR/bloom/channels.sock`. JSON-newline protocol with rate limiting and heartbeat.
+Matrix client bridge connecting Pi directly to the local Continuwuity homeserver via `matrix-bot-sdk`. Pi logs in as `@pi:bloom` and listens for messages in Matrix rooms.
 
-**Commands:** `/matrix` (send message to Matrix channel)
+**Commands:** `/matrix` (send message via Matrix)
 **Hooks:**
-- `session_start` — Create Unix socket server, load channel tokens
-- `agent_end` — Extract response, send back to channel socket by message ID
-- `session_shutdown` — Close socket server, cleanup
+- `session_start` — Connect to Matrix homeserver, start listening for messages
+- `agent_end` — Send Pi's response back to the originating Matrix room
+- `session_shutdown` — Disconnect from Matrix
 
 ### 🗂️ bloom-topics
 
@@ -160,7 +160,7 @@ First-boot setup wizard with guided steps.
 **Hooks:**
 - `before_agent_start` — Inject first-boot skill into system prompt when setup is incomplete
 
-## 🧩 All Registered Tools (43)
+## 🧩 All Registered Tools (44)
 
 Quick reference of every tool name available to Pi:
 
@@ -178,7 +178,9 @@ Quick reference of every tool name available to Pi:
 | `service_scaffold` | bloom-services | Generate service package skeleton |
 | `service_install` | bloom-services | Install service from bundled local package |
 | `service_test` | bloom-services | Smoke-test installed service units |
-| `service_pair` | bloom-services | Get connection details for Matrix homeserver pairing |
+| `bridge_create` | bloom-services | Create and configure a mautrix bridge |
+| `bridge_remove` | bloom-services | Remove a bridge container and config |
+| `bridge_status` | bloom-services | List running bridge containers |
 | `manifest_show` | bloom-services | Display service manifest |
 | `manifest_sync` | bloom-services | Reconcile manifest with running state |
 | `manifest_set_service` | bloom-services | Declare service in manifest |
@@ -221,17 +223,32 @@ Quick reference of every tool name available to Pi:
 | `self-evolution` | Structured system change workflow |
 | `recovery` | Troubleshooting playbooks (Matrix, OS updates, dufs, disk, containers) |
 
-## 📦 Services
+## 📦 Services & Infrastructure
 
-Modular capabilities managed as container services.
+### OS-Level Infrastructure (baked into OS image)
+
+| Unit | Purpose | Type |
+|------|---------|------|
+| `bloom-matrix.service` | Continuwuity Matrix homeserver | Native systemd |
+| `netbird.service` | Mesh VPN networking | System RPM |
+| `nginx.service` | Reverse proxy | Native systemd |
+
+### Container Services
+
 Canonical metadata for automation lives in `services/catalog.yaml`.
 
 | Service | Category | Port | Type |
 |---------|----------|------|------|
+| `bloom-cinny` | communication | 18810 | Podman Quadlet |
 | `bloom-dufs` | sync | 5000 | Podman Quadlet |
-| `bloom-matrix` | communication | 6167 | Podman Quadlet |
-| `bloom-element` | communication | — | Podman Quadlet |
-| `netbird` | networking | — | System RPM service |
+
+### Bridges (on-demand via `bridge_create`)
+
+| Bridge | Image | Health Port |
+|--------|-------|-------------|
+| whatsapp | `dock.mau.dev/mautrix/whatsapp:latest` | 29318 |
+| telegram | `dock.mau.dev/mautrix/telegram:latest` | 29319 |
+| signal | `dock.mau.dev/mautrix/signal:latest` | 29320 |
 
 ## 🪞 Persona
 
@@ -268,7 +285,11 @@ See `ARCHITECTURE.md` for structural rules and enforcement checklist.
 | `git.ts` | `parseGithubSlugFromUrl`, `slugifyBranchPart` |
 | `repo.ts` | `getRemoteUrl`, `inferRepoUrl` |
 | `audit.ts` | `dayStamp`, `sanitize`, `summarizeInput` |
-| `services.ts` | `loadManifest`, `saveManifest`, `loadServiceCatalog`, `installServicePackage`, `buildLocalImage`, `detectRunningServices`, `validateServiceName`, `validatePinnedImage` |
+| `services-catalog.ts` | `loadServiceCatalog`, `loadBridgeCatalog`, `servicePreflightErrors` |
+| `services-install.ts` | `findLocalServicePackage` |
+| `services-manifest.ts` | `loadManifest`, `saveManifest` |
+| `services-validation.ts` | `validateServiceName`, `validatePinnedImage`, `commandExists`, `commandCheckArgs`, `hasSubidRange` |
+| `matrix.ts` | `extractResponseText`, `generatePassword`, `matrixCredentialsPath` |
 | `setup.ts` | `STEP_ORDER`, `createInitialState`, `advanceStep`, `getNextStep`, `isSetupComplete`, `getStepsSummary` |
 
 ## 🚀 Install
@@ -287,7 +308,6 @@ pi install ./
 - OS build/deploy/install: `docs/quick_deploy.md`
 - First-boot setup flow: `docs/pibloom-setup.md`
 - Fleet PR workflow: `docs/fleet-pr-workflow.md`
-- Channel protocol: `docs/channel-protocol.md`
 - Service architecture: `docs/service-architecture.md`
 - Supply chain trust: `docs/supply-chain.md`
 

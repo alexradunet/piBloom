@@ -1,36 +1,41 @@
 ---
 name: matrix
 version: 0.1.0
-description: Continuwuity Matrix homeserver (self-hosted, no federation)
-image: forgejo.ellis.link/continuwuation/continuwuity:latest
+description: Continuwuity Matrix homeserver (native OS service, no federation)
 ---
 
 # Matrix Homeserver
 
-Self-hosted Continuwuity Matrix server for private messaging with Pi.
+Native Continuwuity Matrix server baked into the Bloom OS image.
 
 ## Overview
 
-Bloom runs its own Matrix homeserver locally. Users register with any Matrix client (Element, FluffyChat, etc.) and message Pi directly. No data leaves the device. No federation — fully private.
+Bloom runs its own Matrix homeserver as a native systemd service (`bloom-matrix.service`). Users register with any Matrix client (Cinny at `http://<host>/cinny`, or any other client) and message Pi directly. No data leaves the device. No federation — fully private.
 
 ## Setup
 
-The Matrix server starts automatically. User accounts are created automatically by `service_pair`:
+The Matrix server starts automatically on boot. User accounts are created during the first-boot setup:
 
-1. Pi asks for the user's name during setup
-2. `service_pair(name="element", username="...")` creates both the user and bot accounts
-3. User logs in with Element X or any Matrix client using the returned credentials
+1. Pi creates a bot account (`@pi:bloom`) automatically
+2. Pi guides the user to register via Cinny or their preferred Matrix client
+3. User creates a DM with `@pi:bloom`
 
 ## Configuration
 
 - Server name: `bloom`
-- Port: `6167`
-- Registration: token-required (see `~/.config/bloom/matrix.env`)
+- Port: `6167` (proxied via nginx at `/_matrix/`)
+- Registration: token-required (see `/var/lib/continuwuity/registration_token`)
 - Federation: disabled
-- Data: persisted in `bloom-matrix-data` volume
+- Data: `/var/lib/continuwuity/`
+- Web client: Cinny at `http://<host>/cinny`
+
+## Bridges
+
+External messaging platforms (WhatsApp, Telegram, Signal) connect via mautrix bridge containers. Use Pi's `bridge_create` tool to set up bridges.
 
 ## Troubleshooting
 
-- Logs: `journalctl --user -u bloom-matrix -n 100`
-- Status: `systemctl --user status bloom-matrix`
-- Restart: `systemctl --user restart bloom-matrix`
+- Logs: `journalctl -u bloom-matrix -n 100`
+- Status: `systemctl status bloom-matrix`
+- Restart: `sudo systemctl restart bloom-matrix`
+- Reload (after appservice registration): `sudo systemctl reload bloom-matrix`

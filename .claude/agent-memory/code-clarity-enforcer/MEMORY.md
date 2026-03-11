@@ -2,27 +2,52 @@
 
 ## Recurring Violations
 
-- **Empty/stub types.ts files**: Extensions frequently have 1-2 line types.ts files with only a comment or a re-export. Three such files found: bloom-repo, bloom-services, bloom-setup.
-- **Missing module-level JSDoc**: 6 of 10 lib/ files start with imports instead of a module-level comment (exec.ts, filesystem.ts, frontmatter.ts, repo.ts, services.ts, shared.ts).
-- **Oversized files**: bloom-services/actions.ts (760 lines), lib/services.ts (476 lines), bloom-channels/actions.ts (438 lines), bloom-dev/actions.ts (430 lines), bloom-repo/actions.ts (320 lines), bloom-garden/actions.ts (288 lines), bloom-os/actions.ts (284 lines), bloom-dev/index.ts (242 lines).
-- **High export counts**: lib/services.ts (18 exports), bloom-dev/actions.ts (15), bloom-garden/actions.ts (13), bloom-services/actions.ts (12), bloom-display/actions.ts (10), lib/setup.ts (10).
-- **Shell convention violations**: build-iso.sh uses `#!/bin/bash` instead of `#!/usr/bin/env bash`. bloom-greeting.sh uses `[ ]` instead of `[[ ]]`.
-- **Dynamic imports**: bloom-display/actions.ts line 29 uses `await import("node:fs/promises")`.
-- **Missing types.ts**: bloom-display and bloom-objects have no types.ts despite ARCHITECTURE.md mandating the directory structure.
+- **Empty/stub types.ts files**: 4 extensions have stub types.ts with only `export {};`: bloom-setup, bloom-repo, bloom-services, bloom-objects.
+- **Thin barrel files**: bloom-channels/actions.ts is a 4-line re-export passthrough.
+- **Oversized files**: bloom-channels/matrix-client.ts (307 lines), bloom-services/service-io.ts (257 lines), bloom-dev/index.ts (242 lines).
 
-## Stale Documentation
+## Post-Migration Stale References (2026-03-11)
 
-- `docs/quick_deploy.md` references `just vm-serial` which does not exist in the justfile.
+Major migration moved Matrix/NetBird from containers to OS infrastructure. Unix socket channel architecture fully retired. Many docs still reference old patterns:
 
-## Codebase Trends
+### Critical stale references (active docs that mislead agents):
+- CLAUDE.md Key Paths table: channels.sock
+- AGENTS.md: service_pair tool, bloom-channels Unix socket desc, bloom-element Podman, lib/services.ts
+- README.md: Unix socket IPC, bloom-element
+- docs/channel-protocol.md: entire file is dead
+- docs/service-architecture.md: bloom-element container, Unix socket diagram, Matrix as Podman
+- services/_template/: entire template implements retired socket architecture
+- skills/first-boot, service-management, recovery: service_pair and channels.sock refs
+- services/matrix/SKILL.md: service_pair references
+- docs/pibloom-setup.md: bloom-element, service_pair
+- services/README.md: element service listed
+- ARCHITECTURE.md: references lib/services.ts (now split)
+- .claude/agents/bloom-live-tester.md: lemonade, channels.sock refs
+- docs/quick_deploy.md: Sway/Wayland references (removed from OS)
 
-- lib/services.ts is the largest lib file at 476 lines with 18 exports -- a clear split candidate.
-- bloom-services/actions.ts at 760 lines is the largest file in the repo -- needs decomposition.
-- Test coverage has gaps: 4 extensions (bloom-audit, bloom-garden, bloom-services, bloom-topics) and 3 lib files (filesystem, frontmatter, git) have no dedicated test files.
+### What replaced the old architecture:
+- bloom-channels uses matrix-bot-sdk directly (matrix-client.ts)
+- Matrix (Continuwuity) is native systemd service in os/Containerfile
+- Cinny served by nginx (static files)
+- External bridges via bridge_create/remove/status tools
+
+## Resolved Issues (from previous audit)
+
+- lib/services.ts barrel: was split into services-catalog, services-install, services-manifest, services-validation
+- bloom-services/actions.ts (760 lines): was split into actions-apply, actions-bridges, etc.
+- bloom-display extension: removed entirely
+- build-iso.sh shebang: fixed to #!/usr/bin/env bash
+- bloom-greeting.sh: now uses [[ ]] correctly
+
+## CI/Workflow Notes
+
+- build-os.yml uses docker/login-action@v3 (docker reference despite podman convention)
 
 ## Last Audit
 
-- Date: 2026-03-10
-- Files reviewed: ~120
+- Date: 2026-03-11
+- Files reviewed: ~80
 - Auto-fixes applied: 0 (report-only run)
-- Issues flagged: ~30
+- Critical stale references: 11 documentation items
+- Important issues: 10
+- Minor issues: 7

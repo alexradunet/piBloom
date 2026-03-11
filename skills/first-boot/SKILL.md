@@ -44,12 +44,13 @@ NetBird is pre-installed in the OS image. The user needs to provide a setup key 
 ### password
 Triggered because NetBird opens remote access. Use `sudo passwd pi`. The password prompt is interactive — tell the user to type their password when prompted.
 
-### channels
-Matrix is pre-installed. The flow is:
-1. `service_pair(name="element")` — shows server URL + registration token
-2. Ask user to register with their Matrix client (Element, FluffyChat, etc.)
-3. User creates a DM with `@pi:bloom`
-4. `service_test(name="element")` — verify it works
+### matrix
+Matrix homeserver is pre-installed as a native OS service. The flow is:
+1. Verify `bloom-matrix.service` is running: `systemctl status bloom-matrix`
+2. Create Pi's bot account via Matrix registration API
+3. Guide user to register at `http://<host>/cinny` using the registration token
+4. User creates a DM with `@pi:bloom`
+5. Verify messaging works by sending a test message
 
 ### llm_upgrade
 Two paths:
@@ -63,4 +64,4 @@ Ask one question, wait for answer, update the file, ask next question. Files to 
 - `~/Bloom/Persona/FACULTY.md` — reasoning style
 
 ### test_message
-Only if channels step was completed (not skipped). Check setup state to see if channels was completed before attempting.
+Only if matrix step was completed (not skipped). Check setup state to see if matrix was completed before attempting.

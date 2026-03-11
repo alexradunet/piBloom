@@ -99,7 +99,7 @@ export async function handleInstall(
 		saveManifest(manifest, manifestPath);
 	}
 
-	// Auto-install dependencies (e.g., stt for element)
+	// Auto-install dependencies (e.g., backend for frontend)
 	const deps = catalogEntry?.depends ?? [];
 	for (const dep of deps) {
 		const depUnit = join(os.homedir(), ".config", "containers", "systemd", `bloom-${dep}.container`);

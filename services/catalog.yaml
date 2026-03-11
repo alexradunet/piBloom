@@ -8,6 +8,13 @@ services:
     optional: false
     preflight:
       commands: [podman, systemctl]
+  cinny:
+    version: "0.1.0"
+    category: communication
+    image: ghcr.io/cinnyapp/cinny:v4.3.0
+    optional: false
+    preflight:
+      commands: [podman, systemctl]
   code-server:
     version: "0.1.0"
     category: development

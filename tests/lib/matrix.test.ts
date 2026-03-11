@@ -8,9 +8,7 @@ describe("extractResponseText", () => {
 	});
 
 	it("extracts text blocks from array content", () => {
-		const messages = [
-			{ role: "assistant", content: [{ type: "text", text: "hello" }] },
-		];
+		const messages = [{ role: "assistant", content: [{ type: "text", text: "hello" }] }];
 		expect(extractResponseText(messages)).toBe("hello");
 	});
 
@@ -45,9 +43,7 @@ describe("extractResponseText", () => {
 	});
 
 	it("returns empty string for tool-only turns", () => {
-		const messages = [
-			{ role: "assistant", content: [{ type: "tool_use", id: "1", name: "foo" }] },
-		];
+		const messages = [{ role: "assistant", content: [{ type: "tool_use", id: "1", name: "foo" }] }];
 		expect(extractResponseText(messages)).toBe("");
 	});
 

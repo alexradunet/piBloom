@@ -1,10 +1,10 @@
 # Service Architecture
 
-> 📖 [Emoji Legend](LEGEND.md)
+> [Emoji Legend](LEGEND.md)
 
 Bloom extends Pi's capabilities through three mechanisms, each suited to different needs. When Pi detects a capability gap or the user requests a new feature, choose the lightest mechanism that fits.
 
-## 🌱 Extensibility Hierarchy
+## Extensibility Hierarchy
 
 ```mermaid
 graph TD
@@ -16,101 +16,108 @@ graph TD
 
     skill --> skill_desc["Markdown file with instructions<br/>Cheapest to create<br/>No code, just knowledge"]
     ext --> ext_desc["In-process TypeScript<br/>Full Pi API access<br/>Commands, tools, events"]
-    svc --> svc_desc["Containerized workload<br/>Isolated, resource-limited<br/>HTTP/socket interaction"]
+    svc --> svc_desc["Containerized workload<br/>Isolated, resource-limited<br/>HTTP interaction"]
 
     style skill fill:#d5f5d5
     style ext fill:#d5d5f5
     style svc fill:#f5d5d5
 ```
 
-### 🌱 When to Use What
+### When to Use What
 
 | Mechanism | Use When | Examples | Cost |
 |-----------|----------|----------|------|
 | **Skill** | Pi needs knowledge or a procedure to follow | meal-planning, troubleshooting guides, API references | Zero — just a markdown file |
-| **Extension** | Pi needs to register commands, tools, or react to session events | bloom-channels (Unix socket server), bloom-objects (object store) | Low — TypeScript, runs in-process |
-| **Service** | A standalone process needs to run independently of Pi's session | Matrix homeserver (always-on), Element bridge (always-on), dufs (WebDAV) | Medium — systemd unit, resource allocation |
+| **Extension** | Pi needs to register commands, tools, or react to session events | bloom-channels (Matrix client), bloom-objects (object store) | Low — TypeScript, runs in-process |
+| **Service** | A standalone process needs to run independently of Pi's session | dufs (WebDAV), mautrix bridges (WhatsApp, Telegram) | Medium — systemd unit, resource allocation |
 
 **Always prefer the lighter option.** A skill that teaches Pi to call an existing API is better than an extension wrapping that API, which is better than a service re-implementing it.
 
-## 🌱 System Overview
+## System Overview
 
 ```mermaid
 graph TB
     subgraph "Bloom OS (Fedora bootc)"
+        subgraph "OS-Level Infrastructure"
+            matrix_native[bloom-matrix.service<br/>Continuwuity Homeserver :6167]
+            nginx[nginx.service<br/>Reverse Proxy + Cinny]
+            netbird[netbird.service<br/>Mesh VPN]
+        end
+
         subgraph "Pi Agent Process"
             persona[bloom-persona]
             garden[bloom-garden]
             objects[bloom-objects]
             topics[bloom-topics]
-            channels[bloom-channels<br/>Unix socket<br/>$XDG_RUNTIME_DIR/bloom/channels.sock]
+            channels[bloom-channels<br/>Matrix client via matrix-bot-sdk]
         end
 
         subgraph "Service Containers (Podman Quadlet)"
+            cinny[bloom-cinny<br/>Cinny Web Client :18810]
             dufs[bloom-dufs<br/>WebDAV :5000]
-            element[bloom-element<br/>Element Bridge]
-            matrix[bloom-matrix<br/>Continuwuity Homeserver]
-        end
-
-        subgraph "System Services (RPM)"
-            netbird[netbird<br/>NetBird VPN<br/>system RPM service]
-        end
-
-        subgraph "System Services"
-            systemd[systemd --user]
-            systemd_sys[systemd system]
+            bridges[mautrix bridges<br/>WhatsApp, Telegram, Signal]
         end
     end
 
-    channels <-->|Unix socket JSON| element
-    element <-->|Matrix CS API| matrix
+    channels <-->|Matrix CS API| matrix_native
+    bridges <-->|Appservice API| matrix_native
+    nginx -->|proxy /_matrix/| matrix_native
+    nginx -->|proxy /cinny| cinny
     netbird <-->|WireGuard| netbird_cloud[NetBird Cloud]
     dufs -->|WebDAV| devices[Other Devices]
-    systemd -->|manages| element
-    systemd -->|manages| matrix
-    systemd -->|manages| dufs
-    systemd_sys -->|manages| netbird
 
     style persona fill:#e8d5f5
     style garden fill:#d5f5e8
     style objects fill:#d5e8f5
     style channels fill:#f5e8d5
+    style matrix_native fill:#f5f5d5
 ```
 
-## 🌱 The Three Layers
+## The Three Layers
 
 | Layer | Mechanism | Lifecycle | Communication | Created By |
 |-------|-----------|-----------|---------------|------------|
 | **Skills** | Markdown files (SKILL.md) | Discovered at session start | Pi reads and follows instructions | Pi (via `skill_create`) or developer |
 | **Extensions** | In-process TypeScript | Loaded with Pi session | Direct API (ExtensionAPI) | Developer (requires code review + PR) |
-| **Services** | Containers (Podman Quadlet) | systemd-managed, independent | Unix socket, HTTP, shell | Pi (via self-evolution) or developer |
+| **Services** | Containers (Podman Quadlet) | systemd-managed, independent | HTTP, Matrix appservice API | Pi (via self-evolution) or developer |
 
-### 🌱 Why Three Layers?
+### Why Three Layers?
 
 - **Skills** are pure knowledge — procedures, API references, troubleshooting guides. Pi reads them and acts. No code, no process, no resources. Pi can create these autonomously.
 - **Extensions** need direct access to Pi's session (send messages, register commands, access context). They run in-process and require TypeScript. These are core platform code.
-- **Services** are standalone workloads (speech-to-text, messaging bridges, mesh VPN, file sync) that run as containers.
+- **Services** are standalone workloads (file sync, messaging bridges) that run as containers.
 
-### 📦 The `bloom-` Prefix
+### OS-Level Infrastructure
 
-Bloom-managed services use a `bloom-` prefix on their **unit names** (e.g., `bloom-matrix`, `bloom-element`). This is a management namespace — it does NOT mean the underlying image is Bloom-specific. NetBird runs as a system-level RPM service:
+Some services are foundational to the system's identity and run as native systemd services baked into the OS image:
+
+| Unit | Purpose |
+|------|---------|
+| `bloom-matrix.service` | Continuwuity Matrix homeserver — communication backbone |
+| `netbird.service` | Mesh networking — device reachability |
+| `nginx.service` | Reverse proxy — proxies `/_matrix/` and web clients |
+
+These are analogous to systemd, podman, and SSH — they're part of the OS, not optional services.
+
+### The `bloom-` Prefix
+
+Bloom-managed services use a `bloom-` prefix on their **unit names** (e.g., `bloom-dufs`). This is a management namespace — it does NOT mean the underlying image is Bloom-specific.
 
 | Unit Name | Type | Image / Runtime | Bloom-specific? |
 |-----------|------|-----------------|-----------------|
 | `bloom-dufs` | Podman Quadlet (user) | `docker.io/sigoden/dufs:latest` | No — upstream image |
-| `bloom-element` | Podman Quadlet (user) | localhost/bloom-element:latest | Yes — custom bridge |
-| `bloom-matrix` | Podman Quadlet (user) | forgejo.ellis.link/continuwuation/continuwuity:latest | No — upstream image |
+| `bloom-matrix` | Native systemd service | Continuwuity binary in OS image | Part of OS |
 | `netbird` | System RPM service | NetBird package | No — upstream RPM |
 
 The prefix enables:
 - `systemctl --user status bloom-*` — list all Bloom-managed user services
 - Clear separation from user-installed services
 
-## 📦 Local Package Installation
+## Local Package Installation
 
 Services are installed from bundled local packages in `services/{name}/`. Each package contains Quadlet container units and a SKILL.md file.
 
-### 📦 Package Format
+### Package Format
 
 ```
 services/{name}/
@@ -120,17 +127,16 @@ services/{name}/
 └── SKILL.md                      # Skill file (frontmatter + API docs)
 ```
 
-### 📦 Service Catalog
+### Service Catalog
 
-`services/catalog.yaml` is the declarative metadata index for install automation:
+`services/catalog.yaml` is the declarative metadata index:
 
-- default service versions
-- runtime image references
-- preflight requirements (for example `podman` for container services)
+- `services:` — container service defaults (version, image, preflight requirements)
+- `bridges:` — mautrix bridge metadata (image, health_port)
 
-The `manifest_apply` tool uses this catalog to auto-install missing services and enforce preflight checks.
+The `manifest_apply` tool uses the services catalog to auto-install missing services and enforce preflight checks.
 
-## 📦 Service Lifecycle
+## Service Lifecycle
 
 ```mermaid
 stateDiagram-v2
@@ -148,51 +154,50 @@ stateDiagram-v2
     end note
 ```
 
-## 🗂️ File System Layout
+## File System Layout
 
 ```mermaid
 graph LR
     subgraph "Immutable OS Layer (/usr)"
         bloom_pkg["/usr/local/share/bloom/<br/>Extensions + Skills + Persona"]
+        continuwuity["/usr/local/bin/continuwuity<br/>Matrix homeserver binary"]
     end
 
     subgraph "User State (~)"
         config["~/.config/containers/systemd/<br/>Installed Quadlet units"]
         bloom_dir["~/Bloom/<br/>Persona, skills, objects"]
         skills["~/Bloom/Skills/<br/>Installed service skills"]
-        media["/var/lib/bloom/media/<br/>Downloaded media files"]
         pi_state["~/.pi/<br/>Pi agent state"]
-    end
-
-    subgraph "Container Volumes"
-        matrix_data["bloom-matrix-data<br/>Continuwuity homeserver data"]
-        element_data["bloom-element-data<br/>Element bridge state"]
+        matrix_creds["~/.config/bloom/<br/>Matrix credentials, service config"]
     end
 
     subgraph "System State"
+        matrix_data["/var/lib/continuwuity/<br/>Matrix homeserver data"]
         nb_state["/var/lib/netbird/<br/>NetBird identity"]
+        appservices["/etc/bloom/appservices/<br/>Bridge registrations"]
     end
 
     bloom_pkg --> config
 ```
 
-## 📦 Available Services
+## Available Services
 
-| Service | Category | Port | Type | Image / Runtime | Resources |
-|---------|----------|------|------|-----------------|-----------|
-| bloom-dufs | sync | 5000 | Podman Quadlet | docker.io/sigoden/dufs:latest | 64MB RAM |
-| bloom-element | communication | — | Podman Quadlet | localhost/bloom-element:latest | 128MB RAM |
-| bloom-matrix | communication | 6167 | Podman Quadlet | forgejo.ellis.link/continuwuation/continuwuity:latest | 512MB RAM |
-| netbird | networking | — | System RPM service | NetBird package | 256MB RAM |
+| Service | Category | Port | Type | Resources |
+|---------|----------|------|------|-----------|
+| bloom-cinny | communication | 18810 | Podman Quadlet | 64MB RAM |
+| bloom-dufs | sync | 5000 | Podman Quadlet | 64MB RAM |
+| bloom-matrix | communication | 6167 | Native systemd | 512MB RAM |
+| netbird | networking | — | System RPM | 256MB RAM |
+| nginx | proxy | 80 | Native systemd | 64MB RAM |
 
-## 📦 Adding a New Service
+## Adding a New Service
 
 1. Create `services/{name}/quadlet/bloom-{name}.container` with Quadlet conventions
 2. Create `services/{name}/SKILL.md` documenting the API and usage
 3. Test locally: copy to `~/.config/containers/systemd/`, reload, start
 4. Update the services table in `services/README.md` and `AGENTS.md`
 
-### 📦 Quadlet Conventions Checklist
+### Quadlet Conventions Checklist
 
 - [ ] Container name: `bloom-{name}`
 - [ ] Network: prefer `bloom.network` isolation (`host` only when required, e.g. VPN)
@@ -203,9 +208,8 @@ graph LR
 - [ ] Resource limits set (`--memory`)
 - [ ] `WantedBy=default.target` in `[Install]`
 
-## 🔗 Related
+## Related
 
 - [Emoji Legend](LEGEND.md) — Notation reference
-- [Channel Protocol](channel-protocol.md) — Unix socket IPC spec
 - [Supply Chain](supply-chain.md) — Artifact trust and releases
 - [Quick Deploy](quick_deploy.md) — OS build and deployment

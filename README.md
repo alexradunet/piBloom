@@ -72,16 +72,22 @@ graph TD
 | `self-evolution` | Structured system change workflow |
 | `recovery` | System recovery procedures |
 
-### 📦 Services
+### 📦 Services & Infrastructure
 
-Modular capabilities running as containers:
+OS-level infrastructure baked into the image:
+
+| Unit | What | Type |
+|------|------|------|
+| `bloom-matrix` | Continuwuity Matrix homeserver | Native systemd |
+| `netbird` | Mesh VPN | System RPM |
+| `nginx` | Reverse proxy | Native systemd |
+
+Container services:
 
 | Service | What | Type |
 |---------|------|------|
+| `bloom-cinny` | Cinny Matrix web client | Podman Quadlet |
 | `bloom-dufs` | WebDAV file server | Podman Quadlet |
-| `bloom-matrix` | Continuwuity Matrix homeserver | Podman Quadlet |
-| `bloom-element` | Matrix bot bridge (matrix-bot-sdk) | Podman Quadlet |
-| `netbird` | Mesh VPN | System RPM service |
 
 ### 🪞 Persona
 
