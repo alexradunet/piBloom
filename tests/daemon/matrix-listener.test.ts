@@ -91,7 +91,7 @@ describe("MatrixListener", () => {
 		const roomMessageCall = mockOn.mock.calls.find((c) => c[0] === "room.message");
 		expect(roomMessageCall).toBeDefined();
 
-		const handler = roomMessageCall![1] as (roomId: string, event: Record<string, unknown>) => void;
+		const handler = roomMessageCall?.[1] as (roomId: string, event: Record<string, unknown>) => void;
 
 		handler("!abc:bloom", {
 			sender: "@user:bloom",
@@ -118,7 +118,7 @@ describe("MatrixListener", () => {
 		await listener.start();
 
 		const roomMessageCall = mockOn.mock.calls.find((c) => c[0] === "room.message");
-		const handler = roomMessageCall![1] as (roomId: string, event: Record<string, unknown>) => void;
+		const handler = roomMessageCall?.[1] as (roomId: string, event: Record<string, unknown>) => void;
 
 		handler("!abc:bloom", {
 			sender: "@pi:bloom",

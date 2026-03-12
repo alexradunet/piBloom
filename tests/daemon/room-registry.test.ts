@@ -64,7 +64,7 @@ describe("RoomRegistry", () => {
 		reg.touch("!abc:bloom");
 		const entry = reg.get("!abc:bloom");
 		expect(entry).toBeDefined();
-		expect(entry!.lastActive).not.toBe("2026-03-11T15:00:00Z");
+		expect(entry?.lastActive).not.toBe("2026-03-11T15:00:00Z");
 	});
 
 	it("returns undefined for unknown room", () => {

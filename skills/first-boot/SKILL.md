@@ -59,8 +59,9 @@ Matrix homeserver is pre-installed as a native OS service. The registration toke
 5. Register `@user:bloom` account for the human user
 6. Store credentials in `~/.pi/matrix-credentials.json` (schema: `{ homeserver, botUserId, botAccessToken, botPassword, userUserId, userPassword, registrationToken }`)
 7. Create `#general:bloom` room and auto-join `@user:bloom` to it
-8. Tell user: open `http://cinny.bloom.mesh:18810`, login as `user` (localpart only, not `@user:bloom`), password shown
-9. User is already in `#general:bloom` — suggest DM with `@pi:bloom`
+8. Verify `systemctl --user is-active pi-daemon.service` succeeds
+9. Tell user: open `http://localhost:18810` on-device, or `http://<mesh-ip>:18810` remotely. Login as `user` (localpart only). If homeserver field is wrong, enter `http://<mesh-ip>:6167` manually
+10. User is already in `#general:bloom` — suggest DM with `@pi:bloom`
 
 ### git_identity
 Ask for the user's name and email for git commits. Run `git config --global user.name` and `git config --global user.email`. Confirm the settings.

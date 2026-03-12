@@ -15,15 +15,14 @@ import { run } from "../../lib/exec.js";
 import { getQuadletDir } from "../../lib/filesystem.js";
 import { findLocalServicePackage } from "../../lib/services-catalog.js";
 
-/** Template Cinny config with the device's hostname as homeserver URL. */
+/** Template Cinny config: set homeserver to localhost (same host as Continuwuity). */
 function templateCinnyConfig(raw: string): string {
 	try {
 		const config = JSON.parse(raw);
 		if (Array.isArray(config.homeserverList)) {
-			const hostname = os.hostname();
-			config.homeserverList = [`http://${hostname}:6167`];
+			config.homeserverList = ["http://localhost:6167"];
 		}
-		return JSON.stringify(config, null, "\t") + "\n";
+		return `${JSON.stringify(config, null, "\t")}\n`;
 	} catch {
 		return raw;
 	}

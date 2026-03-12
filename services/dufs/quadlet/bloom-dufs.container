@@ -21,12 +21,12 @@ PodmanArgs=--security-opt label=disable
 NoNewPrivileges=true
 LogDriver=journald
 
-# dufs minimal image has no wget/curl — check process is alive
+# dufs minimal image has no wget/curl — verify process is alive
 HealthCmd=kill -0 1
-HealthInterval=30s
-HealthRetries=3
-HealthStartPeriod=10s
-HealthTimeout=5s
+HealthInterval=60s
+HealthRetries=5
+HealthStartPeriod=30s
+HealthTimeout=10s
 
 [Service]
 Restart=on-failure

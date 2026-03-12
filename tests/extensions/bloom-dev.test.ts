@@ -214,7 +214,7 @@ describe("bloom-dev registration", () => {
 	it("gated tool returns error when dev mode is not enabled", async () => {
 		const devBuild = api._registeredTools.find((t) => t.name === "dev_build");
 		expect(devBuild).toBeDefined();
-		const result = (await (devBuild!.execute as (...args: unknown[]) => Promise<unknown>)(
+		const result = (await (devBuild?.execute as (...args: unknown[]) => Promise<unknown>)(
 			"call-id",
 			{},
 			undefined,

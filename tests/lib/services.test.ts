@@ -210,9 +210,9 @@ describe("findLocalServicePackage", () => {
 		writeFileSync(join(quadletDir, "bloom-llm.container"), "[Container]\nImage=test");
 		const result = findLocalServicePackage("llm", tempDir);
 		expect(result).not.toBeNull();
-		expect(result!.serviceDir).toBe(svcDir);
-		expect(result!.quadletDir).toBe(quadletDir);
-		expect(result!.skillPath).toBe(join(svcDir, "SKILL.md"));
+		expect(result?.serviceDir).toBe(svcDir);
+		expect(result?.quadletDir).toBe(quadletDir);
+		expect(result?.skillPath).toBe(join(svcDir, "SKILL.md"));
 	});
 
 	it("returns null when quadlet exists but no SKILL.md in temp dir", () => {

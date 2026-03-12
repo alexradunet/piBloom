@@ -63,7 +63,17 @@ export async function touchSetupComplete(): Promise<void> {
 
 	// Enable and start the pi-daemon immediately
 	await run("systemctl", ["--user", "enable", "--now", "pi-daemon.service"]);
-	log.info("enabled pi-daemon.service and linger for persistent Matrix listening");
+
+	// Verify daemon is actually running (not crash-looping)
+	const check = await run("systemctl", ["--user", "is-active", "pi-daemon.service"]);
+	if (check.exitCode !== 0) {
+		log.warn("pi-daemon.service failed to start after setup completion", {
+			stdout: check.stdout.trim(),
+			stderr: check.stderr.trim(),
+		});
+	} else {
+		log.info("enabled pi-daemon.service and linger for persistent Matrix listening");
+	}
 }
 
 /** Check if setup is already complete (sentinel file exists). */

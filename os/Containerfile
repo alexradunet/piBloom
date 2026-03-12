@@ -83,6 +83,8 @@ COPY . /usr/local/share/bloom/
 RUN cd /usr/local/share/bloom && \
     npm run build && \
     npm prune --omit=dev
+# Symlink globally-installed Pi SDK into Bloom's node_modules so ESM bare imports resolve
+RUN ln -sf /usr/local/lib/node_modules/@mariozechner /usr/local/share/bloom/node_modules/@mariozechner
 
 # Configure Pi settings defaults in /usr (immutable layer)
 RUN mkdir -p /usr/local/share/bloom/.pi/agent && \

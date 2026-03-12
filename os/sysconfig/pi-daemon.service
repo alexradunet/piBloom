@@ -9,7 +9,6 @@ Type=simple
 ExecStart=/usr/bin/node /usr/local/share/bloom/dist/daemon/index.js
 Environment=HOME=%h
 Environment=BLOOM_DIR=%h/Bloom
-Environment=NODE_PATH=/usr/local/lib/node_modules
 Restart=on-failure
 RestartSec=15
 
