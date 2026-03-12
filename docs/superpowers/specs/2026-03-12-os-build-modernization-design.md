@@ -21,7 +21,7 @@ Bloom's OS image build has grown organically. Packages are inline in the Contain
 ### Adopted
 - `FROM scratch AS ctx` build context pattern
 - BuildKit cache mounts for dnf (`--mount=type=cache,dst=/var/cache/libdnf5`)
-- tmpfs mounts for `/var`, `/tmp` during build
+- tmpfs mounts for `/tmp` during build (not `/var` — dnf needs the RPM database)
 - Fetch/post script split with `--network=none` on post steps
 - `system_files/` directory mirroring real filesystem layout
 - Declarative package lists (`packages-install.txt`, `packages-remove.txt`)
@@ -111,7 +111,11 @@ os/
 │       │   │   ├── system/
 │       │   │   │   ├── bloom-matrix.service
 │       │   │   │   ├── bloom-update-check.service
-│       │   │   │   └── bloom-update-check.timer
+│       │   │   │   ├── bloom-update-check.timer
+│       │   │   │   ├── getty@tty1.service.d/
+│       │   │   │   │   └── autologin.conf
+│       │   │   │   └── serial-getty@ttyS0.service.d/
+│       │   │   │       └── autologin.conf
 │       │   │   ├── system-preset/
 │       │   │   │   └── 01-bloom.preset
 │       │   │   └── user/
@@ -151,11 +155,9 @@ COPY os/packages /packages
 
 FROM quay.io/fedora/fedora-bootc:42
 
-# Phase 1: Remove unwanted packages (offline)
+# Phase 1: Remove unwanted packages
 RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
-    --mount=type=tmpfs,dst=/var \
     --mount=type=tmpfs,dst=/tmp \
-    --network=none \
     /ctx/build/00-base-pre.sh
 
 # Phase 2: Install system packages (network)
@@ -166,7 +168,6 @@ RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
 
 # Phase 3: Copy system files, apply presets, branding (offline)
 RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
-    --mount=type=tmpfs,dst=/var \
     --mount=type=tmpfs,dst=/tmp \
     --network=none \
     /ctx/build/00-base-post.sh
@@ -176,6 +177,7 @@ ARG PI_CODING_AGENT_VERSION
 ARG BIOME_VERSION
 ARG TYPESCRIPT_VERSION
 ARG CLAUDE_CODE_VERSION
+COPY package.json package-lock.json /usr/local/share/bloom/
 RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
     --mount=type=tmpfs,dst=/tmp \
     PI_CODING_AGENT_VERSION=${PI_CODING_AGENT_VERSION} \
@@ -187,7 +189,8 @@ RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
 # Phase 5: Build Bloom TypeScript, configure Pi (offline)
 COPY . /usr/local/share/bloom/
 COPY --from=continuwuity-src /sbin/conduwuit /usr/local/bin/continuwuity
-RUN --mount=type=tmpfs,dst=/tmp \
+RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
+    --mount=type=tmpfs,dst=/tmp \
     --network=none \
     /ctx/build/01-bloom-post.sh
 
@@ -201,8 +204,11 @@ RUN if [ -n "$WIFI_SSID" ]; then \
     chmod 600 /etc/NetworkManager/system-connections/wifi.nmconnection; \
 fi
 
+# Symlink /opt to /var/opt for day-2 package installs
+RUN rm -rf /opt && ln -s /var/opt /opt
+
 # Final cleanup + validation
-RUN rm -rf /var/* && mkdir /var/tmp && bootc container lint
+RUN rm -rf /var/* && mkdir -p /var/tmp /var/opt && bootc container lint
 
 LABEL containers.bootc="1"
 LABEL org.opencontainers.image.title="Bloom OS"
@@ -213,7 +219,7 @@ LABEL org.opencontainers.image.version="0.1.0"
 
 ## Build Scripts
 
-### `00-base-pre.sh` — Package removal (offline)
+### `00-base-pre.sh` — Package removal
 
 ```bash
 #!/bin/bash
@@ -221,7 +227,7 @@ set -xeuo pipefail
 
 # Remove packages that conflict with bootc immutability or are unnecessary
 grep -vE '^\s*(#|$)' /ctx/packages/packages-remove.txt | xargs dnf -y remove || true
-dnf -y autoremove
+dnf -y autoremove || true
 ```
 
 ### `00-base-fetch.sh` — Package installation (network)
@@ -247,10 +253,15 @@ dnf clean all
 set -xeuo pipefail
 
 # Copy all system files to their filesystem locations
+# (includes systemd units, presets, skel, ssh config, sudoers, etc.)
 cp -avf /ctx/files/. /
 
-# Apply systemd presets (replaces individual systemctl enable/mask calls)
-systemctl preset-all --preset-mode=enable-only
+# Apply only Bloom's preset entries (not all system presets)
+systemctl preset \
+    sshd.service \
+    netbird.service \
+    bloom-matrix.service \
+    bloom-update-check.timer
 
 # Mask upstream auto-update timer (we have our own)
 systemctl mask bootc-fetch-apply-updates.timer
@@ -261,9 +272,6 @@ systemctl mask rpcbind.service rpcbind.socket rpc-statd.service
 # OS branding
 sed -i 's|^PRETTY_NAME=.*|PRETTY_NAME="Bloom OS"|' /usr/lib/os-release
 
-# Symlink /opt to /var/opt for day-2 package installs
-rm -rf /opt && ln -s /var/opt /opt
-
 # Remove empty NetBird state files (prevents JSON parse crash on boot)
 rm -f /var/lib/netbird/active_profile.json /var/lib/netbird/default.json
 
@@ -272,23 +280,25 @@ firewall-offline-cmd --zone=trusted --add-interface=wt0
 
 # Set boot target
 systemctl set-default multi-user.target
-
-# Auto-login on VT1 and serial console
-mkdir -p /usr/lib/systemd/system/getty@tty1.service.d \
-         /usr/lib/systemd/system/serial-getty@ttyS0.service.d
 ```
 
-### `01-bloom-fetch.sh` — Node.js tooling (network)
+### `01-bloom-fetch.sh` — Node.js tooling + Bloom deps (network)
 
 ```bash
 #!/bin/bash
 set -xeuo pipefail
 
+# Global CLI tools (pinned versions)
 HOME=/tmp npm install -g --cache /tmp/npm-cache \
     "@anthropic-ai/claude-code@${CLAUDE_CODE_VERSION}" \
     "@mariozechner/pi-coding-agent@${PI_CODING_AGENT_VERSION}" \
     "@biomejs/biome@${BIOME_VERSION}" \
     "typescript@${TYPESCRIPT_VERSION}"
+
+# Bloom package dependencies (cached — only re-runs when package.json changes)
+cd /usr/local/share/bloom
+HOME=/tmp npm install --cache /tmp/npm-cache
+
 rm -rf /tmp/npm-cache /var/roothome/.npm /root/.npm
 ```
 
@@ -300,9 +310,7 @@ set -xeuo pipefail
 
 cd /usr/local/share/bloom
 
-# Install deps and build TypeScript
-HOME=/tmp npm install --cache /tmp/npm-cache
-rm -rf /tmp/npm-cache /var/roothome/.npm /root/.npm
+# Build TypeScript and prune dev deps
 npm run build
 npm prune --omit=dev
 
@@ -422,7 +430,7 @@ enable bloom-matrix.service
 enable bloom-update-check.timer
 ```
 
-All other system files are the same content as current `os/sysconfig/` files, just moved to their filesystem-mirrored locations. The getty autologin drop-in files go to `system_files/usr/lib/systemd/system/getty@tty1.service.d/autologin.conf` and `system_files/usr/lib/systemd/system/serial-getty@ttyS0.service.d/autologin.conf`.
+All other system files are the same content as current `os/sysconfig/` files, just moved to their filesystem-mirrored locations. See the Migration Notes table for the complete mapping.
 
 ## Disk Config
 
@@ -489,11 +497,61 @@ One-time setup (documented in README, not automated):
 3. Add `cosign.key` content as `SIGNING_SECRET` GitHub secret
 4. Add `cosign.key` to `.gitignore`
 
+## Justfile Changes
+
+Replace the single `bib_config` variable with per-type configs:
+
+```just
+bib_config_disk := "os/disk_config/disk.toml"
+bib_config_iso := "os/disk_config/iso.toml"
+```
+
+Update `qcow2` recipe to use `bib_config_disk`, `iso` recipe to use `bib_config_iso`. Remove the generic `_require-bib-config` guard in favor of per-recipe checks. Add:
+
+```just
+# Lint OS build scripts
+lint-os:
+    shellcheck os/build_files/*.sh os/packages/repos.sh
+```
+
 ## Migration Notes
 
-- All content from `os/sysconfig/` moves to `os/system_files/` at the correct filesystem path
-- `os/bootc/config.toml` moves to `os/system_files/usr/lib/bootc/install/config.toml`
-- `os/bib-config.example.toml` moves to `os/disk_config/bib-config.example.toml`
-- `os/scripts/` (empty) is removed, replaced by `os/build_files/`
-- The `build-iso.sh` script at repo root is removed (justfile covers this)
-- No functional changes to boot behavior — same services, same config, same user experience
+### File moves
+| Source | Destination |
+|--------|------------|
+| `os/sysconfig/bloom-bashrc` | `os/system_files/etc/skel/.bashrc` |
+| `os/sysconfig/bloom-bash_profile` | `os/system_files/etc/skel/.bash_profile` |
+| `os/sysconfig/bloom-sudoers` | `os/system_files/etc/sudoers.d/10-bloom` |
+| `os/sysconfig/bloom-sysctl.conf` | `os/system_files/usr/lib/sysctl.d/60-bloom-console.conf` |
+| `os/sysconfig/bloom-tmpfiles.conf` | `os/system_files/usr/lib/tmpfiles.d/bloom.conf` |
+| `os/sysconfig/bloom-matrix.service` | `os/system_files/usr/lib/systemd/system/bloom-matrix.service` |
+| `os/sysconfig/bloom-matrix.toml` | `os/system_files/etc/bloom/matrix.toml` |
+| `os/sysconfig/bloom-update-check.service` | `os/system_files/usr/lib/systemd/system/bloom-update-check.service` |
+| `os/sysconfig/bloom-update-check.timer` | `os/system_files/usr/lib/systemd/system/bloom-update-check.timer` |
+| `os/sysconfig/bloom-update-check.sh` | `os/system_files/usr/local/bin/bloom-update-check.sh` |
+| `os/sysconfig/bloom-greeting.sh` | `os/system_files/usr/local/bin/bloom-greeting.sh` |
+| `os/sysconfig/pi-daemon.service` | `os/system_files/usr/lib/systemd/user/pi-daemon.service` |
+| `os/sysconfig/getty-autologin.conf` | `os/system_files/usr/lib/systemd/system/getty@tty1.service.d/autologin.conf` (and serial-getty) |
+| `os/bootc/config.toml` | `os/system_files/usr/lib/bootc/install/config.toml` |
+| `os/bib-config.example.toml` | `os/disk_config/bib-config.example.toml` |
+
+### New files to create
+| File | Content |
+|------|---------|
+| `os/system_files/etc/hostname` | `bloom` |
+| `os/system_files/etc/issue` | `Bloom OS\n\n` |
+| `os/system_files/etc/ssh/sshd_config.d/50-bloom.conf` | `PasswordAuthentication yes\nPubkeyAuthentication no` |
+| `os/system_files/usr/lib/systemd/system-preset/01-bloom.preset` | Preset entries for Bloom services |
+
+### Removals
+- `os/sysconfig/` directory (all files moved)
+- `os/scripts/` directory (empty, replaced by `os/build_files/`)
+- `os/bootc/` directory (config moved to `system_files/`)
+- `build-iso.sh` at repo root (justfile covers this)
+
+### Verification
+After migration, verify the built image produces identical filesystem layout:
+1. Build both old and new Containerfile
+2. `podman run --rm old-image find /etc /usr/lib/systemd /usr/local/bin -type f | sort > old.txt`
+3. `podman run --rm new-image find /etc /usr/lib/systemd /usr/local/bin -type f | sort > new.txt`
+4. `diff old.txt new.txt` — should show only the new preset file and os-release changes
