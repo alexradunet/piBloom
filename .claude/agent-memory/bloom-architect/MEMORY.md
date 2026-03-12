@@ -9,56 +9,55 @@
 - 4 extensions MISSING types.ts (post-cleanup 2026-03-12): bloom-objects, bloom-repo, bloom-services, bloom-setup
 - Tests live in `tests/` at project root (NOT colocated in extension dirs)
 
-### lib/ actual files (2026-03-11, verified)
-- `shared.ts` -- generic utilities (createLogger, nowIso, truncate, errorResult, guardBloom, requireConfirmation)
-- `exec.ts` -- command execution (run)
-- `repo.ts` -- git remote helpers (getRemoteUrl, inferRepoUrl)
-- `audit.ts` -- audit utilities (dayStamp, sanitize, summarizeInput, SENSITIVE_KEY)
-- `filesystem.ts` -- path helpers (safePath, getBloomDir)
-- `frontmatter.ts` -- YAML frontmatter (parseFrontmatter, stringifyFrontmatter, yaml)
+### lib/ actual files (2026-03-12, verified)
+- `shared.ts` -- createLogger, nowIso, truncate, errorResult, guardBloom, requireConfirmation
+- `exec.ts` -- run()
+- `repo.ts` -- getRemoteUrl, inferRepoUrl
+- `audit.ts` -- dayStamp, sanitize, summarizeInput, SENSITIVE_KEY
+- `filesystem.ts` -- safePath, getBloomDir, getQuadletDir, getUpdateStatusPath (MISSING: getBloomRuntimeDir)
+- `frontmatter.ts` -- parseFrontmatter, stringifyFrontmatter
 - `git.ts` -- parseGithubSlugFromUrl, slugifyBranchPart
-- `services-catalog.ts` -- loadServiceCatalog, loadBridgeCatalog, servicePreflightErrors
-- `services-install.ts` -- findLocalServicePackage (pure lookup)
+- `services-catalog.ts` -- loadServiceCatalog, loadBridgeCatalog, servicePreflightErrors, ServiceCatalogEntry
+- (services-install.ts merged into services-catalog.ts in iteration 1)
 - `services-manifest.ts` -- Manifest types, loadManifest, saveManifest
-- `services-validation.ts` -- validateServiceName, validatePinnedImage, commandExists
-- `matrix.ts` -- extractResponseText, generatePassword, matrixCredentialsPath
-- `setup.ts` -- setup wizard state machine: STEP_ORDER, advanceStep, etc.
-- `netbird.ts` -- NetBird API client (DNS zones, records, mesh IP, token loading)
-- `service-routing.ts` -- orchestration: ensureServiceRouting (calls netbird.ts)
-- lib/services.ts barrel and lib/lemonade.ts were removed during migration
+- `services-validation.ts` -- validateServiceName, validatePinnedImage, commandExists, hasSubidRange
+- `matrix.ts` -- extractResponseText, generatePassword, matrixCredentialsPath, registerMatrixAccount
+- `setup.ts` -- STEP_ORDER, advanceStep, getNextStep, etc.
+- `netbird.ts` -- VIOLATES PURITY: fetch calls, filesystem I/O, module-level logger
+- `service-routing.ts` -- VIOLATES PURITY: orchestration with I/O
 
 ### Service template (2026-03-08)
-- `services/_template/` EXISTS with: Containerfile, package.json, src/, tests/, quadlet/, tsconfig, vitest.config
+- `services/_template/` EXISTS
 - No shared service library -- independence is the point
 
-### OS-level infrastructure (2026-03-11, post-migration)
-- Matrix (Continuwuity) native systemd (bloom-matrix.service)
-- NetBird system RPM (netbird.service)
-- Nginx reverse proxy (nginx.service)
-- NOT in catalog.yaml -- they're OS infrastructure
-- Element retired, replaced by Cinny Quadlet container
-- Unix socket channel bridge retired, replaced by matrix-bot-sdk in-process
+### OS-level infrastructure (2026-03-11)
+- Matrix (Continuwuity), NetBird, Nginx -- native systemd, not in catalog.yaml
 
-## Architecture State (2026-03-12, post-cleanup audit)
-- 11 extensions (9 directory-based, bloom-services has no base actions.ts, 4 missing types.ts)
-- Container services: dufs, cinny, code-server
-- Bridges: whatsapp, telegram, signal
-- OS infra: bloom-matrix, netbird, nginx
+## Architecture State (2026-03-12, full review)
+- 9 extensions, 4 missing types.ts
+- Container services: dufs, cinny, code-server; Bridges: whatsapp, telegram, signal
+- Daemon: pi-daemon (matrix-listener, session-pool, room-registry)
 
-## Stale Documentation After Migration (2026-03-11)
-- README.md: "Element bot", "Unix socket IPC", "channel-protocol.md" link
-- services/README.md: lists element service
-- .pi/AGENTS.md: references element, 80% threshold
-- bloom-live-tester agent: lemonade, channels.sock refs
-- Coverage: README says 80%, actual thresholds are lib/55% extensions/15%
+## Known Issues (2026-03-12, iteration 2 review)
+### Fixed in iteration 1
+- installServicePackage temp dir indirection (FIXED)
+- Bridge images :latest tags (FIXED -- pinned in catalog.yaml)
+- services-install.ts merged into services-catalog.ts (FIXED)
 
-## Known Issues (2026-03-12)
-- ServiceCatalogEntry misplaced in lib/services-manifest.ts, should be in services-catalog.ts
-- loadBridgeCatalog/loadServiceCatalog are near-identical, should be consolidated
-- Module-level mutable `let updateChecked` in bloom-os/actions.ts
-- bloom-os/actions.ts eagerly evaluates statusFile at import time
-- QUADLET_DIR computed in 4 separate places
-- netbird.ts and service-routing.ts missing from ARCHITECTURE.md lib/ listing
+### Remaining
+- BIGGEST: bloom-dev and bloom-repo duplicate PR submission logic
+- installServicePackage still has 2 unused params (_version, _entry)
+- netbird.ts and service-routing.ts violate lib/ purity (I/O, fetch, fs writes)
+- ~/.bloom runtime dir computed independently in 5 files
+- handleSkillCreate hand-builds YAML (injection risk) -- stringifyFrontmatter already imported
+- QUADLET_DIR eagerly computed at module level in actions-bridges.ts
+- searchObjects scans entire ~ instead of ~/Bloom/Objects/
+- handleInstall complexity=58: dependency loop duplicates primary install sequence
+- handleManifestApply complexity=54: two separate loops over serviceEntries
+- handleManifestSync unsafe type cast: `{ drifts } as unknown as Manifest`
+- service-io.ts doesn't follow actions-{concern}.ts naming convention
+- commandMissingError exported but only used internally by commandExists
+- getPackageVersion in wrong file (actions.ts, only called from actions-blueprints.ts)
 
 ## Pi SDK Notes
 - `StringEnum`, `Type`, `truncateHead` are VALUE exports -- peerDependency runtime imports correct

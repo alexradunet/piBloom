@@ -69,18 +69,16 @@ export function listObjects(
 	};
 }
 
-/** Search markdown files for a pattern. */
+/** Search markdown files in ~/Bloom/ for a pattern. */
 export function searchObjects(params: { pattern: string }, signal?: AbortSignal) {
-	const homeDir = os.homedir();
-	const excludes = ["node_modules", ".git", ".cache", ".local", ".pi"];
+	const bloomDir = getBloomDir();
 	const matches: string[] = [];
 
-	const files = fs.globSync("**/*.md", { cwd: homeDir });
+	const files = fs.globSync("**/*.md", { cwd: bloomDir });
 	for (const file of files) {
 		if (signal?.aborted) break;
-		if (excludes.some((ex) => file.includes(ex))) continue;
 		try {
-			const filepath = path.join(homeDir, file);
+			const filepath = path.join(bloomDir, file);
 			const raw = fs.readFileSync(filepath, "utf-8");
 			if (!raw.includes(params.pattern)) continue;
 			const { attributes } = parseFrontmatter<Record<string, unknown>>(raw);

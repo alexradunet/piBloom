@@ -9,7 +9,7 @@ import { validatePinnedImage, validateServiceName } from "../../lib/services-val
 import { errorResult } from "../../lib/shared.js";
 
 /** Walk up from ctx.cwd to find the repo dir containing services/ and package.json. */
-export function resolveRepoDir(ctx: ExtensionContext): string {
+function resolveRepoDir(ctx: ExtensionContext): string {
 	let current = ctx.cwd;
 	for (let i = 0; i < 6; i++) {
 		if (existsSync(join(current, "services")) && existsSync(join(current, "package.json"))) {

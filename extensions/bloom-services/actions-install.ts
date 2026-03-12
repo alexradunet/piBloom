@@ -29,6 +29,57 @@ export function extractSkillMetadata(skillPath: string): { image?: string; versi
 	}
 }
 
+async function installDependency(
+	dep: string,
+	catalog: Record<string, import("../../lib/services-catalog.js").ServiceCatalogEntry>,
+	bloomDir: string,
+	repoDir: string,
+	manifestPath: string,
+	signal: AbortSignal | undefined,
+) {
+	const depCatalog = catalog[dep];
+	const depVersion = depCatalog?.version ?? "latest";
+
+	const depPreflight = await servicePreflightErrors(dep, depCatalog, signal);
+	if (depPreflight.length > 0) {
+		log.warn("dependency preflight failed", { dep, errors: depPreflight });
+		return;
+	}
+
+	const depInstall = await installServicePackage(dep, depVersion, bloomDir, repoDir, depCatalog, signal);
+	if (!depInstall.ok) {
+		log.warn("dependency install failed", { dep, note: depInstall.note });
+		return;
+	}
+
+	const depImage = depCatalog?.image ?? "";
+	const depBuild = await buildLocalImage(dep, depImage, repoDir, signal);
+	if (!depBuild.ok) {
+		log.warn("dependency image build failed", { dep, note: depBuild.note });
+		return;
+	}
+
+	if (depCatalog?.models && depCatalog.models.length > 0) {
+		const depModels = await downloadServiceModels(depCatalog.models, signal);
+		if (!depModels.ok) {
+			log.warn("dependency model download failed", { dep, note: depModels.note });
+		}
+	}
+
+	await run("systemctl", ["--user", "daemon-reload"], signal);
+	await run("systemctl", ["--user", "start", `bloom-${dep}.service`], signal);
+
+	if (depCatalog?.port) {
+		const depRouting = await ensureServiceRouting(dep, signal);
+		if (!depRouting.dns.ok && !depRouting.dns.skipped)
+			log.warn("dep DNS record failed", { dep, error: depRouting.dns.error });
+	}
+
+	const depManifest = loadManifest(manifestPath);
+	depManifest.services[dep] = { image: depImage || "unknown", version: depVersion, enabled: true };
+	saveManifest(depManifest, manifestPath);
+}
+
 export async function handleInstall(
 	params: {
 		name: string;
@@ -113,58 +164,7 @@ export async function handleInstall(
 	for (const dep of deps) {
 		const depUnit = join(getQuadletDir(), `bloom-${dep}.container`);
 		if (existsSync(depUnit)) continue; // already installed
-
-		const depCatalog = catalog[dep];
-		const depVersion = depCatalog?.version ?? "latest";
-		const depPreflight = await servicePreflightErrors(dep, depCatalog, signal);
-		if (depPreflight.length > 0) {
-			log.warn("dependency preflight failed", { dep, errors: depPreflight });
-			continue;
-		}
-
-		const depInstall = await installServicePackage(dep, depVersion, bloomDir, repoDir, depCatalog, signal);
-		if (!depInstall.ok) {
-			log.warn("dependency install failed", { dep, note: depInstall.note });
-			continue;
-		}
-
-		const depImage = depCatalog?.image ?? "";
-		const depBuild = await buildLocalImage(dep, depImage, repoDir, signal);
-		if (!depBuild.ok) {
-			log.warn("dependency image build failed", { dep, note: depBuild.note });
-			continue;
-		}
-
-		if (depCatalog?.models && depCatalog.models.length > 0) {
-			const depModels = await downloadServiceModels(depCatalog.models, signal);
-			if (!depModels.ok) {
-				log.warn("dependency model download failed", { dep, note: depModels.note });
-			}
-		}
-
-		const reload = await run("systemctl", ["--user", "daemon-reload"], signal);
-		if (reload.exitCode !== 0) {
-			log.warn("dependency daemon-reload failed", { dep, stderr: reload.stderr });
-		}
-		const start = await run("systemctl", ["--user", "start", `bloom-${dep}.service`], signal);
-		if (start.exitCode !== 0) {
-			log.warn("dependency service start failed", { dep, stderr: start.stderr });
-		}
-
-		// Set up DNS routing for dependency
-		if (depCatalog?.port) {
-			const depRouting = await ensureServiceRouting(dep, signal);
-			if (!depRouting.dns.ok && !depRouting.dns.skipped)
-				log.warn("dep DNS record failed", { dep, error: depRouting.dns.error });
-		}
-
-		const depManifest = loadManifest(manifestPath);
-		depManifest.services[dep] = {
-			image: depImage || "unknown",
-			version: depVersion,
-			enabled: true,
-		};
-		saveManifest(depManifest, manifestPath);
+		await installDependency(dep, catalog, bloomDir, repoDir, manifestPath, signal);
 	}
 
 	return {

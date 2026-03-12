@@ -129,7 +129,10 @@
       "Bash(npx @biomejs/biome check /home/alex/pi-bloom/daemon/room-registry.ts /home/alex/pi-bloom/tests/daemon/room-registry.test.ts 2>&1)",
       "Bash(npx @biomejs/biome check /home/alex/pi-bloom/daemon/room-registry.ts /home/alex/pi-bloom/tests/daemon/room-registry.test.ts 2>&1; echo \"EXIT: $?\")",
       "Bash(npx @biomejs/biome check --write daemon/session-pool.ts tests/daemon/session-pool.test.ts 2>&1)",
-      "Bash(npx @biomejs/biome check daemon/session-pool.ts tests/daemon/session-pool.test.ts 2>&1)"
+      "Bash(npx @biomejs/biome check daemon/session-pool.ts tests/daemon/session-pool.test.ts 2>&1)",
+      "Bash(ssh -p 2222 -o StrictHostKeyChecking=no -o ConnectTimeout=5 pi@localhost 'cat ~/Bloom/Objects/*.md' 2>/dev/null)",
+      "Bash(ssh -p 2222 -o StrictHostKeyChecking=no -o ConnectTimeout=10 pi@localhost 'cat ~/Bloom/Objects/*.md' 2>&1)",
+      "Bash(sshpass -p 'CHANGE_ME' ssh -p 2222 -o StrictHostKeyChecking=no pi@localhost 'cat ~/Bloom/Objects/*.md' 2>&1 || \\\\\nsshpass -p 'bloom' ssh -p 2222 -o StrictHostKeyChecking=no pi@localhost 'cat ~/Bloom/Objects/*.md' 2>&1 || \\\\\necho \"FAILED: need correct password\")"
     ]
   }
 }
