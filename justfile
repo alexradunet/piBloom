@@ -52,7 +52,7 @@ vm:
 		-drive if=pflash,format=raw,readonly=on,file={{ ovmf }} \
 		-drive if=pflash,format=raw,snapshot=on,file={{ ovmf_vars }} \
 		-drive file={{ output }}/qcow2/disk.qcow2,format=qcow2,if=virtio \
-		-netdev user,id=net0,hostfwd=tcp::2222-:22,hostfwd=tcp::5000-:5000,hostfwd=tcp::8080-:8080,hostfwd=tcp::8081-:8081 \
+		-netdev user,id=net0,hostfwd=tcp::2222-:22,hostfwd=tcp::5000-:5000,hostfwd=tcp::8080-:8080,hostfwd=tcp::8081-:8081,hostfwd=tcp::8888-:80 \
 		-device virtio-net-pci,netdev=net0 \
 		-nographic \
 		-serial mon:stdio
@@ -68,7 +68,7 @@ vm-gui:
 		-drive if=pflash,format=raw,readonly=on,file={{ ovmf }} \
 		-drive if=pflash,format=raw,snapshot=on,file={{ ovmf_vars }} \
 		-drive file={{ output }}/qcow2/disk.qcow2,format=qcow2,if=virtio \
-		-netdev user,id=net0,hostfwd=tcp::2222-:22,hostfwd=tcp::5000-:5000,hostfwd=tcp::8080-:8080,hostfwd=tcp::8081-:8081 \
+		-netdev user,id=net0,hostfwd=tcp::2222-:22,hostfwd=tcp::5000-:5000,hostfwd=tcp::8080-:8080,hostfwd=tcp::8081-:8081,hostfwd=tcp::8888-:80 \
 		-device virtio-net-pci,netdev=net0 \
 		-device virtio-vga-gl \
 		-display gtk,gl=on
