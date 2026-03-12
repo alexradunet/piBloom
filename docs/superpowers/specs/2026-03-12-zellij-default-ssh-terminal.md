@@ -54,7 +54,7 @@ fi
 **SCP/SFTP safety**: SCP and SFTP sessions do not allocate a TTY, so `[ -t 0 ]` returns false and the Zellij block is skipped. The `$SSH_CONNECTION` var is set for SCP/SFTP, but the `[ -t 0 ]` guard provides the necessary protection.
 
 **Escape hatches**:
-- `BLOOM_NO_ZELLIJ=1 ssh pi@host` — skips Zellij, drops to plain bash + Pi
+- `export BLOOM_NO_ZELLIJ=1 && ssh -o SendEnv=BLOOM_NO_ZELLIJ pi@host` — skips Zellij, drops to plain bash + Pi (requires `AcceptEnv BLOOM_NO_ZELLIJ` in sshd_config, which is configured)
 - `ssh pi@host -- <command>` — runs command directly (non-login, non-interactive), no Zellij
 
 ### Zellij Layout

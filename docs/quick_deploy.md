@@ -116,7 +116,8 @@ ssh pi@<netbird-ip>
 Zellij launches automatically — no manual setup needed. To skip Zellij:
 
 ```bash
-BLOOM_NO_ZELLIJ=1 ssh pi@<netbird-ip>
+export BLOOM_NO_ZELLIJ=1
+ssh -o SendEnv=BLOOM_NO_ZELLIJ pi@<netbird-ip>
 ```
 
 ## Related
