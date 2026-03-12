@@ -13,6 +13,9 @@ Network=host
 # Dynamic Caddyfile — regenerated when services are added/removed
 Volume=%h/.config/bloom/Caddyfile:/etc/caddy/Caddyfile:ro
 
+# Cinny config — templated at install time with correct homeserver URL
+Volume=%h/.config/bloom/cinny-config.json:/srv/cinny/config.json:ro
+
 PodmanArgs=--memory=128m
 PodmanArgs=--security-opt label=disable
 HealthCmd=wget -qO- http://localhost:18810/ || exit 1
