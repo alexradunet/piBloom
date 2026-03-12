@@ -1,6 +1,11 @@
 # Source .bashrc for env vars (BLOOM_DIR, PATH, etc.)
 [ -f ~/.bashrc ] && . ~/.bashrc
 
+# First-boot wizard (runs once, before Pi — must run BEFORE Zellij since exec replaces shell)
+if [ -t 0 ] && [ ! -f "$HOME/.bloom/.setup-complete" ]; then
+  /usr/local/bin/bloom-wizard.sh
+fi
+
 # Auto-launch Zellij on interactive SSH login (skip if escape hatch or already inside Zellij)
 # Guards: interactive TTY, SSH session, not already in Zellij, no escape hatch env var
 if [ -t 0 ] && [ -n "$SSH_CONNECTION" ] && [ -z "$ZELLIJ" ] && [ -z "$BLOOM_NO_ZELLIJ" ]; then
