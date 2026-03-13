@@ -9,9 +9,11 @@ const mockGetUserId = vi.fn().mockResolvedValue("@pi:bloom");
 const mockSendText = vi.fn().mockResolvedValue("$event1");
 const mockSetTyping = vi.fn().mockResolvedValue(undefined);
 const mockOn = vi.fn();
+const mockDmsUpdate = vi.fn().mockResolvedValue(undefined);
 
 vi.mock("matrix-bot-sdk", () => ({
 	MatrixClient: class {
+		dms = { update: mockDmsUpdate };
 		start = mockStart;
 		stop = mockStop;
 		getUserId = mockGetUserId;
@@ -54,6 +56,7 @@ describe("MatrixListener", () => {
 
 		await listener.start();
 		expect(mockStart).toHaveBeenCalled();
+		expect(mockDmsUpdate).not.toHaveBeenCalled();
 	});
 
 	it("stops cleanly", async () => {

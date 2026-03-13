@@ -42,6 +42,7 @@ export class MatrixListener {
 		const storage = new SimpleFsStorageProvider(this.options.storagePath);
 		this.client = new MatrixClient(creds.homeserver, creds.botAccessToken, storage);
 		this.botUserId = creds.botUserId;
+		this.disableDmWarmup(this.client);
 
 		AutojoinRoomsMixin.setupOnClient(this.client);
 		this.client.on("room.message", (roomId: string, event: Record<string, unknown>) => {
@@ -86,6 +87,16 @@ export class MatrixListener {
 		} catch {
 			return null;
 		}
+	}
+
+	private disableDmWarmup(client: MatrixClient): void {
+		const dms = (client as MatrixClient & { dms?: { update?: () => Promise<void> } }).dms;
+		if (!dms?.update) return;
+
+		// Bloom never uses the SDK's DM cache in the daemon path, and fresh accounts on
+		// Conduwuit return M_NOT_FOUND for m.direct during startup. Skipping the warmup
+		// avoids a noisy-but-benign startup error from matrix-bot-sdk.
+		dms.update = async () => undefined;
 	}
 
 	private async handleEvent(roomId: string, event: Record<string, unknown>): Promise<void> {
