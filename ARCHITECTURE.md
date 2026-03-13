@@ -88,10 +88,12 @@ The daemon is a first-class part of the current architecture.
 ### Runtime Model
 
 1. The daemon starts in single-agent fallback mode when no agent overlays exist.
-2. The daemon starts in multi-agent mode when `~/Bloom/Agents/*/AGENTS.md` exists and parses successfully.
-3. Each active room or `(room, agent)` pair gets its own `pi --mode rpc` subprocess and session directory.
-4. Subprocess stdout is parsed as JSON lines and fanned out to Matrix and any attached local clients.
-5. Idle subprocesses are disposed after `BLOOM_DAEMON_IDLE_TIMEOUT_MS` unless more traffic arrives.
+2. The daemon starts in multi-agent mode when at least one `~/Bloom/Agents/*/AGENTS.md` parses successfully.
+3. Malformed agent overlays are skipped with warnings instead of aborting daemon startup.
+4. Duplicate-event, cooldown, and per-root reply state is bounded and pruned over time for long-lived daemon sessions.
+5. Subprocess stdout is parsed as JSON lines and fanned out to Matrix and any attached local clients.
+6. Idle subprocesses are disposed after `BLOOM_DAEMON_IDLE_TIMEOUT_MS` unless more traffic arrives.
+7. During supervisor shutdown, new sequential multi-agent handoffs are suppressed so room shutdown cannot enqueue fresh work.
 
 This is custom Bloom orchestration code and should be treated as such when reviewing changes.
 
@@ -129,7 +131,7 @@ Rules:
 2. Use `podman`, never `docker`.
 3. Use `bloom-{name}` for Bloom-managed unit names.
 4. Prefer pinned image tags or digests for published images.
-5. Document any mutable local-image exception explicitly.
+5. Document any mutable local-image exception explicitly and make rebuild behavior explicit in docs.
 
 ## Documentation Policy
 

@@ -68,6 +68,11 @@ Hooks:
 - `tool_call` blocks matching `bash` commands using the compiled guardrail policy
 - `session_before_compact` saves context and adds compaction guidance
 
+Notes:
+
+- guardrails are a safety net for obvious dangerous shell patterns, not a security boundary
+- invalid regex entries in guardrail config are skipped with an error log
+
 ### `bloom-audit`
 
 Purpose:
@@ -141,6 +146,12 @@ Tools:
 Hooks:
 
 - `session_start` reports service and manifest status to the UI
+
+Notes:
+
+- `service_install` rebuilds `localhost/*` images during install instead of trusting an already-present mutable tag
+- `manifest_apply` attempts persistent `enable --now` / `disable --now` first, then falls back to start/stop when the unit cannot be enabled
+- corrupt `~/Bloom/manifest.yaml` files are moved aside to `manifest.yaml.corrupt-*` before Bloom recreates an empty manifest
 
 ### `bloom-objects`
 
@@ -230,11 +241,13 @@ Hooks:
 Current behavior:
 
 - starts in single-agent mode if no agent overlays exist
-- starts in multi-agent mode if `~/Bloom/Agents/*/AGENTS.md` exists
+- starts in multi-agent mode if at least one `~/Bloom/Agents/*/AGENTS.md` is valid
+- skips malformed agent overlays with warnings instead of aborting startup
 - uses `pi --mode rpc`
 - keeps one room process per room in single-agent mode
 - keeps one room process per `(room, agent)` pair in multi-agent mode
 - exposes local room sockets for terminal attachment
+- prunes duplicate-event and reply-budget state over time so long-lived sessions stay bounded
 
 Key daemon files:
 

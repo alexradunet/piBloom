@@ -23,11 +23,11 @@ rules:
         label: "git force-push"
       - pattern: '\bgit\s+push\b.*\bmain\b'
         label: "git push to main"
-      - pattern: '\beval\b'
+      - pattern: '(^|[^a-zA-Z0-9_])eval([^a-zA-Z0-9_]|$)'
         label: "eval"
       - pattern: '`[^`]+`'
         label: "backtick command substitution"
-      - pattern: '\$\([^)]+\)'
+      - pattern: '\$\((?:[^)(]+|\((?:[^)(]+|\([^)(]*\))*\))*\)'
         label: "$() command substitution"
       - pattern: '\|\s*(bash|sh|zsh|dash)\b'
         label: "pipe to shell"

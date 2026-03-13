@@ -10,7 +10,7 @@ import {
 	writeFileSync,
 } from "node:fs";
 import os from "node:os";
-import { join } from "node:path";
+import { join, posix as posixPath } from "node:path";
 import { run } from "../../lib/exec.js";
 import { getQuadletDir } from "../../lib/filesystem.js";
 import { findLocalServicePackage } from "../../lib/services-catalog.js";
@@ -91,12 +91,6 @@ export async function buildLocalImage(
 		return { ok: true, skipped: true };
 	}
 
-	// Check if image already exists
-	const exists = await run("podman", ["image", "exists", image], signal);
-	if (exists.exitCode === 0) {
-		return { ok: true, skipped: true, note: "image already exists" };
-	}
-
 	// Find service source directory with a Containerfile
 	const candidates = [join(repoDir, "services", name), `/usr/local/share/bloom/services/${name}`];
 	let serviceDir: string | null = null;
@@ -131,7 +125,7 @@ export async function buildLocalImage(
 			}
 		}
 
-		// podman build — use full image reference as tag so it matches `podman image exists` checks
+		// Always rebuild localhost/* images so iterative testing cannot silently reuse stale tags.
 		const podmanBuild = await run("podman", ["build", "-t", image, "-f", "Containerfile", "."], signal, buildDir);
 		if (podmanBuild.exitCode !== 0) {
 			return { ok: false, skipped: false, note: `podman build failed: ${podmanBuild.stderr}` };
@@ -151,6 +145,11 @@ export async function downloadServiceModels(
 	let downloaded = 0;
 
 	for (const model of models) {
+		const normalizedPath = normalizeModelPath(model.path);
+		if (!normalizedPath) {
+			return { ok: false, downloaded, note: `Invalid model path: ${model.path}` };
+		}
+
 		// Ensure volume exists
 		const volCheck = await run("podman", ["volume", "inspect", model.volume], signal);
 		if (volCheck.exitCode !== 0) {
@@ -158,7 +157,7 @@ export async function downloadServiceModels(
 		}
 
 		// Check if model file already exists in volume
-		const filename = model.path.split("/").pop() ?? "model";
+		const filename = posixPath.basename(normalizedPath);
 		const fileCheck = await run(
 			"podman",
 			[
@@ -169,11 +168,32 @@ export async function downloadServiceModels(
 				"docker.io/library/busybox:1.37",
 				"test",
 				"-f",
-				`/models/${filename}`,
+				`/models/${normalizedPath}`,
 			],
 			signal,
 		);
 		if (fileCheck.exitCode === 0) continue;
+
+		const modelDir = posixPath.dirname(normalizedPath);
+		if (modelDir !== ".") {
+			const mkdirResult = await run(
+				"podman",
+				[
+					"run",
+					"--rm",
+					"-v",
+					`${model.volume}:/models`,
+					"docker.io/library/busybox:1.37",
+					"mkdir",
+					"-p",
+					`/models/${modelDir}`,
+				],
+				signal,
+			);
+			if (mkdirResult.exitCode !== 0) {
+				return { ok: false, downloaded, note: `Failed to create model directory ${modelDir}: ${mkdirResult.stderr}` };
+			}
+		}
 
 		// Download model into volume
 		const dlResult = await run(
@@ -186,7 +206,7 @@ export async function downloadServiceModels(
 				"docker.io/curlimages/curl:8.12.1",
 				"-L",
 				"-o",
-				`/models/${filename}`,
+				`/models/${normalizedPath}`,
 				model.url,
 			],
 			signal,
@@ -198,6 +218,13 @@ export async function downloadServiceModels(
 	}
 
 	return { ok: true, downloaded };
+}
+
+function normalizeModelPath(modelPath: string): string | null {
+	if (!modelPath.trim()) return null;
+	const normalized = posixPath.normalize(modelPath);
+	if (normalized.startsWith("/") || normalized === ".." || normalized.startsWith("../")) return null;
+	return normalized;
 }
 
 /** Detect currently running bloom-* containers via podman. Returns a map of service name to image/state. */

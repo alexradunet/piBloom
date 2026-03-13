@@ -60,6 +60,7 @@ export class AgentSupervisor {
 	private readonly typingIntervals = new Map<string, ReturnType<typeof setInterval>>();
 	private readonly sequentialChains = new Map<string, SequentialChain>();
 	private readonly waitingChainsByRoomAgent = new Map<string, string[]>();
+	private shuttingDown = false;
 
 	constructor(options: AgentSupervisorOptions) {
 		this.agents = options.agents;
@@ -71,6 +72,7 @@ export class AgentSupervisor {
 	}
 
 	async handleEnvelope(envelope: RoomEnvelope): Promise<void> {
+		if (this.shuttingDown) return;
 		const decision = routeRoomEnvelope(envelope, this.agents, this.roomState, {
 			totalReplyBudget: TOTAL_REPLY_BUDGET,
 		});
@@ -105,6 +107,7 @@ export class AgentSupervisor {
 	}
 
 	async shutdown(): Promise<void> {
+		this.shuttingDown = true;
 		for (const interval of this.typingIntervals.values()) {
 			clearInterval(interval);
 		}
@@ -119,6 +122,7 @@ export class AgentSupervisor {
 	}
 
 	private async dispatchMessageToAgent(roomId: string, agentId: string, message: string): Promise<void> {
+		if (this.shuttingDown) return;
 		this.startTyping(roomId, agentId);
 		try {
 			const agent = this.requireAgent(agentId);
@@ -166,7 +170,9 @@ export class AgentSupervisor {
 	}
 
 	private async handleAgentResponse(roomId: string, agentId: string, text: string): Promise<void> {
+		if (this.shuttingDown) return;
 		await this.matrixPool.sendText(agentId, roomId, text);
+		if (this.shuttingDown) return;
 
 		const chainKey = this.dequeueWaitingChain(roomId, agentId);
 		if (!chainKey) return;
@@ -182,6 +188,7 @@ export class AgentSupervisor {
 		}
 
 		await this.dispatchMessageToAgent(roomId, nextAgentId, this.buildSequentialHandoffMessage(chain, nextAgentId));
+		if (this.shuttingDown) return;
 		this.enqueueWaitingChain(roomId, nextAgentId, chainKey);
 	}
 

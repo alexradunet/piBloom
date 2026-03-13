@@ -9,7 +9,7 @@ import { createServer, type ListenOptions, type Server, type Socket } from "node
 import { join } from "node:path";
 import { createInterface } from "node:readline";
 import { createLogger } from "../lib/shared.js";
-import { extractResponseText, type RpcCommand, type RpcEvent } from "./rpc-protocol.js";
+import { extractResponseText, isRpcEvent, type RpcCommand, type RpcEvent } from "./rpc-protocol.js";
 
 const log = createLogger("room-process");
 
@@ -153,7 +153,12 @@ export class RoomProcess {
 	private handleLine(line: string): void {
 		let event: RpcEvent;
 		try {
-			event = JSON.parse(line) as RpcEvent;
+			const parsed = JSON.parse(line);
+			if (!isRpcEvent(parsed)) {
+				log.warn("stdout line did not match RPC event shape", { room: this.opts.sanitizedAlias, line });
+				return;
+			}
+			event = parsed;
 		} catch {
 			log.warn("unparseable stdout line", { room: this.opts.sanitizedAlias, line });
 			return;

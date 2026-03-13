@@ -4,10 +4,11 @@
  * @module actions-pr
  */
 import { cpSync, existsSync, mkdirSync } from "node:fs";
-import { join } from "node:path";
+import path, { join } from "node:path";
 import type { ExtensionContext } from "@mariozechner/pi-coding-agent";
 import { run } from "../../lib/exec.js";
 import { getBloomDir } from "../../lib/filesystem.js";
+import { safePathWithin } from "../../lib/fs-utils.js";
 import { slugifyBranchPart } from "../../lib/git.js";
 import { errorResult, requireConfirmation, truncate } from "../../lib/shared.js";
 import type { DevTestResult } from "./types.js";
@@ -174,9 +175,11 @@ export async function handleDevPushExtension(
 	ctx?: ExtensionContext,
 ) {
 	const bloomDir = getBloomDir();
-	const candidates = [params.source_path, join(bloomDir, "extensions", params.extension_name)].filter(
-		Boolean,
-	) as string[];
+	const extensionsRoot = join(bloomDir, "extensions");
+	const candidates = [
+		resolveExtensionSourcePath(extensionsRoot, params.extension_name, params.source_path),
+		join(extensionsRoot, params.extension_name),
+	].filter(Boolean) as string[];
 	const extSrc = candidates.find((p) => existsSync(p));
 	if (!extSrc) {
 		return errorResult(`Extension ${params.extension_name} not found`);
@@ -188,6 +191,17 @@ export async function handleDevPushExtension(
 
 	const title = params.title || `feat(extensions): add ${params.extension_name}`;
 	return handleDevSubmitPr({ title }, repoDir, signal, ctx);
+}
+
+function resolveExtensionSourcePath(extensionsRoot: string, extensionName: string, sourcePath?: string): string | null {
+	if (!sourcePath?.trim()) return null;
+	const resolvedInput = path.isAbsolute(sourcePath) ? sourcePath : join(extensionsRoot, sourcePath);
+	const relative = path.relative(extensionsRoot, resolvedInput);
+	try {
+		return safePathWithin(extensionsRoot, relative || extensionName);
+	} catch {
+		return null;
+	}
 }
 
 /** Detect immutable-OS npm global install failures and related mkdir errors under /usr/local. */

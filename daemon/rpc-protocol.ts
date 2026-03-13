@@ -16,6 +16,10 @@ export interface RpcEvent {
 	[key: string]: unknown;
 }
 
+export function isRpcEvent(value: unknown): value is RpcEvent {
+	return !!value && typeof value === "object" && typeof (value as RpcEvent).type === "string";
+}
+
 /**
  * Extract text from the last assistant message in an agent_end event's messages array.
  * Works on raw JSON objects from RPC mode (same structure as SDK AgentMessage[]).

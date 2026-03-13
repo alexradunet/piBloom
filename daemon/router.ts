@@ -112,6 +112,7 @@ export function routeRoomEnvelope(
 			agent.id,
 			agent.respond.maxPublicTurnsPerRoot,
 			totalReplyBudget,
+			envelope.timestamp,
 		),
 	);
 	if (budgetEligible.length === 0) {

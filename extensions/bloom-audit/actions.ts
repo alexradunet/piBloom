@@ -69,7 +69,10 @@ export function readEntries(days: number): AuditEntry[] {
 			const lines = readFileSync(file, "utf-8").split("\n").filter(Boolean);
 			for (const line of lines) {
 				try {
-					entries.push(JSON.parse(line) as AuditEntry);
+					const parsed = JSON.parse(line);
+					if (isAuditEntry(parsed)) {
+						entries.push(parsed);
+					}
 				} catch {
 					// Skip malformed lines.
 				}
@@ -80,6 +83,17 @@ export function readEntries(days: number): AuditEntry[] {
 	}
 
 	return entries;
+}
+
+function isAuditEntry(value: unknown): value is AuditEntry {
+	if (!value || typeof value !== "object") return false;
+	const entry = value as Record<string, unknown>;
+	return (
+		typeof entry.ts === "string" &&
+		(entry.event === "tool_call" || entry.event === "tool_result") &&
+		typeof entry.tool === "string" &&
+		typeof entry.toolCallId === "string"
+	);
 }
 
 /** Handle the audit_review tool call. */

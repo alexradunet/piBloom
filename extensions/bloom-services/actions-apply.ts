@@ -43,6 +43,8 @@ export async function handleManifestApply(
 	let installedCount = 0;
 	let startedCount = 0;
 	let stoppedCount = 0;
+	let enabledCount = 0;
+	let disabledCount = 0;
 	let manifestChanged = false;
 	let needsReload = false;
 
@@ -116,32 +118,56 @@ export async function handleManifestApply(
 			}
 
 			if (dryRun) {
-				lines.push(`[dry-run] start ${startTarget}`);
+				lines.push(`[dry-run] enable/start ${startTarget}`);
 				startedCount += 1;
+				enabledCount += 1;
 				continue;
 			}
 
-			const startResult = await run("systemctl", ["--user", "start", startTarget], signal);
+			const enableResult = await run("systemctl", ["--user", "enable", "--now", startTarget], signal);
+			const startResult =
+				enableResult.exitCode === 0
+					? enableResult
+					: await run("systemctl", ["--user", "start", startTarget], signal);
 			if (startResult.exitCode !== 0) {
-				errors.push(`${name}: failed to start ${startTarget}: ${startResult.stderr || startResult.stdout}`);
+				errors.push(
+					`${name}: failed to start ${startTarget}: ${startResult.stderr || startResult.stdout || enableResult.stderr || enableResult.stdout}`,
+				);
 			} else {
 				startedCount += 1;
-				lines.push(`Started ${startTarget}`);
+				if (enableResult.exitCode === 0) {
+					enabledCount += 1;
+					lines.push(`Enabled and started ${startTarget}`);
+				} else {
+					lines.push(`Started ${startTarget} (enable skipped: ${enableResult.stderr || enableResult.stdout || "not supported"})`);
+				}
 			}
 			continue;
 		}
 
 		if (dryRun) {
-			lines.push(`[dry-run] stop ${unit}.socket (if present)`);
-			lines.push(`[dry-run] stop ${unit}.service`);
+			lines.push(`[dry-run] disable/stop ${unit}.socket (if present)`);
+			lines.push(`[dry-run] disable/stop ${unit}.service`);
 			stoppedCount += 1;
+			disabledCount += 1;
 			continue;
 		}
 
-		await run("systemctl", ["--user", "stop", `${unit}.socket`], signal);
-		await run("systemctl", ["--user", "stop", `${unit}.service`], signal);
+		const disableSocket = await run("systemctl", ["--user", "disable", "--now", `${unit}.socket`], signal);
+		const disableService = await run("systemctl", ["--user", "disable", "--now", `${unit}.service`], signal);
+		if (disableSocket.exitCode !== 0) {
+			await run("systemctl", ["--user", "stop", `${unit}.socket`], signal);
+		}
+		if (disableService.exitCode !== 0) {
+			await run("systemctl", ["--user", "stop", `${unit}.service`], signal);
+		}
 		stoppedCount += 1;
-		lines.push(`Stopped ${unit}`);
+		if (disableSocket.exitCode === 0 || disableService.exitCode === 0) {
+			disabledCount += 1;
+			lines.push(`Disabled and stopped ${unit}`);
+		} else {
+			lines.push(`Stopped ${unit}`);
+		}
 	}
 
 	if (manifestChanged && !dryRun) {
@@ -151,8 +177,10 @@ export async function handleManifestApply(
 	const summary = [
 		`Manifest apply complete (${dryRun ? "dry-run" : "live"}).`,
 		`Installed: ${installedCount}`,
-		`Started/enabled: ${startedCount}`,
-		`Stopped/disabled: ${stoppedCount}`,
+		`Started: ${startedCount}`,
+		`Enabled persistently: ${enabledCount}`,
+		`Stopped: ${stoppedCount}`,
+		`Disabled persistently: ${disabledCount}`,
 		`Errors: ${errors.length}`,
 		"",
 		...(lines.length > 0 ? ["Actions:", ...lines, ""] : []),
@@ -164,7 +192,9 @@ export async function handleManifestApply(
 		details: {
 			installed: installedCount,
 			started: startedCount,
+			enabled: enabledCount,
 			stopped: stoppedCount,
+			disabled: disabledCount,
 			errors,
 			dryRun,
 		},

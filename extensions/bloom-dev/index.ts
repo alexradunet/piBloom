@@ -210,7 +210,11 @@ export default function (pi: ExtensionAPI) {
 		description: "Push an extension into the repo and open a PR.",
 		parameters: Type.Object({
 			extension_name: Type.String({ description: "Name of the extension to push" }),
-			source_path: Type.Optional(Type.String({ description: "Source path override (default: ~/Bloom/extensions/)" })),
+			source_path: Type.Optional(
+				Type.String({
+					description: "Optional extension path inside ~/Bloom/extensions/ (absolute paths must still resolve under that root)",
+				}),
+			),
 			title: Type.Optional(Type.String({ description: "PR title (auto-generated if omitted)" })),
 		}),
 		async execute(_toolCallId, params, signal, _onUpdate, ctx) {

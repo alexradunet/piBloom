@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -111,13 +111,21 @@ describe("loadManifest with malformed YAML", () => {
 		rmSync(tempDir, { recursive: true, force: true });
 	});
 
-	it("returns empty manifest for invalid YAML that throws", () => {
+	it("moves invalid YAML aside and returns an empty manifest", () => {
 		const path = join(tempDir, "manifest.yaml");
 		// A YAML document with duplicate merge keys triggers a parse error
 		writeFileSync(path, "a: &a\n  b: *z\n");
 		const manifest = loadManifest(path);
-		// Either parses to something or falls back to empty — either way, no crash
-		expect(manifest).toBeDefined();
+		expect(manifest).toEqual({ services: {} });
+		expect(existsSync(path)).toBe(false);
+	});
+
+	it("moves structurally invalid manifests aside", () => {
+		const path = join(tempDir, "manifest.yaml");
+		writeFileSync(path, "device: test-host\n");
+		const manifest = loadManifest(path);
+		expect(manifest).toEqual({ services: {} });
+		expect(existsSync(path)).toBe(false);
 	});
 });
 

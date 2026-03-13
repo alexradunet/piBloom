@@ -8,7 +8,7 @@
 import { mkdirSync } from "node:fs";
 import os from "node:os";
 import { join } from "node:path";
-import { loadAgentDefinitions, type AgentDefinition } from "./agent-registry.js";
+import { loadAgentDefinitionsResult, type AgentDefinition } from "./agent-registry.js";
 import { AgentSupervisor } from "./agent-supervisor.js";
 import { MatrixClientPool } from "./matrix-client-pool.js";
 import { matrixCredentialsPath } from "../lib/matrix.js";
@@ -43,9 +43,14 @@ async function main(): Promise<void> {
 	log.info("starting pi-daemon", { idleTimeoutMs: IDLE_TIMEOUT_MS, socketDir: SOCKET_DIR });
 	mkdirSync(SOCKET_DIR, { recursive: true });
 
-	const agents = loadAgentDefinitions();
+	const { agents, errors } = loadAgentDefinitionsResult();
+	for (const error of errors) {
+		log.warn("skipping invalid agent definition", { error });
+	}
 	if (agents.length === 0) {
-		log.info("no multi-agent definitions found, using single-agent fallback");
+		log.info("no valid multi-agent definitions found, using single-agent fallback", {
+			invalidDefinitions: errors.length,
+		});
 		await runSingleAgentDaemon();
 		return;
 	}

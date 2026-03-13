@@ -48,4 +48,13 @@ describe("room-state", () => {
 		markReplySent(state, "!room:bloom", "$root1", "host", 4_000);
 		expect(canReplyForRoot(state, "!room:bloom", "$root1", "planner", 2, 4)).toBe(false);
 	});
+
+	it("prunes stale root reply and cooldown state", () => {
+		const state = createRoomState({ rootReplyTtlMs: 1000, roomAgentTtlMs: 1000 });
+		markReplySent(state, "!room:bloom", "$root1", "planner", 1_000);
+
+		expect(canReplyForRoot(state, "!room:bloom", "$root1", "planner", 2, 4)).toBe(true);
+		expect(isAgentCoolingDown(state, "!room:bloom", "planner", 2_500, 1500)).toBe(false);
+		expect(canReplyForRoot(state, "!room:bloom", "$root1", "planner", 2, 4)).toBe(true);
+	});
 });

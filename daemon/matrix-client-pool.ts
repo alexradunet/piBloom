@@ -25,10 +25,13 @@ interface AgentClientEntry {
 	client: MatrixClient;
 }
 
+const SEEN_EVENT_TTL_MS = 10 * 60 * 1000;
+const MAX_SEEN_EVENT_IDS = 10_000;
+
 export class MatrixClientPool {
 	private readonly options: MatrixClientPoolOptions;
 	private readonly clients = new Map<string, AgentClientEntry>();
-	private readonly seenEventIds = new Set<string>();
+	private readonly seenEventIds = new Map<string, number>();
 
 	constructor(options: MatrixClientPoolOptions) {
 		this.options = options;
@@ -114,8 +117,10 @@ export class MatrixClientPool {
 		if (!body) return;
 
 		const eventId = (event.event_id as string | undefined) ?? "unknown";
+		const now = typeof event.origin_server_ts === "number" ? event.origin_server_ts : Date.now();
+		this.pruneSeenEventIds(now);
 		if (this.seenEventIds.has(eventId)) return;
-		this.seenEventIds.add(eventId);
+		this.seenEventIds.set(eventId, now);
 
 		const senderInfo = classifySender(senderUserId, "", this.options.agents);
 		if (senderInfo.senderKind === "self") return;
@@ -128,7 +133,20 @@ export class MatrixClientPool {
 			senderKind: senderInfo.senderKind,
 			...(senderInfo.senderAgentId ? { senderAgentId: senderInfo.senderAgentId } : {}),
 			mentions: extractMentions(body, this.options.agents),
-			timestamp: typeof event.origin_server_ts === "number" ? event.origin_server_ts : Date.now(),
+			timestamp: now,
 		});
+	}
+
+	private pruneSeenEventIds(now: number): void {
+		for (const [eventId, timestamp] of this.seenEventIds) {
+			if (now - timestamp > SEEN_EVENT_TTL_MS) {
+				this.seenEventIds.delete(eventId);
+			}
+		}
+		while (this.seenEventIds.size >= MAX_SEEN_EVENT_IDS) {
+			const oldest = this.seenEventIds.keys().next().value;
+			if (!oldest) break;
+			this.seenEventIds.delete(oldest);
+		}
 	}
 }

@@ -55,6 +55,11 @@ export interface LoadAgentDefinitionsOptions {
 	serverName?: string;
 }
 
+export interface LoadAgentDefinitionsResult {
+	agents: AgentDefinition[];
+	errors: string[];
+}
+
 const DEFAULT_SERVER_NAME = "bloom";
 const DEFAULT_RESPOND_MODE = "mentioned";
 const DEFAULT_ALLOW_AGENT_MENTIONS = true;
@@ -64,24 +69,36 @@ const THINKING_LEVELS = new Set(["off", "minimal", "low", "medium", "high", "xhi
 const RESPOND_MODES = new Set(["host", "mentioned", "silent"]);
 
 export function loadAgentDefinitions(options: LoadAgentDefinitionsOptions = {}): AgentDefinition[] {
+	return loadAgentDefinitionsResult(options).agents;
+}
+
+export function loadAgentDefinitionsResult(options: LoadAgentDefinitionsOptions = {}): LoadAgentDefinitionsResult {
 	const bloomDir = options.bloomDir ?? getBloomDir();
 	const serverName = options.serverName ?? DEFAULT_SERVER_NAME;
 	const agentsDir = join(bloomDir, "Agents");
-	if (!existsSync(agentsDir)) return [];
+	if (!existsSync(agentsDir)) return { agents: [], errors: [] };
 
 	const agentIds = readdirSync(agentsDir, { withFileTypes: true })
 		.filter((entry) => entry.isDirectory())
 		.map((entry) => entry.name)
 		.sort();
 
-	return agentIds.flatMap((agentDirName) => {
+	const agents: AgentDefinition[] = [];
+	const errors: string[] = [];
+	for (const agentDirName of agentIds) {
 		const instructionsPath = join(agentsDir, agentDirName, "AGENTS.md");
-		if (!existsSync(instructionsPath)) return [];
+		if (!existsSync(instructionsPath)) continue;
 
-		const raw = readFileSync(instructionsPath, "utf-8");
-		const { attributes, body } = parseFrontmatter<AgentFrontmatter>(raw);
-		return [normalizeAgentDefinition(attributes, body, instructionsPath, serverName)];
-	});
+		try {
+			const raw = readFileSync(instructionsPath, "utf-8");
+			const { attributes, body } = parseFrontmatter<AgentFrontmatter>(raw);
+			agents.push(normalizeAgentDefinition(attributes, body, instructionsPath, serverName));
+		} catch (error) {
+			errors.push(error instanceof Error ? error.message : String(error));
+		}
+	}
+
+	return { agents, errors };
 }
 
 function normalizeAgentDefinition(

@@ -23,6 +23,14 @@ Bloom currently provides:
 - an optional multi-agent Matrix daemon with one Pi session per `(room, agent)` pair
 - a first-boot flow split between a bash wizard and a Pi-guided persona step
 
+Operational hardening in the current tree:
+
+- invalid `~/Bloom/Agents/*/AGENTS.md` files are skipped with warnings instead of crashing the daemon
+- daemon duplicate/cooldown/reply-budget state is bounded so long-running processes do not grow unbounded maps forever
+- corrupt `~/Bloom/manifest.yaml` files are quarantined to `manifest.yaml.corrupt-*` before Bloom falls back to an empty manifest
+- `manifest_apply` now attempts persistent `systemctl --user enable --now` / `disable --now`, with start/stop fallback when enablement is not supported
+- local `localhost/*` service images are rebuilt on install so mutable tags do not silently reuse stale code
+
 ## Repository Layout
 
 | Path | Purpose |
@@ -80,9 +88,10 @@ Reference material for OS-level infrastructure also lives under `services/`:
 
 `daemon/index.ts` starts the Bloom room daemon in one of two modes:
 
-- single-agent fallback when no agent definitions exist in `~/Bloom/Agents/*/AGENTS.md`
-- multi-agent mode when agent overlays exist, with one Matrix client per configured agent and one Pi RPC subprocess per
-  `(room, agent)` pair
+- single-agent fallback when no valid agent definitions exist in `~/Bloom/Agents/*/AGENTS.md`
+- multi-agent mode when one or more agent overlays parse successfully, with one Matrix client per configured agent and
+  one Pi RPC subprocess per `(room, agent)` pair
+- malformed agent overlays are logged and skipped instead of aborting daemon startup
 
 Each room process runs `pi --mode rpc`, communicates over JSON lines, and exposes a local socket for terminal
 attachment.
@@ -95,6 +104,9 @@ npm run build
 npm run check
 npm run test
 ```
+
+`npm run check` uses the locally installed `biome` binary from project dependencies; it no longer shells out through
+`npx`.
 
 Additional commands:
 

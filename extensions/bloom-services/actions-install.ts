@@ -70,9 +70,13 @@ async function installDependency(
 	if (reload.exitCode !== 0) {
 		return { ok: false, note: reload.stderr || reload.stdout || "daemon-reload failed" };
 	}
-	const start = await run("systemctl", ["--user", "start", `bloom-${dep}.service`], signal);
+	const enable = await run("systemctl", ["--user", "enable", "--now", `bloom-${dep}.service`], signal);
+	const start =
+		enable.exitCode === 0
+			? enable
+			: await run("systemctl", ["--user", "start", `bloom-${dep}.service`], signal);
 	if (start.exitCode !== 0) {
-		return { ok: false, note: start.stderr || start.stdout || "start failed" };
+		return { ok: false, note: start.stderr || start.stdout || enable.stderr || enable.stdout || "start failed" };
 	}
 
 	const depManifest = loadManifest(manifestPath);
@@ -135,9 +139,11 @@ export async function handleInstall(
 	const socketUnit = join(userSystemdDir, `bloom-${params.name}.socket`);
 	if (start) {
 		const target = existsSync(socketUnit) ? `bloom-${params.name}.socket` : `bloom-${params.name}.service`;
-		const startRes = await run("systemctl", ["--user", "start", target], signal);
+		const enableRes = await run("systemctl", ["--user", "enable", "--now", target], signal);
+		const startRes =
+			enableRes.exitCode === 0 ? enableRes : await run("systemctl", ["--user", "start", target], signal);
 		if (startRes.exitCode !== 0) {
-			return errorResult(`Failed to start ${target}:\n${startRes.stderr}`);
+			return errorResult(`Failed to start ${target}:\n${startRes.stderr || enableRes.stderr}`);
 		}
 	}
 

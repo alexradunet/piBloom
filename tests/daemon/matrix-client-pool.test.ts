@@ -212,4 +212,36 @@ describe("MatrixClientPool", () => {
 		expect(onEvent).not.toHaveBeenCalled();
 		pool.stop();
 	});
+
+	it("expires seen event ids so old event ids do not stay pinned forever", async () => {
+		const onEvent = vi.fn();
+		const pool = new MatrixClientPool({
+			agents,
+			credentialsDir,
+			storageDir,
+			onEvent,
+		});
+
+		await pool.start();
+
+		const hostHandler = mockInstances[0]?.handlers.get("room.message");
+		expect(hostHandler).toBeDefined();
+
+		hostHandler?.("!room:bloom", {
+			sender: "@alex:bloom",
+			content: { msgtype: "m.text", body: "first" },
+			event_id: "$evt-expire",
+			origin_server_ts: 1_000,
+		});
+		hostHandler?.("!room:bloom", {
+			sender: "@alex:bloom",
+			content: { msgtype: "m.text", body: "second" },
+			event_id: "$evt-expire",
+			origin_server_ts: 700_001,
+		});
+		await new Promise((resolve) => setTimeout(resolve, 10));
+
+		expect(onEvent).toHaveBeenCalledTimes(2);
+		pool.stop();
+	});
 });

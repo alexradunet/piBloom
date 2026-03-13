@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { loadAgentDefinitions } from "../../daemon/agent-registry.js";
+import { loadAgentDefinitions, loadAgentDefinitionsResult } from "../../daemon/agent-registry.js";
 
 describe("loadAgentDefinitions", () => {
 	const tempDirs: string[] = [];
@@ -142,7 +142,7 @@ matrix:
 		expect(agents.map((agent) => agent.id)).toEqual(["host", "planner"]);
 	});
 
-	it("rejects missing id", () => {
+	it("skips agents with missing id and records the error", () => {
 		const bloomDir = makeBloomDir();
 		writeAgent(
 			bloomDir,
@@ -156,10 +156,14 @@ matrix:
 `,
 		);
 
-		expect(() => loadAgentDefinitions({ bloomDir })).toThrow("missing required field 'id'");
+		const result = loadAgentDefinitionsResult({ bloomDir });
+		expect(result.agents).toEqual([]);
+		expect(result.errors).toEqual([
+			expect.stringContaining("missing required field 'id'"),
+		]);
 	});
 
-	it("rejects missing name", () => {
+	it("skips agents with missing name and records the error", () => {
 		const bloomDir = makeBloomDir();
 		writeAgent(
 			bloomDir,
@@ -173,10 +177,14 @@ matrix:
 `,
 		);
 
-		expect(() => loadAgentDefinitions({ bloomDir })).toThrow("missing required field 'name'");
+		const result = loadAgentDefinitionsResult({ bloomDir });
+		expect(result.agents).toEqual([]);
+		expect(result.errors).toEqual([
+			expect.stringContaining("missing required field 'name'"),
+		]);
 	});
 
-	it("rejects missing matrix.username", () => {
+	it("skips agents with missing matrix.username and records the error", () => {
 		const bloomDir = makeBloomDir();
 		writeAgent(
 			bloomDir,
@@ -191,7 +199,44 @@ matrix:
 `,
 		);
 
-		expect(() => loadAgentDefinitions({ bloomDir })).toThrow("missing required field 'matrix.username'");
+		const result = loadAgentDefinitionsResult({ bloomDir });
+		expect(result.agents).toEqual([]);
+		expect(result.errors).toEqual([
+			expect.stringContaining("missing required field 'matrix.username'"),
+		]);
+	});
+
+	it("loads valid agents even when another agent definition is malformed", () => {
+		const bloomDir = makeBloomDir();
+		writeAgent(
+			bloomDir,
+			"host",
+			`---
+id: host
+name: Host
+matrix:
+  username: pi
+respond:
+  mode: host
+---
+# Host
+`,
+		);
+		writeAgent(
+			bloomDir,
+			"broken",
+			`---
+name: Broken
+matrix:
+  username: broken
+---
+# Broken
+`,
+		);
+
+		const result = loadAgentDefinitionsResult({ bloomDir });
+		expect(result.agents.map((agent) => agent.id)).toEqual(["host"]);
+		expect(result.errors).toHaveLength(1);
 	});
 
 	it("uses provided server name when deriving Matrix user ids", () => {

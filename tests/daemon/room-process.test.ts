@@ -162,4 +162,16 @@ describe("RoomProcess", () => {
 
 		rp.dispose();
 	});
+
+	it("ignores stdout lines that are valid JSON but not RPC events", async () => {
+		const { RoomProcess } = await import("../../daemon/room-process.js");
+		const onEvent = vi.fn();
+		const rp = new RoomProcess(makeOpts({ onEvent }));
+		await rp.spawn();
+
+		(rp as unknown as { handleLine: (line: string) => void }).handleLine(JSON.stringify({ nope: true }));
+		expect(onEvent).not.toHaveBeenCalled();
+
+		rp.dispose();
+	});
 });

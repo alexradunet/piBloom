@@ -29,6 +29,7 @@ This rule is enforced by `validatePinnedImage()` for `service_scaffold`.
 Reason:
 
 - the service is built locally from repository source before installation
+- Bloom rebuilds the local image during install instead of trusting an already-present mutable tag
 - the mutable tag refers to a local artifact, not to a remote registry trust decision
 
 ## What `service_install` Does Today
@@ -36,7 +37,7 @@ Reason:
 Depending on the package, installation may:
 
 - copy Quadlet and skill assets from the bundled package
-- build a local image for `localhost/*` refs
+- rebuild a local image for `localhost/*` refs
 - download declared model artifacts into Podman volumes
 - update `~/Bloom/manifest.yaml`
 

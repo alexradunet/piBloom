@@ -380,4 +380,14 @@ describe("handleDevPushExtension", () => {
 		expect("isError" in result && result.isError).toBe(true);
 		expect(result.content[0].text).toContain("not found");
 	});
+
+	it("rejects source_path values that escape ~/Bloom/extensions", async () => {
+		const repoDir = join(temp.gardenDir, "repo");
+		const result = await handleDevPushExtension(
+			{ extension_name: "nonexistent-ext", source_path: "../../outside" },
+			repoDir,
+		);
+		expect("isError" in result && result.isError).toBe(true);
+		expect(result.content[0].text).toContain("not found");
+	});
 });
