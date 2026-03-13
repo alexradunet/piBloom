@@ -1,6 +1,6 @@
 import { join } from "node:path";
 import type { AgentDefinition } from "./agent-registry.js";
-import { RoomProcess } from "./room-process.js";
+import { RoomProcess, type RoomTransportConfig } from "./room-process.js";
 import type { RpcCommand, RpcEvent } from "./rpc-protocol.js";
 import { sanitizeRoomAlias } from "../lib/room-alias.js";
 
@@ -14,6 +14,7 @@ export interface AgentSessionOptions {
 	onAgentEnd: (agentId: string, text: string) => void;
 	onEvent: (agentId: string, event: RpcEvent) => void;
 	onExit: (agentId: string, code: number | null) => void;
+	transport?: RoomTransportConfig;
 }
 
 export class AgentSession {
@@ -34,6 +35,7 @@ export class AgentSession {
 			onAgentEnd: (text) => opts.onAgentEnd(opts.agent.id, text),
 			onEvent: (event) => opts.onEvent(opts.agent.id, event),
 			onExit: (code) => opts.onExit(opts.agent.id, code),
+			transport: opts.transport,
 		});
 	}
 

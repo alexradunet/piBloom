@@ -1,17 +1,22 @@
 /**
- * Room process — manages a single pi --mode rpc subprocess + Unix socket.
+ * Room process — manages a single pi --mode rpc subprocess + socket transport.
  * Spawns pi, reads JSON events from stdout, accepts commands via send(),
- * opens a Unix socket for terminal clients, and handles idle timeout.
+ * opens a socket for terminal clients, and handles idle timeout.
  */
 import { type ChildProcess, spawn } from "node:child_process";
 import { existsSync, mkdirSync, unlinkSync } from "node:fs";
-import { createServer, type Server, type Socket } from "node:net";
+import { createServer, type ListenOptions, type Server, type Socket } from "node:net";
 import { join } from "node:path";
 import { createInterface } from "node:readline";
 import { createLogger } from "../lib/shared.js";
 import { extractResponseText, type RpcCommand, type RpcEvent } from "./rpc-protocol.js";
 
 const log = createLogger("room-process");
+
+export type RoomTransportConfig =
+	| { kind: "unix"; path?: string }
+	| { kind: "tcp"; host?: string; port?: number }
+	| { kind: "none" };
 
 export interface RoomProcessOptions {
 	roomId: string;
@@ -23,6 +28,7 @@ export interface RoomProcessOptions {
 	onAgentEnd: (text: string) => void;
 	onEvent: (event: RpcEvent) => void;
 	onExit: (code: number | null) => void;
+	transport?: RoomTransportConfig;
 }
 
 export class RoomProcess {
@@ -33,12 +39,12 @@ export class RoomProcess {
 	private streaming = false;
 	private disposing = false;
 	private writeQueue: Promise<void> = Promise.resolve();
-	private readonly socketPath: string;
 	private readonly opts: RoomProcessOptions;
+	private readonly transport: RoomTransportConfig;
 
 	constructor(opts: RoomProcessOptions) {
 		this.opts = opts;
-		this.socketPath = join(opts.socketDir, `room-${opts.sanitizedAlias}.sock`);
+		this.transport = opts.transport ?? { kind: "unix", path: join(opts.socketDir, `room-${opts.sanitizedAlias}.sock`) };
 	}
 
 	get alive(): boolean {
@@ -80,9 +86,17 @@ export class RoomProcess {
 			}
 		});
 
-		// Open Unix socket for terminal clients
-		await this.startSocket();
-		this.resetIdleTimer();
+		this.proc.on("error", (err) => {
+			log.error("failed to spawn pi process", { room: this.opts.sanitizedAlias, error: err.message });
+		});
+
+		try {
+			await this.startSocket();
+			this.resetIdleTimer();
+		} catch (err) {
+			this.dispose();
+			throw err;
+		}
 
 		log.info("spawned pi process", { room: this.opts.sanitizedAlias, pid: this.proc.pid });
 	}
@@ -133,12 +147,7 @@ export class RoomProcess {
 			this.proc = null;
 		}
 
-		// Clean up socket file
-		try {
-			if (existsSync(this.socketPath)) unlinkSync(this.socketPath);
-		} catch {
-			/* best effort */
-		}
+		this.cleanupSocket();
 	}
 
 	private handleLine(line: string): void {
@@ -173,13 +182,12 @@ export class RoomProcess {
 	}
 
 	private startSocket(): Promise<void> {
+		if (this.transport.kind === "none") {
+			return Promise.resolve();
+		}
+
 		return new Promise((resolve, reject) => {
-			// Clean up stale socket file
-			try {
-				if (existsSync(this.socketPath)) unlinkSync(this.socketPath);
-			} catch {
-				/* ok */
-			}
+			this.cleanupSocket();
 
 			this.server = createServer((client) => {
 				this.clients.add(client);
@@ -212,9 +220,32 @@ export class RoomProcess {
 				});
 			});
 
-			this.server.listen(this.socketPath, () => resolve());
 			this.server.on("error", reject);
+
+			let listenTarget: ListenOptions | string;
+			if (this.transport.kind === "unix") {
+				listenTarget = this.transport.path ?? join(this.opts.socketDir, `room-${this.opts.sanitizedAlias}.sock`);
+			} else if (this.transport.kind === "tcp") {
+				listenTarget = {
+					host: this.transport.host ?? "127.0.0.1",
+					port: this.transport.port ?? 0,
+				};
+			} else {
+				resolve();
+				return;
+			}
+			this.server.listen(listenTarget, () => resolve());
 		});
+	}
+
+	private cleanupSocket(): void {
+		if (this.transport.kind !== "unix") return;
+		const socketPath = this.transport.path ?? join(this.opts.socketDir, `room-${this.opts.sanitizedAlias}.sock`);
+		try {
+			if (existsSync(socketPath)) unlinkSync(socketPath);
+		} catch {
+			/* best effort */
+		}
 	}
 
 	private resetIdleTimer(): void {

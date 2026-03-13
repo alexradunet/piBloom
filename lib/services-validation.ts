@@ -48,7 +48,8 @@ export function validatePinnedImage(image: string): string | null {
 
 /** Check whether a CLI command is available on this system. */
 export async function commandExists(cmd: string, signal?: AbortSignal): Promise<boolean> {
-	if (!/^[a-zA-Z0-9._+-]+$/.test(cmd)) return false;
+	if (!/^[a-zA-Z0-9][a-zA-Z0-9._+-]*$/.test(cmd)) return false;
+	if (cmd.includes("/") || cmd.includes("\\")) return false;
 	const check = await run(cmd, ["--version"], signal);
 	if (check.exitCode === 0) return true;
 	return !/ENOENT|not found|No such file/i.test(check.stderr || check.stdout);

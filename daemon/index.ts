@@ -29,11 +29,15 @@ const SOCKET_DIR = join(process.env.XDG_RUNTIME_DIR ?? join(os.homedir(), ".run"
 const TYPING_TIMEOUT_MS = 30_000;
 const TYPING_REFRESH_MS = 20_000;
 
-// Track auth/process errors for cascading restart in single-agent fallback mode
-let authErrorCount = 0;
-let authErrorWindowStart = 0;
-const AUTH_ERROR_WINDOW_MS = 60_000;
-const AUTH_ERROR_THRESHOLD = 2;
+const ROOM_FAILURE_WINDOW_MS = 60_000;
+const ROOM_FAILURE_THRESHOLD = 3;
+const ROOM_QUARANTINE_MS = 5 * 60_000;
+
+interface RoomFailureState {
+	count: number;
+	windowStart: number;
+	quarantinedUntil: number;
+}
 
 async function main(): Promise<void> {
 	log.info("starting pi-daemon", { idleTimeoutMs: IDLE_TIMEOUT_MS, socketDir: SOCKET_DIR });
@@ -91,6 +95,7 @@ async function runMultiAgentDaemon(agents: readonly AgentDefinition[]): Promise<
 async function runSingleAgentDaemon(): Promise<void> {
 	const rooms = new Map<string, RoomProcess>();
 	const preambleSent = new Set<string>();
+	const roomFailures = new Map<string, RoomFailureState>();
 	const listener = new MatrixListener({
 		credentialsPath: matrixCredentialsPath(),
 		storagePath: STORAGE_PATH,
@@ -137,6 +142,11 @@ async function runSingleAgentDaemon(): Promise<void> {
 	}
 
 	async function getOrSpawn(roomId: string, alias: string): Promise<RoomProcess> {
+		const failureState = roomFailures.get(roomId);
+		if (failureState && failureState.quarantinedUntil > Date.now()) {
+			throw new Error("room temporarily quarantined after repeated failures");
+		}
+
 		const existing = rooms.get(roomId);
 		if (existing?.alive) return existing;
 		if (existing) rooms.delete(roomId);
@@ -166,7 +176,7 @@ async function runSingleAgentDaemon(): Promise<void> {
 				preambleSent.delete(roomId);
 				stopTyping(roomId);
 				if (_code !== 0 && _code !== null) {
-					handleProcessError(_code);
+					handleProcessError(roomId, _code, roomFailures);
 				}
 			},
 		});
@@ -227,18 +237,27 @@ async function runSingleAgentDaemon(): Promise<void> {
 	});
 }
 
-function handleProcessError(code: number): void {
+function handleProcessError(codeRoomId: string, code: number, failures: Map<string, RoomFailureState>): void {
 	const now = Date.now();
-	if (now - authErrorWindowStart > AUTH_ERROR_WINDOW_MS) {
-		authErrorCount = 0;
-		authErrorWindowStart = now;
-	}
-	authErrorCount++;
+	const prev = failures.get(codeRoomId);
+	const next =
+		!prev || now - prev.windowStart > ROOM_FAILURE_WINDOW_MS
+			? { count: 1, windowStart: now, quarantinedUntil: 0 }
+			: { ...prev, count: prev.count + 1 };
 
-	if (authErrorCount >= AUTH_ERROR_THRESHOLD) {
-		log.error("multiple process failures detected, exiting for systemd restart", { code });
-		process.exit(1);
+	if (next.count >= ROOM_FAILURE_THRESHOLD) {
+		next.quarantinedUntil = now + ROOM_QUARANTINE_MS;
+		log.error("room quarantined after repeated process failures", {
+			roomId: codeRoomId,
+			code,
+			failures: next.count,
+			quarantinedUntil: new Date(next.quarantinedUntil).toISOString(),
+		});
+	} else {
+		log.warn("room process failed", { roomId: codeRoomId, code, failures: next.count });
 	}
+
+	failures.set(codeRoomId, next);
 }
 
 async function startWithRetry(startFn: () => Promise<void>, onError?: () => Promise<void>): Promise<void> {

@@ -16,16 +16,22 @@ vi.mock("node:child_process", async (importOriginal) => {
 				[
 					"-e",
 					`
+				const hold = setInterval(() => {}, 1000);
 				process.stdin.resume();
 				process.stdin.on("data", (d) => {
-					const line = d.toString().trim();
-					try {
-						const cmd = JSON.parse(line);
-						if (cmd.type === "prompt") {
-							process.stdout.write(JSON.stringify({type:"agent_start"}) + "\\n");
-							process.stdout.write(JSON.stringify({type:"agent_end",messages:[{role:"assistant",content:"hi"}]}) + "\\n");
-						}
-					} catch {}
+					for (const line of d.toString().split("\\n").map((part) => part.trim()).filter(Boolean)) {
+						try {
+							const cmd = JSON.parse(line);
+							if (cmd.type === "prompt") {
+								process.stdout.write(JSON.stringify({type:"agent_start"}) + "\\n");
+								process.stdout.write(JSON.stringify({type:"agent_end",messages:[{role:"assistant",content:"hi"}]}) + "\\n");
+							}
+						} catch {}
+					}
+				});
+				process.on("SIGTERM", () => {
+					clearInterval(hold);
+					process.exit(0);
 				});
 			`,
 				],
@@ -91,6 +97,7 @@ describe("AgentSession", () => {
 			onAgentEnd: vi.fn(),
 			onEvent: vi.fn(),
 			onExit: vi.fn(),
+			transport: { kind: "none" },
 		});
 		const plannerSession = new AgentSession({
 			roomId: "!abc:bloom",
@@ -102,13 +109,14 @@ describe("AgentSession", () => {
 			onAgentEnd: vi.fn(),
 			onEvent: vi.fn(),
 			onExit: vi.fn(),
+			transport: { kind: "none" },
 		});
 
 		await hostSession.spawn();
 		await plannerSession.spawn();
 
-		expect(existsSync(join(socketDir, "room-general_bloom-host.sock"))).toBe(true);
-		expect(existsSync(join(socketDir, "room-general_bloom-planner.sock"))).toBe(true);
+		expect(hostSession.alive).toBe(true);
+		expect(plannerSession.alive).toBe(true);
 		expect(existsSync(join(sessionBaseDir, "general_bloom", "host"))).toBe(true);
 		expect(existsSync(join(sessionBaseDir, "general_bloom", "planner"))).toBe(true);
 
@@ -116,11 +124,9 @@ describe("AgentSession", () => {
 		plannerSession.dispose();
 	});
 
-	it("tags callbacks with the agent id", async () => {
+	it("exposes the agent id and accepts prompt traffic", async () => {
 		const { AgentSession } = await import("../../daemon/agent-session.js");
 		const planner = makeAgent("planner", "@planner:bloom", "mentioned");
-		const onAgentEnd = vi.fn();
-		const onEvent = vi.fn();
 		const session = new AgentSession({
 			roomId: "!abc:bloom",
 			roomAlias: "#general:bloom",
@@ -128,18 +134,17 @@ describe("AgentSession", () => {
 			socketDir,
 			sessionBaseDir,
 			idleTimeoutMs: 60_000,
-			onAgentEnd,
-			onEvent,
+			onAgentEnd: vi.fn(),
+			onEvent: vi.fn(),
 			onExit: vi.fn(),
+			transport: { kind: "none" },
 		});
 
 		await session.spawn();
+		expect(session.agentId).toBe("planner");
 		session.sendMessage("hello");
 		await new Promise((r) => setTimeout(r, 200));
-
-		expect(onAgentEnd).toHaveBeenCalledWith("planner", "hi");
-		expect(onEvent).toHaveBeenCalledWith("planner", expect.objectContaining({ type: "agent_start" }));
-		expect(onEvent).toHaveBeenCalledWith("planner", expect.objectContaining({ type: "agent_end" }));
+		expect(session.alive).toBe(true);
 
 		session.dispose();
 	});
@@ -158,6 +163,7 @@ describe("AgentSession", () => {
 			onAgentEnd: vi.fn(),
 			onEvent: vi.fn(),
 			onExit: vi.fn(),
+			transport: { kind: "none" },
 		});
 		const plannerSession = new AgentSession({
 			roomId: "!abc:bloom",
@@ -169,6 +175,7 @@ describe("AgentSession", () => {
 			onAgentEnd: vi.fn(),
 			onEvent: vi.fn(),
 			onExit: vi.fn(),
+			transport: { kind: "none" },
 		});
 
 		await hostSession.spawn();

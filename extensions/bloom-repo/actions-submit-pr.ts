@@ -52,6 +52,25 @@ export async function handleSubmitPr(
 	const defaultBranch = `node/${slugifyBranchPart(os.hostname())}/${slugifyBranchPart(params.title) || "fix"}`;
 	const targetBranch = (params.branch?.trim() || (nowBranch === base ? defaultBranch : nowBranch)).trim();
 
+	if (!(params.add_all ?? false)) {
+		const dirty = await run("git", ["-C", repoDir, "status", "--short"], signal);
+		const unstaged = dirty.stdout
+			.split("\n")
+			.map((line) => line.trimEnd())
+			.filter(Boolean)
+			.filter((line) => !line.startsWith("A ") && !line.startsWith("M ") && !line.startsWith("R ") && !line.startsWith("C "));
+		if (unstaged.length > 0) {
+			return errorResult(
+				[
+					"Refusing to auto-submit PR with unstaged or untracked changes.",
+					"Stage only the intended files first, or retry with add_all=true.",
+					"",
+					unstaged.join("\n"),
+				].join("\n"),
+			);
+		}
+	}
+
 	if (nowBranch !== targetBranch) {
 		const checkout = await run("git", ["-C", repoDir, "checkout", "-B", targetBranch], signal);
 		if (checkout.exitCode !== 0) {
@@ -59,7 +78,7 @@ export async function handleSubmitPr(
 		}
 	}
 
-	if (params.add_all ?? true) {
+	if (params.add_all ?? false) {
 		const add = await run("git", ["-C", repoDir, "add", "-A"], signal);
 		if (add.exitCode !== 0) {
 			return errorResult(`Failed to stage changes:\n${add.stderr || add.stdout}`);

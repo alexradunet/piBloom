@@ -66,6 +66,8 @@ export async function handleManifestSync(
 	for (const [name, svc] of Object.entries(manifest.services)) {
 		if (svc.enabled && !running.has(name)) {
 			drifts.push(`- ${name}: manifest says enabled, but not running`);
+		} else if (!svc.enabled && running.has(name)) {
+			drifts.push(`- ${name}: manifest says disabled, but it is running`);
 		}
 	}
 
@@ -95,6 +97,12 @@ export async function handleManifestSync(
 			} else {
 				updated.services[name].image = info.image;
 				updated.services[name].enabled = true;
+			}
+		}
+
+		for (const [name, svc] of Object.entries(updated.services)) {
+			if (!running.has(name)) {
+				updated.services[name] = { ...svc, enabled: false };
 			}
 		}
 

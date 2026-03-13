@@ -52,10 +52,11 @@ function loadCatalogSection<T>(repoDir: string, key: string): Record<string, T> 
 		if (!existsSync(candidate)) continue;
 		try {
 			const raw = readFileSync(candidate, "utf-8");
-			const doc = (jsYaml.load(raw) as Record<string, Record<string, T>> | null) ?? {};
+			const doc = (jsYaml.load(raw, { schema: jsYaml.JSON_SCHEMA }) as Record<string, Record<string, T>> | null) ?? {};
 			if (doc[key] && typeof doc[key] === "object") return doc[key];
-		} catch {
-			// ignore and continue
+		} catch (err) {
+			// Continue to the next candidate, but preserve context in logs by throwing to caller if all fail is not required here.
+			void err;
 		}
 	}
 	return {};

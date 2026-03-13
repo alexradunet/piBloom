@@ -1,7 +1,7 @@
 /**
  * Handler / business logic for bloom-setup.
  */
-import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import { dirname, join } from "node:path";
 import {
@@ -13,6 +13,7 @@ import {
 	type SetupState,
 	type StepName,
 } from "../../lib/setup.js";
+import { atomicWriteFile, ensureDir } from "../../lib/fs-utils.js";
 import { createLogger } from "../../lib/shared.js";
 import { STEP_GUIDANCE } from "./step-guidance.js";
 
@@ -42,18 +43,14 @@ export function loadState(): SetupState {
 
 /** Save setup state to disk (atomic write: temp file + rename). */
 export function saveState(state: SetupState): void {
-	const dir = dirname(SETUP_STATE_PATH);
-	if (!existsSync(dir)) mkdirSync(dir, { recursive: true, mode: 0o700 });
-	const tmp = `${SETUP_STATE_PATH}.tmp`;
-	writeFileSync(tmp, JSON.stringify(state, null, 2), "utf-8");
-	renameSync(tmp, SETUP_STATE_PATH);
+	atomicWriteFile(SETUP_STATE_PATH, JSON.stringify(state, null, 2), 0o700);
 }
 
 /** Mark persona customization as complete (wizard already handled OS-level setup). */
 export async function touchPersonaDone(): Promise<void> {
 	const markerPath = join(os.homedir(), ".bloom", "wizard-state", "persona-done");
 	const dir = dirname(markerPath);
-	if (!existsSync(dir)) mkdirSync(dir, { recursive: true, mode: 0o700 });
+	if (!existsSync(dir)) ensureDir(dir, 0o700);
 	writeFileSync(markerPath, new Date().toISOString(), "utf-8");
 	log.info("persona customization complete");
 }
@@ -65,6 +62,19 @@ export function isSetupDone(): boolean {
 
 /** Handle setup_status tool call. */
 export function handleSetupStatus() {
+	const emptySummary = getStepsSummary(createInitialState());
+	if (!isSetupDone()) {
+		return {
+			content: [
+				{
+					type: "text" as const,
+					text: "Wizard setup is not complete yet. Finish `bloom-wizard.sh` first, then resume persona setup in Pi.",
+				},
+			],
+			details: { complete: false, waitingForWizard: true, nextStep: null, summary: emptySummary },
+		};
+	}
+
 	const state = loadState();
 	const next = getNextStep(state);
 	const summary = getStepsSummary(state);
@@ -86,7 +96,7 @@ export function handleSetupStatus() {
 
 	return {
 		content: [{ type: "text" as const, text: lines.join("\n") }],
-		details: { nextStep: next, complete, summary },
+		details: { nextStep: next, complete, summary, waitingForWizard: false },
 	};
 }
 
@@ -144,6 +154,8 @@ export function handleSetupReset(params: { step?: StepName }) {
 
 /** Generate the system prompt injection for the first-boot skill. */
 export function getSetupSystemPrompt(): string {
+	if (!isSetupDone()) return "";
+
 	const state = loadState();
 	const next = getNextStep(state);
 	if (!next) return "";

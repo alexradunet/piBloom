@@ -99,7 +99,7 @@ export async function handleContainerStatus(signal: AbortSignal | undefined) {
 }
 
 export async function handleContainerLogs(service: string, lines: number, signal: AbortSignal | undefined) {
-	const n = String(lines);
+	const n = String(Math.max(1, Math.min(500, Math.round(lines))));
 	const unit = `${service}.service`;
 	const result = await run("journalctl", ["--user", "-u", unit, "--no-pager", "-n", n], signal);
 	const text = truncate(
@@ -178,7 +178,7 @@ export async function handleScheduleReboot(
 	signal: AbortSignal | undefined,
 	ctx: ExtensionContext,
 ) {
-	const delay = Math.max(1, Math.round(delayMinutes));
+	const delay = Math.max(1, Math.min(7 * 24 * 60, Math.round(delayMinutes)));
 	const denied = await requireConfirmation(ctx, `Schedule reboot in ${delay} minute(s)`);
 	if (denied) return errorResult(denied);
 	const result = await run("sudo", ["systemd-run", `--on-active=${delay}m`, "systemctl", "reboot"], signal);

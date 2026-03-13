@@ -19,9 +19,9 @@ describe("createInitialState", () => {
 		}
 	});
 
-	it("has exactly 2 steps", () => {
+	it("has exactly 1 step", () => {
 		const state = createInitialState();
-		expect(Object.keys(state.steps)).toHaveLength(2);
+		expect(Object.keys(state.steps)).toHaveLength(1);
 	});
 });
 
@@ -29,12 +29,6 @@ describe("getNextStep", () => {
 	it("returns 'persona' for fresh state", () => {
 		const state = createInitialState();
 		expect(getNextStep(state)).toBe("persona");
-	});
-
-	it("returns 'complete' when persona is done", () => {
-		const state = createInitialState();
-		state.steps.persona = { status: "completed", at: new Date().toISOString() };
-		expect(getNextStep(state)).toBe("complete");
 	});
 
 	it("returns null when all steps are done", () => {
@@ -63,8 +57,7 @@ describe("advanceStep", () => {
 
 	it("sets completedAt when last step is completed", () => {
 		const state = createInitialState();
-		state.steps.persona = { status: "completed", at: new Date().toISOString() };
-		const next = advanceStep(state, "complete", "completed");
+		const next = advanceStep(state, "persona", "completed");
 		expect(next.completedAt).toBeTruthy();
 	});
 
@@ -93,8 +86,7 @@ describe("getStepsSummary", () => {
 		const state = createInitialState();
 		state.steps.persona = { status: "completed", at: new Date().toISOString() };
 		const summary = getStepsSummary(state);
-		expect(summary).toHaveLength(2);
+		expect(summary).toHaveLength(1);
 		expect(summary[0]).toEqual({ name: "persona", status: "completed" });
-		expect(summary[1]).toEqual({ name: "complete", status: "pending" });
 	});
 });

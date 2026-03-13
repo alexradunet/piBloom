@@ -1,5 +1,5 @@
 /**
- * bloom-setup — First-boot setup wizard: guides user through 13 setup steps.
+ * bloom-setup — Persona completion state after the first-boot wizard.
  *
  * @tools setup_status, setup_advance, setup_reset
  * @hooks before_agent_start
@@ -66,7 +66,7 @@ export default function (pi: ExtensionAPI) {
 		},
 	});
 
-	// Inject first-boot skill into system prompt when setup is incomplete
+	// Inject persona setup guidance after the wizard has completed.
 	pi.on("before_agent_start", async (event) => {
 		if (!isSetupDone()) return; // wizard hasn't run yet
 		const personaDone = join(os.homedir(), ".bloom", "wizard-state", "persona-done");

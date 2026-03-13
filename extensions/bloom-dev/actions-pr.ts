@@ -55,7 +55,7 @@ export async function handleDevSubmitPr(
 	}
 
 	if (ctx) {
-		const denied = await requireConfirmation(ctx, `Create PR "${params.title}" (will stage ALL changes in repo)`, {
+		const denied = await requireConfirmation(ctx, `Create PR "${params.title}" from currently staged repo changes`, {
 			requireUi: false,
 		});
 		if (denied) return errorResult(denied);
@@ -73,10 +73,26 @@ export async function handleDevSubmitPr(
 		return errorResult(`Failed to create branch ${branch}: ${checkout.stderr}`);
 	}
 
-	// Stage and commit
-	const add = await run("git", ["-C", repoDir, "add", "-A"], signal);
-	if (add.exitCode !== 0) {
-		return errorResult(`Failed to stage changes: ${add.stderr}`);
+	const status = await run("git", ["-C", repoDir, "status", "--short"], signal);
+	const unstaged = status.stdout
+		.split("\n")
+		.map((line) => line.trimEnd())
+		.filter(Boolean)
+		.filter((line) => line.startsWith("??") || line.startsWith(" M") || line.startsWith(" D"));
+	if (unstaged.length > 0) {
+		return errorResult(
+			[
+				"Refusing to submit PR with unstaged or untracked changes.",
+				"Stage the intended files first.",
+				"",
+				unstaged.join("\n"),
+			].join("\n"),
+		);
+	}
+
+	const staged = await run("git", ["-C", repoDir, "diff", "--cached", "--name-only"], signal);
+	if (!staged.stdout.trim()) {
+		return errorResult("No staged changes found. Stage the intended files first.");
 	}
 
 	const commit = await run("git", ["-C", repoDir, "commit", "-m", params.title], signal);

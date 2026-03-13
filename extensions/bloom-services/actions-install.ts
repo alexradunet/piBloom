@@ -35,42 +35,50 @@ async function installDependency(
 	repoDir: string,
 	manifestPath: string,
 	signal: AbortSignal | undefined,
-) {
+): Promise<{ ok: boolean; note?: string }> {
 	const depCatalog = catalog[dep];
 	const depVersion = depCatalog?.version ?? "latest";
 
 	const depPreflight = await servicePreflightErrors(dep, depCatalog, signal);
 	if (depPreflight.length > 0) {
 		log.warn("dependency preflight failed", { dep, errors: depPreflight });
-		return;
+		return { ok: false, note: `preflight failed: ${depPreflight.join("; ")}` };
 	}
 
 	const depInstall = await installServicePackage(dep, bloomDir, repoDir, signal);
 	if (!depInstall.ok) {
 		log.warn("dependency install failed", { dep, note: depInstall.note });
-		return;
+		return { ok: false, note: depInstall.note };
 	}
 
 	const depImage = depCatalog?.image ?? "";
 	const depBuild = await buildLocalImage(dep, depImage, repoDir, signal);
 	if (!depBuild.ok) {
 		log.warn("dependency image build failed", { dep, note: depBuild.note });
-		return;
+		return { ok: false, note: depBuild.note };
 	}
 
 	if (depCatalog?.models && depCatalog.models.length > 0) {
 		const depModels = await downloadServiceModels(depCatalog.models, signal);
 		if (!depModels.ok) {
 			log.warn("dependency model download failed", { dep, note: depModels.note });
+			return { ok: false, note: depModels.note };
 		}
 	}
 
-	await run("systemctl", ["--user", "daemon-reload"], signal);
-	await run("systemctl", ["--user", "start", `bloom-${dep}.service`], signal);
+	const reload = await run("systemctl", ["--user", "daemon-reload"], signal);
+	if (reload.exitCode !== 0) {
+		return { ok: false, note: reload.stderr || reload.stdout || "daemon-reload failed" };
+	}
+	const start = await run("systemctl", ["--user", "start", `bloom-${dep}.service`], signal);
+	if (start.exitCode !== 0) {
+		return { ok: false, note: start.stderr || start.stdout || "start failed" };
+	}
 
 	const depManifest = loadManifest(manifestPath);
 	depManifest.services[dep] = { image: depImage || "unknown", version: depVersion, enabled: true };
 	saveManifest(depManifest, manifestPath);
+	return { ok: true };
 }
 
 export async function handleInstall(
@@ -138,8 +146,8 @@ export async function handleInstall(
 	if (updateManifest) {
 		const manifest = loadManifest(manifestPath);
 		manifest.services[params.name] = {
-			image: meta.image ?? "unknown",
-			version: version === "latest" ? meta.version : version,
+			image: catalogImage || meta.image || "unknown",
+			version: version === "latest" ? catalogEntry?.version || meta.version : version,
 			enabled: true,
 		};
 		saveManifest(manifest, manifestPath);
@@ -147,10 +155,15 @@ export async function handleInstall(
 
 	// Auto-install dependencies (e.g., backend for frontend)
 	const deps = catalogEntry?.depends ?? [];
+	const depsInstalled: string[] = [];
 	for (const dep of deps) {
 		const depUnit = join(getQuadletDir(), `bloom-${dep}.container`);
 		if (existsSync(depUnit)) continue; // already installed
-		await installDependency(dep, catalog, bloomDir, repoDir, manifestPath, signal);
+		const depResult = await installDependency(dep, catalog, bloomDir, repoDir, manifestPath, signal);
+		if (!depResult.ok) {
+			return errorResult(`Dependency ${dep} failed while installing ${params.name}: ${depResult.note ?? "unknown error"}`);
+		}
+		depsInstalled.push(dep);
 	}
 
 	return {
@@ -160,12 +173,12 @@ export async function handleInstall(
 				text: `Installed ${params.name} successfully from bundled local package.`,
 			},
 		],
-		details: {
-			ref: params.name,
-			installSource: "local",
-			start,
-			manifestUpdated: updateManifest,
-			depsInstalled: deps,
-		},
-	};
-}
+			details: {
+				ref: params.name,
+				installSource: "local",
+				start,
+				manifestUpdated: updateManifest,
+				depsInstalled,
+			},
+		};
+	}

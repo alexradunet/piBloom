@@ -163,13 +163,15 @@ just clean             # remove os/output/
 
 ### 🚀 First Boot
 
-Once the OS is running, the `first-boot` skill walks through setup:
+Once the OS is running, `bloom-wizard.sh` handles deterministic machine setup first:
 
-1. Configure LLM provider + API key
-2. GitHub authentication
-3. Device git identity
-4. dufs setup (WebDAV file server)
-5. Matrix messaging setup (native homeserver)
+1. Password and connectivity checks
+2. NetBird enrollment
+3. Matrix account bootstrap
+4. Git identity
+5. Optional bundled services
+
+After the wizard finishes, Pi resumes with the remaining persona customization step.
 
 See [docs/pibloom-setup.md](docs/pibloom-setup.md) for the full guide.
 

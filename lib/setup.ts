@@ -1,5 +1,5 @@
 /** Step names in execution order. */
-export const STEP_ORDER = ["persona", "complete"] as const;
+export const STEP_ORDER = ["persona"] as const;
 
 export type StepName = (typeof STEP_ORDER)[number];
 
