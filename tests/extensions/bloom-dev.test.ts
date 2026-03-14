@@ -6,14 +6,14 @@ import {
 	handleDevLoop,
 	handleDevRollback,
 	handleDevSwitch,
-} from "../../pi-extensions/bloom-dev/actions-build.js";
+} from "../../core/pi-extensions/bloom-dev/actions-build.js";
 import {
 	handleDevCodeServer,
 	handleDevDisable,
 	handleDevEnable,
 	handleDevStatus,
 	isDevEnabled,
-} from "../../pi-extensions/bloom-dev/actions-lifecycle.js";
+} from "../../core/pi-extensions/bloom-dev/actions-lifecycle.js";
 import {
 	handleDevInstallPackage,
 	handleDevPushExtension,
@@ -22,8 +22,8 @@ import {
 	handleDevSubmitPr,
 	handleDevTest,
 	isImmutableGlobalNpmError,
-} from "../../pi-extensions/bloom-dev/actions-pr.js";
-import type { DevBuildResult, DevStatus, DevTestResult } from "../../pi-extensions/bloom-dev/types.js";
+} from "../../core/pi-extensions/bloom-dev/actions-pr.js";
+import type { DevBuildResult, DevStatus, DevTestResult } from "../../core/pi-extensions/bloom-dev/types.js";
 import { createMockExtensionAPI, type MockExtensionAPI } from "../helpers/mock-extension-api.js";
 import { createTempGarden, type TempGarden } from "../helpers/temp-garden.js";
 
@@ -171,7 +171,7 @@ describe("bloom-dev registration", () => {
 
 	beforeEach(async () => {
 		api = createMockExtensionAPI();
-		const mod = await import("../../pi-extensions/bloom-dev/index.js");
+		const mod = await import("../../core/pi-extensions/bloom-dev/index.js");
 		mod.default(api as never);
 	});
 

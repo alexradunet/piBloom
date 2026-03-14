@@ -52,7 +52,7 @@ just clean
 | Path | Purpose |
 |------|---------|
 | `core/` | Bloom core: OS image, daemon, persona, skills, built-in extensions, runtime helpers |
-| `pi-extensions/` | non-core Pi extensions |
+| `core/pi-extensions/` | Pi-facing Bloom extensions |
 | `services/` | packaged services and template |
 | `tests/` | test suite |
 | `docs/` | live docs only |

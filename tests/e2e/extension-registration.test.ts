@@ -93,7 +93,7 @@ describe("bloom-os registration", () => {
 // ---------------------------------------------------------------------------
 describe("bloom-repo registration", () => {
 	it("registers expected tools", async () => {
-		const mod = await import("../../pi-extensions/bloom-repo/index.js");
+		const mod = await import("../../core/pi-extensions/bloom-repo/index.js");
 		const api = createMockExtensionAPI();
 		mod.default(api as never);
 

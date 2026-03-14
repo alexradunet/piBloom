@@ -24,7 +24,7 @@ OS-level infrastructure sits beside this model rather than inside it:
 Repository shape:
 
 - `core/` contains Bloom's built-in platform and product code
-- `pi-extensions/` contains non-core/operator extensions
+- `core/pi-extensions/` contains Bloom's Pi-facing extensions
 
 ## Skills
 

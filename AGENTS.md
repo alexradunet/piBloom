@@ -23,7 +23,7 @@ OS-level infrastructure is separate from service packages and is baked into the 
 Repository structure note:
 
 - `core/` is Bloom itself: OS image assets, daemon, persona, bundled skills, built-in extensions, and shared runtime code
-- `pi-extensions/` is reserved for non-core/operator extensions such as dev and repo tooling
+- `core/pi-extensions/` contains all Pi-facing Bloom extensions, including dev and repo helpers
 
 ## Bloom Directory
 
