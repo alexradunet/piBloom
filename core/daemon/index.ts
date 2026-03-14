@@ -20,6 +20,7 @@ import { type AgentDefinition, loadAgentDefinitionsResult } from "./agent-regist
 import { AgentSupervisor } from "./agent-supervisor.js";
 import { startWithRetry } from "./lifecycle.js";
 import { createMultiAgentRuntime } from "./multi-agent-runtime.js";
+import { handleRoomProcessError, type RoomFailureState } from "./room-failures.js";
 import type { MatrixBridge } from "./contracts/matrix.js";
 import type { MatrixTextEvent } from "./contracts/matrix.js";
 import type { SessionEvent } from "./contracts/session.js";
@@ -42,12 +43,6 @@ const TYPING_REFRESH_MS = 20_000;
 const ROOM_FAILURE_WINDOW_MS = 60_000;
 const ROOM_FAILURE_THRESHOLD = 3;
 const ROOM_QUARANTINE_MS = 5 * 60_000;
-
-interface RoomFailureState {
-	count: number;
-	windowStart: number;
-	quarantinedUntil: number;
-}
 
 async function main(): Promise<void> {
 	log.info("starting pi-daemon", { idleTimeoutMs: IDLE_TIMEOUT_MS });
@@ -222,7 +217,11 @@ async function runSingleAgentDaemon(): Promise<void> {
 				preambleSent.delete(roomId);
 				stopTyping(roomId);
 				if (_code !== 0 && _code !== null) {
-					handleProcessError(roomId, _code, roomFailures);
+					handleRoomProcessError(roomId, _code, roomFailures, {
+						roomFailureWindowMs: ROOM_FAILURE_WINDOW_MS,
+						roomFailureThreshold: ROOM_FAILURE_THRESHOLD,
+						roomQuarantineMs: ROOM_QUARANTINE_MS,
+					});
 				}
 			},
 		});
@@ -285,29 +284,6 @@ async function runSingleAgentDaemon(): Promise<void> {
 		await bridge.start();
 		log.info("pi-daemon running", { mode: "single-agent" });
 	});
-}
-
-function handleProcessError(codeRoomId: string, code: number, failures: Map<string, RoomFailureState>): void {
-	const now = Date.now();
-	const prev = failures.get(codeRoomId);
-	const next =
-		!prev || now - prev.windowStart > ROOM_FAILURE_WINDOW_MS
-			? { count: 1, windowStart: now, quarantinedUntil: 0 }
-			: { ...prev, count: prev.count + 1 };
-
-	if (next.count >= ROOM_FAILURE_THRESHOLD) {
-		next.quarantinedUntil = now + ROOM_QUARANTINE_MS;
-		log.error("room session quarantined after repeated failures", {
-			roomId: codeRoomId,
-			code,
-			failures: next.count,
-			quarantinedUntil: new Date(next.quarantinedUntil).toISOString(),
-		});
-	} else {
-		log.warn("room session failed", { roomId: codeRoomId, code, failures: next.count });
-	}
-
-	failures.set(codeRoomId, next);
 }
 
 function loadPrimaryMatrixCredentials(): MatrixCredentials {
