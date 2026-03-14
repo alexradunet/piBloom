@@ -29,7 +29,7 @@ describe("installServicePackage", () => {
 
 	afterEach(() => {
 		if (originalHome === undefined) {
-			delete process.env.HOME;
+			process.env.HOME = undefined;
 		} else {
 			process.env.HOME = originalHome;
 		}

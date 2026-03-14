@@ -65,7 +65,7 @@ export async function handleDevSubmitPr(
 	// Run tests for PR body
 	const testResult = await handleDevTest(repoDir, signal);
 	const testSummary =
-		"isError" in testResult && testResult.isError ? `Tests: FAILED\n${testResult.content[0].text}` : `Tests: PASSED`;
+		"isError" in testResult && testResult.isError ? `Tests: FAILED\n${testResult.content[0].text}` : "Tests: PASSED";
 
 	// Branch
 	const branch = params.branch || `dev/${slugifyBranchPart(params.title) || "patch"}`;
@@ -258,7 +258,7 @@ export async function handleDevInstallPackage(params: { source: string }, signal
 			{
 				type: "text" as const,
 				text: [
-					`Global install blocked by immutable OS (/usr/local is read-only).`,
+					"Global install blocked by immutable OS (/usr/local is read-only).",
 					`Installed package from ${source} using local scope (-l) in ${bloomDir}.`,
 					truncate(localResult.stdout),
 				].join("\n"),

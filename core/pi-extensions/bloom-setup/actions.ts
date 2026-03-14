@@ -6,13 +6,13 @@ import os from "node:os";
 import { dirname, join } from "node:path";
 import { atomicWriteFile, ensureDir } from "../../lib/fs-utils.js";
 import {
+	type SetupState,
+	type StepName,
 	advanceStep,
 	createInitialState,
 	getNextStep,
 	getStepsSummary,
 	isSetupComplete,
-	type SetupState,
-	type StepName,
 } from "../../lib/setup.js";
 import { createLogger } from "../../lib/shared.js";
 import { STEP_GUIDANCE } from "./step-guidance.js";

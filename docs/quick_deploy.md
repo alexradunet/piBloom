@@ -97,7 +97,8 @@ On first login:
 
 Fresh-image defaults:
 
-- installed: SSH, NetBird, local Matrix homeserver, Pi daemon
+- installed by preset: SSH, NetBird, local Matrix homeserver
+- started after setup when AI defaults are ready: Pi daemon
 - optional: `cinny`, `dufs`, `code-server`, bridges
 - not included by default: Cinny, Caddy, hosted web proxy stack
 

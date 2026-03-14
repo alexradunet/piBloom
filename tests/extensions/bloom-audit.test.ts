@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { formatEntries, handleAuditReview } from "../../core/pi-extensions/bloom-audit/actions.js";
 import type { AuditEntry } from "../../core/pi-extensions/bloom-audit/types.js";
-import { createTempGarden, type TempGarden } from "../helpers/temp-garden.js";
+import { type TempGarden, createTempGarden } from "../helpers/temp-garden.js";
 
 let temp: TempGarden;
 

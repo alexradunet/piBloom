@@ -104,6 +104,59 @@ async function installDependencyChain(
 	return { ok: true, depsInstalled };
 }
 
+export async function ensureServiceInstalled(
+	name: string,
+	catalog: Record<string, import("../../lib/services-catalog.js").ServiceCatalogEntry>,
+	bloomDir: string,
+	manifestPath: string,
+	repoDir: string,
+	signal: AbortSignal | undefined,
+): Promise<
+	| {
+			ok: true;
+			catalogEntry: import("../../lib/services-catalog.js").ServiceCatalogEntry | undefined;
+			depsInstalled: string[];
+	  }
+	| { ok: false; note: string }
+> {
+	const catalogEntry = catalog[name];
+	const deps = catalogEntry?.depends ?? [];
+
+	const preflight = await servicePreflightErrors(name, catalogEntry, signal);
+	if (preflight.length > 0) {
+		return { ok: false, note: `Preflight failed: ${preflight.join("; ")}` };
+	}
+
+	// Resolve and install dependencies before mutating the primary service so
+	// dependency failures do not leave the requested service half-installed.
+	const depInstallResult = await installDependencyChain(deps, catalog, bloomDir, repoDir, manifestPath, signal);
+	if (!depInstallResult.ok) {
+		return { ok: false, note: `${depInstallResult.note} while installing ${name}` };
+	}
+
+	const install = await installServicePackage(name, bloomDir, repoDir, signal);
+	if (!install.ok) {
+		return { ok: false, note: install.note ?? `Install failed for ${name}` };
+	}
+
+	// Build local image if needed (localhost/* images)
+	const catalogImage = catalogEntry?.image ?? "";
+	const buildResult = await buildLocalImage(name, catalogImage, repoDir, signal);
+	if (!buildResult.ok) {
+		return { ok: false, note: buildResult.note ?? `Image build failed for ${name}` };
+	}
+
+	// Download required models
+	if (catalogEntry?.models && catalogEntry.models.length > 0) {
+		const modelResult = await downloadServiceModels(catalogEntry.models, signal);
+		if (!modelResult.ok) {
+			return { ok: false, note: modelResult.note ?? `Model download failed for ${name}` };
+		}
+	}
+
+	return { ok: true, catalogEntry, depsInstalled: depInstallResult.depsInstalled };
+}
+
 export async function handleInstall(
 	params: {
 		name: string;
@@ -124,40 +177,10 @@ export async function handleInstall(
 	const updateManifest = params.update_manifest ?? true;
 
 	const catalog = loadServiceCatalog(repoDir);
-	const catalogEntry = catalog[params.name];
-	const deps = catalogEntry?.depends ?? [];
-
-	const preflight = await servicePreflightErrors(params.name, catalogEntry, signal);
-	if (preflight.length > 0) {
-		return errorResult(`Preflight failed: ${preflight.join("; ")}`);
-	}
-
-	// Resolve and install dependencies before mutating the primary service so
-	// dependency failures do not leave the requested service half-installed.
-	const depInstallResult = await installDependencyChain(deps, catalog, bloomDir, repoDir, manifestPath, signal);
-	if (!depInstallResult.ok) {
-		return errorResult(`${depInstallResult.note} while installing ${params.name}`);
-	}
-
-	const install = await installServicePackage(params.name, bloomDir, repoDir, signal);
-	if (!install.ok) {
-		return errorResult(install.note ?? `Install failed for ${params.name}`);
-	}
-
-	// Build local image if needed (localhost/* images)
+	const installResult = await ensureServiceInstalled(params.name, catalog, bloomDir, manifestPath, repoDir, signal);
+	if (!installResult.ok) return errorResult(installResult.note);
+	const { catalogEntry, depsInstalled } = installResult;
 	const catalogImage = catalogEntry?.image ?? "";
-	const buildResult = await buildLocalImage(params.name, catalogImage, repoDir, signal);
-	if (!buildResult.ok) {
-		return errorResult(buildResult.note ?? `Image build failed for ${params.name}`);
-	}
-
-	// Download required models
-	if (catalogEntry?.models && catalogEntry.models.length > 0) {
-		const modelResult = await downloadServiceModels(catalogEntry.models, signal);
-		if (!modelResult.ok) {
-			return errorResult(modelResult.note ?? `Model download failed for ${params.name}`);
-		}
-	}
 
 	const daemonReload = await run("systemctl", ["--user", "daemon-reload"], signal);
 	if (daemonReload.exitCode !== 0) return errorResult(`daemon-reload failed:\n${daemonReload.stderr}`);
@@ -197,7 +220,7 @@ export async function handleInstall(
 			installSource: "local",
 			start,
 			manifestUpdated: updateManifest,
-			depsInstalled: depInstallResult.depsInstalled,
+			depsInstalled,
 		},
 	};
 }

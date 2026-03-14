@@ -8,6 +8,7 @@
 import { StringEnum } from "@mariozechner/pi-ai";
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import { Type } from "@sinclair/typebox";
+import { handleSystemHealth } from "./actions-health.js";
 import {
 	checkPendingUpdates,
 	handleBootc,
@@ -16,7 +17,6 @@ import {
 	handleSystemdControl,
 	handleUpdateStatus,
 } from "./actions.js";
-import { handleSystemHealth } from "./actions-health.js";
 
 export default function (pi: ExtensionAPI) {
 	pi.registerTool({

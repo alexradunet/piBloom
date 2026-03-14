@@ -2,8 +2,8 @@ import { describe, expect, it, vi } from "vitest";
 
 import type { AgentDefinition } from "../../core/daemon/agent-registry.js";
 import { AgentSupervisor } from "../../core/daemon/agent-supervisor.js";
-import type { RoomEnvelope } from "../../core/daemon/router.js";
 import type { SessionEvent } from "../../core/daemon/contracts/session.js";
+import type { RoomEnvelope } from "../../core/daemon/router.js";
 
 function makeAgent(id: string, userId: string, mode: AgentDefinition["respond"]["mode"]): AgentDefinition {
 	return {

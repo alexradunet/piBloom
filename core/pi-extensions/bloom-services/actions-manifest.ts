@@ -3,7 +3,7 @@
  */
 import os from "node:os";
 import { run } from "../../lib/exec.js";
-import { loadManifest, type Manifest, saveManifest } from "../../lib/services-manifest.js";
+import { type Manifest, loadManifest, saveManifest } from "../../lib/services-manifest.js";
 import { validateServiceName } from "../../lib/services-validation.js";
 import { errorResult } from "../../lib/shared.js";
 import { detectRunningServices } from "./service-io.js";

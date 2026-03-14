@@ -41,7 +41,7 @@ jobs:
         run: npm run test:coverage
 
       - name: Lint OS build scripts
-        run: shellcheck os/build_files/*.sh os/packages/repos.sh
+        run: shellcheck core/os/build_files/*.sh core/os/packages/repos.sh
 
       - name: Get current date
         id: date
@@ -49,7 +49,7 @@ jobs:
 
       - name: Build OS image
         run: |
-          podman build -f os/Containerfile \
+          podman build -f core/os/Containerfile \
             --cap-add SYS_ADMIN \
             -t ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }} \
             -t ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest \

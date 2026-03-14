@@ -1,7 +1,7 @@
 /**
  * Handler / business logic for bloom-audit.
  */
-import { appendFileSync, existsSync, mkdirSync, readdirSync, readFileSync, unlinkSync } from "node:fs";
+import { appendFileSync, existsSync, mkdirSync, readFileSync, readdirSync, unlinkSync } from "node:fs";
 import { join } from "node:path";
 import { dayStamp, summarizeInput } from "../../lib/audit.js";
 import { getBloomDir } from "../../lib/filesystem.js";

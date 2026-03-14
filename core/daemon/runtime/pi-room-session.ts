@@ -2,15 +2,15 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
 	type AgentSessionEvent,
-	createAgentSession,
-	createCodingTools,
 	DefaultResourceLoader,
 	type AgentSession as PiAgentSession,
 	SessionManager,
 	SettingsManager,
+	createAgentSession,
+	createCodingTools,
 } from "@mariozechner/pi-coding-agent";
 import { createLogger } from "../../lib/shared.js";
-import { extractResponseText, type SessionEvent } from "../contracts/session.js";
+import { type SessionEvent, extractResponseText } from "../contracts/session.js";
 import type { BloomSessionLike } from "../contracts/session.js";
 
 const log = createLogger("pi-room-session");

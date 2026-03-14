@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { normalizeCommand } from "../../core/pi-extensions/bloom-persona/actions.js";
-import { createMockExtensionAPI, type MockExtensionAPI } from "../helpers/mock-extension-api.js";
-import { createTempGarden, type TempGarden } from "../helpers/temp-garden.js";
+import { type MockExtensionAPI, createMockExtensionAPI } from "../helpers/mock-extension-api.js";
+import { type TempGarden, createTempGarden } from "../helpers/temp-garden.js";
 
 let temp: TempGarden;
 let api: MockExtensionAPI;

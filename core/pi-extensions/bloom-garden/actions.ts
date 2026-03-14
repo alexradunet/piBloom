@@ -9,8 +9,8 @@ import { fileURLToPath } from "node:url";
 import { safePath } from "../../lib/filesystem.js";
 import { stringifyFrontmatter } from "../../lib/frontmatter.js";
 import {
-	generateAgentInstructionsMarkdown,
 	type MatrixCredentials,
+	generateAgentInstructionsMarkdown,
 	matrixAgentCredentialsPath,
 	matrixCredentialsPath,
 	provisionMatrixAgentAccount,

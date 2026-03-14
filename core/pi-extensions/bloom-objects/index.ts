@@ -6,8 +6,8 @@
  */
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import { Type } from "@sinclair/typebox";
-import { createObject, linkObjects, readObject } from "./actions.js";
 import { listObjects, searchObjects } from "./actions-query.js";
+import { createObject, linkObjects, readObject } from "./actions.js";
 
 export default function (pi: ExtensionAPI) {
 	pi.registerTool({

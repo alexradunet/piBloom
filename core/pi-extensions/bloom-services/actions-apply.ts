@@ -7,10 +7,10 @@ import { join } from "node:path";
 import type { ExtensionContext } from "@mariozechner/pi-coding-agent";
 import { run } from "../../lib/exec.js";
 import { getQuadletDir } from "../../lib/filesystem.js";
-import { loadServiceCatalog, servicePreflightErrors } from "../../lib/services-catalog.js";
+import { loadServiceCatalog } from "../../lib/services-catalog.js";
 import { loadManifest, saveManifest } from "../../lib/services-manifest.js";
 import { errorResult, requireConfirmation, truncate } from "../../lib/shared.js";
-import { installServicePackage } from "./service-io.js";
+import { ensureServiceInstalled } from "./actions-install.js";
 
 export async function handleManifestApply(
 	params: {
@@ -63,14 +63,7 @@ export async function handleManifestApply(
 			continue;
 		}
 
-		const catalogEntry = catalog[name];
-		const version = svc.version?.trim() || catalogEntry?.version || "latest";
-
-		const preflight = await servicePreflightErrors(name, catalogEntry, signal);
-		if (preflight.length > 0) {
-			errors.push(`${name}: preflight failed — ${preflight.join("; ")}`);
-			continue;
-		}
+		const version = svc.version?.trim() || catalog[name]?.version || "latest";
 
 		if (dryRun) {
 			lines.push(`[dry-run] install ${name}@${version}`);
@@ -78,9 +71,9 @@ export async function handleManifestApply(
 			continue;
 		}
 
-		const installResult = await installServicePackage(name, bloomDir, repoDir, signal);
+		const installResult = await ensureServiceInstalled(name, catalog, bloomDir, manifestPath, repoDir, signal);
 		if (!installResult.ok) {
-			errors.push(`${name}: install failed — ${installResult.note ?? "unknown error"}`);
+			errors.push(`${name}: install failed — ${installResult.note}`);
 			continue;
 		}
 
@@ -88,6 +81,7 @@ export async function handleManifestApply(
 		needsReload = true;
 		lines.push(`Installed ${name} from bundled local package`);
 
+		const catalogEntry = installResult.catalogEntry;
 		if (!svc.version) {
 			manifest.services[name].version = version;
 			manifestChanged = true;

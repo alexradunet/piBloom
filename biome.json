@@ -54,6 +54,9 @@
 			"include": ["tests/**/*.test.ts"],
 			"linter": {
 				"rules": {
+					"performance": {
+						"noDelete": "off"
+					},
 					"suspicious": {
 						"noConsole": "off",
 						"noExplicitAny": "off"

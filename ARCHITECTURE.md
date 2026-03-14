@@ -23,7 +23,6 @@ Bloom also ships OS-level infrastructure that is part of the image rather than a
 ```text
 core/         Bloom core: OS image, daemon, persona, skills, built-in extensions, runtime helpers
 core/pi-extensions/   Pi-facing Bloom extensions
-cli/          local command-line helpers
 services/     bundled service packages and template
 tests/        unit, integration, and daemon tests
 docs/         live documentation only

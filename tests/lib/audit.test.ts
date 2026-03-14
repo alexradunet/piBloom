@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { dayStamp, SENSITIVE_KEY, sanitize, summarizeInput } from "../../core/lib/audit.js";
+import { SENSITIVE_KEY, dayStamp, sanitize, summarizeInput } from "../../core/lib/audit.js";
 
 // ---------------------------------------------------------------------------
 // dayStamp
@@ -22,18 +22,12 @@ describe("dayStamp", () => {
 // SENSITIVE_KEY
 // ---------------------------------------------------------------------------
 describe("SENSITIVE_KEY", () => {
-	it.each([
-		"token",
-		"secret",
-		"password",
-		"authorization",
-		"api_key",
-		"api-key",
-		"apiKey",
-		"cookie",
-	])("matches %s", (key) => {
-		expect(SENSITIVE_KEY.test(key)).toBe(true);
-	});
+	it.each(["token", "secret", "password", "authorization", "api_key", "api-key", "apiKey", "cookie"])(
+		"matches %s",
+		(key) => {
+			expect(SENSITIVE_KEY.test(key)).toBe(true);
+		},
+	);
 
 	it("does not match normal keys", () => {
 		expect(SENSITIVE_KEY.test("name")).toBe(false);

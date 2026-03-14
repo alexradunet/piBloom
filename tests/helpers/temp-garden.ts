@@ -21,12 +21,12 @@ export function createTempGarden(): TempGarden {
 			if (origResolved !== undefined) {
 				process.env._BLOOM_DIR_RESOLVED = origResolved;
 			} else {
-				delete process.env._BLOOM_DIR_RESOLVED;
+				process.env._BLOOM_DIR_RESOLVED = undefined;
 			}
 			if (origGarden !== undefined) {
 				process.env.BLOOM_DIR = origGarden;
 			} else {
-				delete process.env.BLOOM_DIR;
+				process.env.BLOOM_DIR = undefined;
 			}
 			rmSync(gardenDir, { recursive: true, force: true });
 		},
