@@ -5,6 +5,7 @@
  * @see {@link ../../AGENTS.md#bloom-persona} Extension reference
  */
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
+import { buildMemoryDigest } from "../bloom-objects/digest.js";
 import {
 	buildRestoredContextBlock,
 	checkUpdateAvailable,
@@ -19,12 +20,14 @@ export default function (pi: ExtensionAPI) {
 	let personaBlock: string | undefined;
 	let guardrails: ReturnType<typeof loadGuardrails> | undefined;
 	let restoredContext: ReturnType<typeof loadContext> | undefined;
+	let memoryDigest: string | undefined;
 
 	pi.on("session_start", () => {
 		pi.setSessionName("Bloom");
+		memoryDigest = undefined;
 	});
 
-	pi.on("before_agent_start", async (event) => {
+	pi.on("before_agent_start", async (event, ctx) => {
 		if (personaBlock === undefined) {
 			personaBlock = loadPersona();
 		}
@@ -38,6 +41,13 @@ export default function (pi: ExtensionAPI) {
 		if (restoredContext) {
 			systemPrompt += buildRestoredContextBlock(restoredContext);
 			restoredContext = null;
+		}
+
+		if (memoryDigest === undefined) {
+			memoryDigest = buildMemoryDigest(ctx.cwd);
+		}
+		if (memoryDigest) {
+			systemPrompt += memoryDigest;
 		}
 
 		return { systemPrompt };

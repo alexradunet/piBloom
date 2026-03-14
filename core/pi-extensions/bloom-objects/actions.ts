@@ -7,6 +7,7 @@ import path from "node:path";
 import { getBloomDir, safePath } from "../../lib/filesystem.js";
 import { parseFrontmatter, stringifyFrontmatter } from "../../lib/frontmatter.js";
 import { errorResult, nowIso, truncate } from "../../lib/shared.js";
+import { defaultObjectBody, mergeObjectState, readMemoryRecord, writeMemoryRecord } from "./memory.js";
 
 /** Parse a `type/slug` reference string into its components. Throws if format is invalid. */
 export function parseRef(ref: string): { type: string; slug: string } {
@@ -21,17 +22,14 @@ export function walkMdFiles(dir: string): string[] {
 	return fs.globSync("**/*.md", { cwd: dir }).map((f) => path.join(dir, f));
 }
 
-function parseFieldValue(key: string, val: string): unknown {
-	return key === "tags" || key === "links"
-		? val
-				.split(",")
-				.map((s) => s.trim())
-				.filter(Boolean)
-		: val;
-}
-
 /** Create a new markdown object. */
-export function createObject(params: { type: string; slug: string; fields?: Record<string, string>; path?: string }) {
+export function createObject(params: {
+	type: string;
+	slug: string;
+	fields?: Record<string, unknown>;
+	path?: string;
+	body?: string;
+}) {
 	const bloomDir = getBloomDir();
 	let filepath: string;
 	try {
@@ -41,27 +39,8 @@ export function createObject(params: { type: string; slug: string; fields?: Reco
 	}
 	fs.mkdirSync(path.dirname(filepath), { recursive: true });
 
-	const fields = params.fields ?? {};
-	const now = nowIso();
-	const data: Record<string, unknown> = {
-		type: params.type,
-		slug: params.slug,
-	};
-
-	// Add known fields first for consistent ordering, then remaining fields sorted
-	for (const k of ["title", "status", "priority"]) {
-		if (k in fields) data[k] = fields[k];
-	}
-	for (const k of Object.keys(fields).sort()) {
-		if (k in data) continue;
-		data[k] = parseFieldValue(k, fields[k]);
-	}
-	data.origin = "pi";
-	data.created = now;
-	data.modified = now;
-
-	const title = data.title as string | undefined;
-	const body = title ? `# ${title}\n` : "";
+	const data = mergeObjectState({ type: params.type, slug: params.slug, fields: params.fields });
+	const body = params.body ?? defaultObjectBody(data);
 
 	try {
 		fs.writeFileSync(filepath, stringifyFrontmatter(data, body), {
@@ -82,6 +61,82 @@ export function createObject(params: { type: string; slug: string; fields?: Reco
 			},
 		],
 		details: {},
+	};
+}
+
+export function updateObject(params: {
+	type: string;
+	slug: string;
+	fields?: Record<string, unknown>;
+	path?: string;
+	body?: string;
+}) {
+	let filepath: string;
+	if (params.path) {
+		try {
+			filepath = safePath(os.homedir(), params.path);
+		} catch {
+			return errorResult("Path traversal blocked: invalid path");
+		}
+	} else {
+		const bloomDir = getBloomDir();
+		try {
+			filepath = safePath(path.join(bloomDir, "Objects"), `${params.slug}.md`);
+		} catch {
+			return errorResult("Path traversal blocked: invalid slug");
+		}
+	}
+	const record = readMemoryRecord(filepath);
+	if (!record) return errorResult(`object not found: ${params.type}/${params.slug}`);
+	const attributes = mergeObjectState({
+		type: params.type,
+		slug: params.slug,
+		fields: params.fields,
+		existing: record.attributes,
+	});
+	writeMemoryRecord({
+		filepath,
+		attributes,
+		body: params.body ?? record.body,
+	});
+	return {
+		content: [{ type: "text" as const, text: `updated ${params.type}/${params.slug}` }],
+		details: {},
+	};
+}
+
+export function upsertObject(params: {
+	type: string;
+	slug: string;
+	fields?: Record<string, unknown>;
+	path?: string;
+	body?: string;
+}) {
+	const bloomDir = getBloomDir();
+	let filepath: string;
+	try {
+		filepath = params.path ? safePath(os.homedir(), params.path) : safePath(path.join(bloomDir, "Objects"), `${params.slug}.md`);
+	} catch {
+		return errorResult("Path traversal blocked: invalid path");
+	}
+	const existing = readMemoryRecord(filepath);
+	if (!existing) {
+		return createObject(params);
+	}
+	const attributes = mergeObjectState({
+		type: params.type,
+		slug: params.slug,
+		fields: params.fields,
+		existing: existing.attributes,
+	});
+	writeMemoryRecord({
+		filepath,
+		attributes,
+		body: params.body ?? existing.body,
+	});
+	return {
+		content: [{ type: "text" as const, text: `upserted ${params.type}/${params.slug}` }],
+		details: { existed: true },
 	};
 }
 
@@ -107,6 +162,16 @@ export function readObject(params: { type: string; slug: string; path?: string }
 		return errorResult(`object not found: ${params.type}/${params.slug}`);
 	}
 	const raw = fs.readFileSync(filepath, "utf-8");
+	try {
+		const { attributes, body } = parseFrontmatter<Record<string, unknown>>(raw);
+		const updated = {
+			...attributes,
+			last_accessed: nowIso(),
+		};
+		fs.writeFileSync(filepath, stringifyFrontmatter(updated, body));
+	} catch {
+		// Leave unreadable files untouched.
+	}
 	return {
 		content: [{ type: "text" as const, text: truncate(raw) }],
 		details: {},

@@ -57,7 +57,8 @@ Current extension families:
 | `bloom-os` | bootc, container, systemd, and health workflows |
 | `bloom-repo` | repo bootstrap, sync, and PR creation |
 | `bloom-services` | service and bridge lifecycle |
-| `bloom-objects` | object store |
+| `bloom-episodes` | episodic memory |
+| `bloom-objects` | durable object store |
 | `bloom-garden` | Bloom directory, skills, agents, blueprint seeding |
 | `bloom-dev` | on-device dev workflows |
 | `bloom-setup` | persona-step progress after the first-boot wizard |

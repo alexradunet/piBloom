@@ -100,6 +100,7 @@ Persona/
 Skills/
 Evolutions/
 Objects/
+Episodes/
 Agents/
 audit/
 guardrails.yaml

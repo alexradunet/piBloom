@@ -14,12 +14,13 @@ This repository contains:
 Bloom currently provides:
 
 - Bloom directory management and blueprint seeding for `~/Bloom/`
-- persona injection, shell guardrails, and compaction context persistence
+- persona injection, shell guardrails, durable-memory digest injection, and compaction context persistence
 - an audit trail for tool calls and tool results
 - OS management tools for `bootc`, containers, systemd, health, and scheduled reboot
 - repository bootstrap, sync, and PR submission helpers
 - service scaffolding, installation, smoke testing, manifest management, and bridge lifecycle tools
-- a flat-file object store in `~/Bloom/Objects/`
+- a flat-file durable memory store in `~/Bloom/Objects/`
+- append-only episodic memory in `~/Bloom/Episodes/`
 - an optional multi-agent Matrix daemon with one Pi session per `(room, agent)` pair and one Matrix SDK client per identity
 - a first-boot flow split between a bash wizard and a Pi-guided persona step
 
@@ -78,7 +79,8 @@ All Pi-facing extensions now live under `core/pi-extensions/`.
 | `bloom-os` | `bootc`, `container`, `systemd_control`, `system_health`, `update_status`, `schedule_reboot` | `before_agent_start` |
 | `bloom-repo` | `bloom_repo`, `bloom_repo_submit_pr` | — |
 | `bloom-services` | `service_scaffold`, `service_install`, `service_test`, `manifest_show`, `manifest_sync`, `manifest_set_service`, `manifest_apply`, `bridge_create`, `bridge_remove`, `bridge_status` | `session_start` |
-| `bloom-objects` | `memory_create`, `memory_read`, `memory_search`, `memory_link`, `memory_list` | — |
+| `bloom-episodes` | `episode_create`, `episode_list`, `episode_promote`, `episode_consolidate` | — |
+| `bloom-objects` | `memory_create`, `memory_update`, `memory_upsert`, `memory_read`, `memory_query`, `memory_search`, `memory_link`, `memory_list` | — |
 | `bloom-garden` | `garden_status`, `skill_create`, `skill_list`, `agent_create`, `persona_evolve` | `session_start`, `resources_discover`, `/bloom` |
 | `bloom-dev` | `dev_enable`, `dev_disable`, `dev_status`, `dev_code_server`, `dev_build`, `dev_switch`, `dev_rollback`, `dev_loop`, `dev_test`, `dev_submit_pr`, `dev_push_skill`, `dev_push_service`, `dev_push_extension`, `dev_install_package` | — |
 | `bloom-setup` | `setup_status`, `setup_advance`, `setup_reset` | `before_agent_start` |
@@ -146,6 +148,7 @@ just vm-ssh
 
 - [AGENTS.md](AGENTS.md) for the complete tool, hook, path, and feature reference
 - [ARCHITECTURE.md](ARCHITECTURE.md) for the current structure and design rules
+- [docs/memory-model.md](docs/memory-model.md) for the long-term memory model and promotion rules
 - [docs/service-architecture.md](docs/service-architecture.md) for the Skill / Extension / Service model
 - [docs/pibloom-setup.md](docs/pibloom-setup.md) for first boot
 - [docs/quick_deploy.md](docs/quick_deploy.md) for image build and install

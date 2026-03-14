@@ -1,6 +1,10 @@
+import fs from "node:fs";
+import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { stringifyFrontmatter } from "../../core/lib/frontmatter.js";
 import { normalizeCommand } from "../../core/pi-extensions/bloom-persona/actions.js";
 import { type MockExtensionAPI, createMockExtensionAPI } from "../helpers/mock-extension-api.js";
+import { createMockExtensionContext } from "../helpers/mock-extension-context.js";
 import { type TempGarden, createTempGarden } from "../helpers/temp-garden.js";
 
 let temp: TempGarden;
@@ -46,6 +50,67 @@ describe("bloom-persona session_start", () => {
 	it("sets session name to 'Bloom'", async () => {
 		await api.fireEvent("session_start");
 		expect(api._sessionName).toBe("Bloom");
+	});
+
+	it("injects a durable memory digest into the system prompt", async () => {
+		const objectsDir = path.join(temp.gardenDir, "Objects");
+		fs.mkdirSync(objectsDir, { recursive: true });
+		fs.writeFileSync(
+			path.join(objectsDir, "ts-style.md"),
+			stringifyFrontmatter(
+				{
+					type: "preference",
+					slug: "ts-style",
+					title: "TypeScript Style",
+					summary: "User prefers 2-space indentation.",
+					status: "active",
+					salience: 0.9,
+				},
+				"# TypeScript Style\n",
+			),
+		);
+		fs.writeFileSync(
+			path.join(objectsDir, "matrix-recovery.md"),
+			stringifyFrontmatter(
+				{
+					type: "procedure",
+					slug: "matrix-recovery",
+					title: "Matrix Recovery",
+					summary: "Restart bloom-matrix.service, then verify recovery.",
+					status: "active",
+					salience: 0.8,
+				},
+				"# Matrix Recovery\n",
+			),
+		);
+		fs.writeFileSync(
+			path.join(objectsDir, "project-recovery.md"),
+			stringifyFrontmatter(
+				{
+					type: "procedure",
+					slug: "project-recovery",
+					title: "Project Recovery",
+					summary: "Project-specific recovery path.",
+					status: "active",
+					scope: "project",
+					scope_value: "pi-bloom",
+					salience: 0.4,
+				},
+				"# Project Recovery\n",
+			),
+		);
+
+		const result = (await api.fireEvent("before_agent_start", {
+			systemPrompt: "BASE",
+		}, createMockExtensionContext({ cwd: "/tmp/pi-bloom" }))) as { systemPrompt: string };
+
+		expect(result.systemPrompt).toContain("[BLOOM MEMORY DIGEST]");
+		expect(result.systemPrompt).toContain("preference/ts-style");
+		const procedureIndex = result.systemPrompt.indexOf("procedure/project-recovery");
+		const globalProcedureIndex = result.systemPrompt.indexOf("procedure/matrix-recovery");
+		expect(procedureIndex).toBeGreaterThan(-1);
+		expect(globalProcedureIndex).toBeGreaterThan(-1);
+		expect(procedureIndex).toBeLessThan(globalProcedureIndex);
 	});
 });
 

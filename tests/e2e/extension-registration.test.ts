@@ -57,6 +57,22 @@ describe("bloom-garden registration", () => {
 });
 
 // ---------------------------------------------------------------------------
+// bloom-episodes
+// ---------------------------------------------------------------------------
+describe("bloom-episodes registration", () => {
+	it("registers episodic tools without events", async () => {
+		const mod = await import("../../core/pi-extensions/bloom-episodes/index.js");
+		const api = createMockExtensionAPI();
+		mod.default(api as never);
+
+		expect(toolNames(api)).toEqual(
+			expect.arrayContaining(["episode_create", "episode_list", "episode_promote", "episode_consolidate"]),
+		);
+		expect(eventNames(api)).toEqual([]);
+	});
+});
+
+// ---------------------------------------------------------------------------
 // bloom-objects
 // ---------------------------------------------------------------------------
 describe("bloom-objects registration", () => {
@@ -66,7 +82,16 @@ describe("bloom-objects registration", () => {
 		mod.default(api as never);
 
 		expect(toolNames(api)).toEqual(
-			expect.arrayContaining(["memory_create", "memory_read", "memory_search", "memory_link", "memory_list"]),
+			expect.arrayContaining([
+				"memory_create",
+				"memory_update",
+				"memory_upsert",
+				"memory_read",
+				"memory_query",
+				"memory_search",
+				"memory_link",
+				"memory_list",
+			]),
 		);
 		expect(toolNames(api)).not.toContain("memory_move");
 		expect(toolNames(api)).not.toContain("garden_reindex");

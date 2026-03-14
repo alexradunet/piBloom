@@ -35,6 +35,7 @@ Default Bloom home is `~/Bloom/` unless `BLOOM_DIR` is set.
 | `~/Bloom/Skills/` | installed and seeded skills |
 | `~/Bloom/Evolutions/` | proposed persona / system evolutions |
 | `~/Bloom/Objects/` | flat-file object store |
+| `~/Bloom/Episodes/` | append-only episodic memory |
 | `~/Bloom/Agents/` | multi-agent overlays (`AGENTS.md`) |
 | `~/Bloom/audit/` | audit JSONL files |
 | `~/Bloom/manifest.yaml` | declarative service manifest |
@@ -62,12 +63,13 @@ Purpose:
 
 - seed Bloom identity into Pi
 - enforce shell guardrails
+- inject a compact durable-memory digest at session start
 - persist compacted context
 
 Hooks:
 
 - `session_start` sets the session name to `Bloom`
-- `before_agent_start` injects persona plus restored compacted context
+- `before_agent_start` injects persona plus restored compacted context and durable-memory digest
 - `tool_call` blocks matching `bash` commands using the compiled guardrail policy
 - `session_before_compact` saves context and adds compaction guidance
 
@@ -156,16 +158,33 @@ Notes:
 - `manifest_apply` attempts persistent `enable --now` / `disable --now` first, then falls back to start/stop when the unit cannot be enabled
 - corrupt `~/Bloom/manifest.yaml` files are moved aside to `manifest.yaml.corrupt-*` before Bloom recreates an empty manifest
 
+### `bloom-episodes`
+
+Purpose:
+
+- append episodic memory files to `~/Bloom/Episodes/`
+- preserve raw observations before consolidation into durable objects
+
+Tools:
+
+- `episode_create`
+- `episode_list`
+- `episode_promote`
+- `episode_consolidate`
+
 ### `bloom-objects`
 
 Purpose:
 
-- flat-file object store in `~/Bloom/Objects/`
+- flat-file durable memory objects in `~/Bloom/Objects/`
 
 Tools:
 
 - `memory_create`
+- `memory_update`
+- `memory_upsert`
 - `memory_read`
+- `memory_query`
 - `memory_search`
 - `memory_link`
 - `memory_list`
@@ -301,6 +320,7 @@ Additional service documentation in-tree:
 
 - [README.md](README.md)
 - [ARCHITECTURE.md](ARCHITECTURE.md)
+- [docs/memory-model.md](docs/memory-model.md)
 - [docs/service-architecture.md](docs/service-architecture.md)
 - [docs/quick_deploy.md](docs/quick_deploy.md)
 - [docs/pibloom-setup.md](docs/pibloom-setup.md)

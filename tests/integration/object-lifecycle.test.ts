@@ -52,13 +52,13 @@ describe("object lifecycle", () => {
 	it("memory_create creates a file with frontmatter", async () => {
 		const { api } = await setupObjectsExtension();
 		const result = await executeTool(api, "memory_create", {
-			type: "task",
+			type: "decision",
 			slug: "fix-bike",
-			fields: { title: "Fix bike tire" },
+			fields: { title: "Fix bike tire", scope: "project", confidence: "high", summary: "Decision summary" },
 		});
 
 		expect(result.isError).toBeUndefined();
-		expect(result.content[0].text).toContain("created task/fix-bike");
+		expect(result.content[0].text).toContain("created decision/fix-bike");
 
 		const filepath = join(temp.gardenDir, "Objects", "fix-bike.md");
 		expect(existsSync(filepath)).toBe(true);
@@ -66,9 +66,11 @@ describe("object lifecycle", () => {
 		const raw = readFileSync(filepath, "utf-8");
 		const parsed = parseFrontmatter(raw);
 		expect(parsed.attributes).toMatchObject({
-			type: "task",
+			type: "decision",
 			slug: "fix-bike",
 			title: "Fix bike tire",
+			scope: "project",
+			confidence: "high",
 		});
 	});
 
@@ -127,5 +129,33 @@ describe("object lifecycle", () => {
 		const result = await executeTool(api, "memory_create", { type: "note", slug: "dup" });
 		expect(result.isError).toBe(true);
 		expect(result.content[0].text).toContain("already exists");
+	});
+
+	it("memory_query ranks durable object matches", async () => {
+		const { api } = await setupObjectsExtension();
+
+		await executeTool(api, "memory_create", {
+			type: "preference",
+			slug: "ts-style",
+			fields: {
+				title: "TypeScript Preferences",
+				summary: "2-space indentation and concise examples",
+				tags: ["typescript", "style"],
+				scope: "global",
+				salience: 0.8,
+				confidence: "high",
+			},
+			body: "# TypeScript Preferences\n\nPrefer 2-space indentation.",
+		});
+
+		const result = await executeTool(api, "memory_query", {
+			text: "indentation",
+			type: "preference",
+			tags: ["typescript"],
+			scope: "global",
+		});
+
+		expect(result.isError).toBeUndefined();
+		expect(result.content[0].text).toContain("preference/ts-style");
 	});
 });

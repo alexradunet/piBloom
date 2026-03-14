@@ -43,12 +43,21 @@ function getExecute(name: string): ToolExecute {
 // Registration
 // ---------------------------------------------------------------------------
 describe("bloom-objects registration", () => {
-	it("registers exactly 5 tools", () => {
-		expect(api._registeredTools).toHaveLength(5);
+	it("registers exactly 8 tools", () => {
+		expect(api._registeredTools).toHaveLength(8);
 	});
 
 	it("registers the expected tool names", () => {
-		expect(toolNames()).toEqual(["memory_create", "memory_read", "memory_search", "memory_link", "memory_list"]);
+		expect(toolNames()).toEqual([
+			"memory_create",
+			"memory_update",
+			"memory_upsert",
+			"memory_read",
+			"memory_query",
+			"memory_search",
+			"memory_link",
+			"memory_list",
+		]);
 	});
 
 	it("has no session_start event handler", () => {
@@ -121,6 +130,98 @@ describe("memory_create and memory_read execution", () => {
 
 		expect(result.isError).toBe(true);
 		expect(result.content[0].text).toContain("not found");
+	});
+
+	it("updates and queries richer durable metadata", async () => {
+		const create = getExecute("memory_create");
+		const update = getExecute("memory_update");
+		const query = getExecute("memory_query");
+
+		await create("call-1", {
+			type: "preference",
+			slug: "ts-style",
+			fields: {
+				title: "TS Style",
+				summary: "User prefers concise TypeScript examples",
+				tags: ["typescript", "style"],
+				scope: "global",
+				confidence: "high",
+				salience: 0.9,
+			},
+			body: "# TS Style\n\nPrefer 2-space indentation.",
+		});
+
+		const updateResult = await update("call-2", {
+			type: "preference",
+			slug: "ts-style",
+			fields: { status: "active", links: ["fact/user-identity"] },
+		});
+
+		expect(updateResult.content[0].text).toContain("updated preference/ts-style");
+
+		const queryResult = await query("call-3", {
+			text: "TypeScript",
+			type: "preference",
+			tags: ["style"],
+			scope: "global",
+		});
+
+		expect(queryResult.content[0].text).toContain("preference/ts-style");
+		expect(queryResult.content[0].text).toContain("score=");
+	});
+
+	it("upserts an existing object instead of erroring", async () => {
+		const create = getExecute("memory_create");
+		const upsert = getExecute("memory_upsert");
+		const read = getExecute("memory_read");
+
+		await create("call-1", { type: "fact", slug: "user-identity", fields: { title: "User Identity" } });
+		const result = await upsert("call-2", {
+			type: "fact",
+			slug: "user-identity",
+			fields: { summary: "Confirmed user identity facts", confidence: "high" },
+		});
+
+		expect(result.content[0].text).toContain("upserted fact/user-identity");
+
+		const readResult = await read("call-3", { type: "fact", slug: "user-identity" });
+		expect(readResult.content[0].text).toContain("summary: Confirmed user identity facts");
+	});
+
+	it("prefers project-scoped matches when preferred scopes are provided", async () => {
+		const create = getExecute("memory_create");
+		const query = getExecute("memory_query");
+
+		await create("call-1", {
+			type: "procedure",
+			slug: "recovery-global",
+			fields: {
+				title: "Recovery Procedure Global",
+				summary: "Generic recovery procedure",
+				scope: "global",
+				salience: 0.9,
+			},
+		});
+		await create("call-2", {
+			type: "procedure",
+			slug: "recovery-project",
+			fields: {
+				title: "Recovery Procedure Project",
+				summary: "Project-specific recovery procedure",
+				scope: "project",
+				scope_value: "pi-bloom",
+				salience: 0.5,
+			},
+		});
+
+		const queryResult = await query("call-3", {
+			type: "procedure",
+			text: "recovery",
+			preferred_scopes: [{ scope: "project", value: "pi-bloom" }, { scope: "global" }],
+		});
+
+		const lines = queryResult.content[0].text.split("\n");
+		expect(lines[0]).toContain("procedure/recovery-project");
 	});
 });
 

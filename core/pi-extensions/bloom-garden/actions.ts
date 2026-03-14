@@ -18,7 +18,7 @@ import {
 import { errorResult, nowIso, truncate } from "../../lib/shared.js";
 import { readBlueprintVersions } from "./actions-blueprints.js";
 
-const BLOOM_DIRS = ["Persona", "Skills", "Evolutions", "Objects", "Agents", "audit"];
+const BLOOM_DIRS = ["Persona", "Skills", "Evolutions", "Objects", "Episodes", "Agents", "audit"];
 
 // --- Package helpers ---
 
