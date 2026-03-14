@@ -26,6 +26,20 @@ export interface AgentDefinition {
 		allow?: string[];
 		deny?: string[];
 	};
+	proactive?: {
+		jobs: ProactiveJobDefinition[];
+	};
+}
+
+export interface ProactiveJobDefinition {
+	id: string;
+	kind: "heartbeat" | "cron";
+	room: string;
+	prompt: string;
+	intervalMinutes?: number;
+	cron?: string;
+	quietIfNoop?: boolean;
+	noOpToken?: string;
 }
 
 interface AgentFrontmatter extends Record<string, unknown> {
@@ -47,6 +61,9 @@ interface AgentFrontmatter extends Record<string, unknown> {
 	tools?: {
 		allow?: unknown;
 		deny?: unknown;
+	};
+	proactive?: {
+		jobs?: unknown;
 	};
 }
 
@@ -149,6 +166,9 @@ function normalizeAgentDefinition(
 		...(normalizeTools(attributes.tools, instructionsPath)
 			? { tools: normalizeTools(attributes.tools, instructionsPath) }
 			: {}),
+		...(normalizeProactive(attributes.proactive, instructionsPath)
+			? { proactive: normalizeProactive(attributes.proactive, instructionsPath) }
+			: {}),
 	};
 }
 
@@ -208,4 +228,60 @@ function normalizeStringArray(value: unknown, field: string, instructionsPath: s
 		throw new Error(`${instructionsPath}: invalid ${field}`);
 	}
 	return value;
+}
+
+function normalizeProactive(value: AgentFrontmatter["proactive"], instructionsPath: string): AgentDefinition["proactive"] {
+	const proactive = toRecord(value);
+	if (!proactive) return undefined;
+
+	const rawJobs = proactive.jobs;
+	if (rawJobs === undefined) return undefined;
+	if (!Array.isArray(rawJobs)) {
+		throw new Error(`${instructionsPath}: invalid proactive.jobs`);
+	}
+
+	const jobs = rawJobs.map((rawJob, index) => normalizeProactiveJob(rawJob, `${instructionsPath}: proactive.jobs[${index}]`));
+	return jobs.length > 0 ? { jobs } : undefined;
+}
+
+function normalizeProactiveJob(value: unknown, source: string): ProactiveJobDefinition {
+	const job = toRecord(value);
+	if (!job) throw new Error(`${source}: invalid proactive job`);
+
+	const id = requireString(job.id, "id", source);
+	const room = requireString(job.room, "room", source);
+	const prompt = requireString(job.prompt, "prompt", source);
+	const kind = job.kind;
+	if (kind !== "heartbeat" && kind !== "cron") {
+		throw new Error(`${source}: invalid kind '${String(kind)}'`);
+	}
+
+	if (kind === "heartbeat") {
+		if (typeof job.interval_minutes !== "number" || !Number.isFinite(job.interval_minutes) || job.interval_minutes <= 0) {
+			throw new Error(`${source}: invalid interval_minutes`);
+		}
+		return {
+			id,
+			kind,
+			room,
+			prompt,
+			intervalMinutes: job.interval_minutes,
+			...(typeof job.quiet_if_noop === "boolean" ? { quietIfNoop: job.quiet_if_noop } : {}),
+			...(typeof job.no_op_token === "string" ? { noOpToken: job.no_op_token } : {}),
+		};
+	}
+
+	if (typeof job.cron !== "string" || !job.cron.trim()) {
+		throw new Error(`${source}: invalid cron`);
+	}
+
+	return {
+		id,
+		kind,
+		room,
+		prompt,
+		cron: job.cron,
+		...(typeof job.quiet_if_noop === "boolean" ? { quietIfNoop: job.quiet_if_noop } : {}),
+		...(typeof job.no_op_token === "string" ? { noOpToken: job.no_op_token } : {}),
+	};
 }

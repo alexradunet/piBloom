@@ -1,5 +1,6 @@
 import { createLogger } from "../lib/shared.js";
 import type { AgentDefinition } from "./agent-registry.js";
+import type { TriggeredJob } from "./scheduler.js";
 import type { SessionEvent } from "./contracts/session.js";
 import type { BloomSessionLike } from "./contracts/session.js";
 import { createRoomState } from "./room-state.js";
@@ -23,6 +24,13 @@ interface SequentialChain {
 	originalMessage: string;
 	remainingAgentIds: string[];
 	replies: SequentialChainReply[];
+}
+
+interface PendingProactiveJob {
+	jobId: string;
+	kind: TriggeredJob["kind"];
+	quietIfNoop: boolean;
+	noOpToken?: string;
 }
 
 export interface MatrixBridgeLike {
@@ -53,6 +61,7 @@ export class AgentSupervisor {
 	private readonly typingIntervals = new Map<string, ReturnType<typeof setInterval>>();
 	private readonly sequentialChains = new Map<string, SequentialChain>();
 	private readonly waitingChainsByRoomAgent = new Map<string, string[]>();
+	private readonly pendingProactiveJobs = new Map<string, PendingProactiveJob[]>();
 	private shuttingDown = false;
 
 	constructor(options: AgentSupervisorOptions) {
@@ -106,11 +115,28 @@ export class AgentSupervisor {
 		this.typingIntervals.clear();
 		this.sequentialChains.clear();
 		this.waitingChainsByRoomAgent.clear();
+		this.pendingProactiveJobs.clear();
 		for (const session of this.sessions.values()) {
 			session.dispose();
 		}
 		this.sessions.clear();
 		this.matrixBridge.stop();
+	}
+
+	async dispatchProactiveJob(job: TriggeredJob): Promise<void> {
+		if (this.shuttingDown) return;
+		const message = [
+			`[system] Scheduled ${job.kind} job: ${job.jobId}`,
+			"You are being triggered proactively by the Bloom daemon.",
+			job.prompt,
+		].join("\n\n");
+		await this.dispatchMessageToAgent(job.roomId, job.agentId, message);
+		this.enqueueProactiveJob(job.roomId, job.agentId, {
+			jobId: job.jobId,
+			kind: job.kind,
+			quietIfNoop: job.quietIfNoop ?? false,
+			...(job.noOpToken ? { noOpToken: job.noOpToken } : {}),
+		});
 	}
 
 	private async dispatchMessageToAgent(roomId: string, agentId: string, message: string): Promise<void> {
@@ -163,6 +189,12 @@ export class AgentSupervisor {
 
 	private async handleAgentResponse(roomId: string, agentId: string, text: string): Promise<void> {
 		if (this.shuttingDown) return;
+		const proactiveJob = this.dequeueProactiveJob(roomId, agentId);
+		if (proactiveJob) {
+			if (proactiveJob.quietIfNoop && proactiveJob.noOpToken && text.trim() === proactiveJob.noOpToken) {
+				return;
+			}
+		}
 		await this.matrixBridge.sendText(agentId, roomId, text);
 		if (this.shuttingDown) return;
 
@@ -305,6 +337,26 @@ export class AgentSupervisor {
 			this.waitingChainsByRoomAgent.set(key, queue);
 		}
 		return chainKey;
+	}
+
+	private enqueueProactiveJob(roomId: string, agentId: string, job: PendingProactiveJob): void {
+		const key = this.roomAgentKey(roomId, agentId);
+		const queue = this.pendingProactiveJobs.get(key) ?? [];
+		queue.push(job);
+		this.pendingProactiveJobs.set(key, queue);
+	}
+
+	private dequeueProactiveJob(roomId: string, agentId: string): PendingProactiveJob | undefined {
+		const key = this.roomAgentKey(roomId, agentId);
+		const queue = this.pendingProactiveJobs.get(key);
+		if (!queue || queue.length === 0) return undefined;
+		const job = queue.shift();
+		if (queue.length === 0) {
+			this.pendingProactiveJobs.delete(key);
+		} else {
+			this.pendingProactiveJobs.set(key, queue);
+		}
+		return job;
 	}
 }
 

@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 /**
  * Pi Daemon — Matrix room agent supervisor.
  *
@@ -25,12 +25,14 @@ import type { BloomSessionLike } from "./contracts/session.js";
 import { classifySender, extractMentions } from "./router.js";
 import { MatrixJsSdkBridge } from "./runtime/matrix-js-sdk-bridge.js";
 import { PiRoomSession, type PiRoomSessionOptions } from "./runtime/pi-room-session.js";
+import { type ScheduledJob, Scheduler, type SchedulerJobState } from "./scheduler.js";
 
 const log = createLogger("pi-daemon");
 
 const IDLE_TIMEOUT_MS = Number.parseInt(process.env.BLOOM_DAEMON_IDLE_TIMEOUT_MS ?? "", 10) || 15 * 60 * 1000;
 const SESSION_BASE = join(os.homedir(), ".pi", "agent", "sessions", "bloom-rooms");
 const STORAGE_PATH = join(os.homedir(), ".pi", "pi-daemon", "matrix-state.json");
+const SCHEDULER_STATE_PATH = join(os.homedir(), ".pi", "pi-daemon", "scheduler-state.json");
 const MATRIX_AGENT_STORAGE_DIR = join(os.homedir(), ".pi", "pi-daemon", "matrix-agents");
 const DEFAULT_MATRIX_IDENTITY = "default";
 const TYPING_TIMEOUT_MS = 30_000;
@@ -101,8 +103,19 @@ async function runMultiAgentDaemon(agents: readonly AgentDefinition[]): Promise<
 		sessionBaseDir: SESSION_BASE,
 		idleTimeoutMs: IDLE_TIMEOUT_MS,
 	});
+	const scheduledJobs = collectScheduledJobs(agents);
+	const scheduler =
+		scheduledJobs.length > 0
+			? new Scheduler({
+					jobs: scheduledJobs,
+					onTrigger: (job) => supervisor.dispatchProactiveJob(job),
+					loadState: loadSchedulerState,
+					saveState: saveSchedulerState,
+				})
+			: null;
 	async function shutdown(signal: string): Promise<void> {
 		log.info("shutting down", { signal, mode: "multi-agent" });
+		scheduler?.stop();
 		await supervisor.shutdown();
 		await new Promise((r) => setTimeout(r, 100));
 		process.exit(0);
@@ -114,9 +127,15 @@ async function runMultiAgentDaemon(agents: readonly AgentDefinition[]): Promise<
 	await startWithRetry(
 		async () => {
 			await bridge.start();
-			log.info("pi-daemon running", { mode: "multi-agent", agents: agents.map((agent) => agent.id) });
+			scheduler?.start();
+			log.info("pi-daemon running", {
+				mode: "multi-agent",
+				agents: agents.map((agent) => agent.id),
+				proactiveJobs: scheduledJobs.length,
+			});
 		},
 		async () => {
+			scheduler?.stop();
 			await supervisor.shutdown();
 		},
 	);
@@ -302,6 +321,42 @@ function handleProcessError(codeRoomId: string, code: number, failures: Map<stri
 	}
 
 	failures.set(codeRoomId, next);
+}
+
+function collectScheduledJobs(agents: readonly AgentDefinition[]): ScheduledJob[] {
+	return agents.flatMap((agent) =>
+		(agent.proactive?.jobs ?? []).map((job) => ({
+			id: job.id,
+			agentId: agent.id,
+			roomId: job.room,
+			kind: job.kind,
+			prompt: job.prompt,
+			...(job.intervalMinutes ? { intervalMinutes: job.intervalMinutes } : {}),
+			...(job.cron ? { cron: job.cron } : {}),
+			...(job.quietIfNoop !== undefined ? { quietIfNoop: job.quietIfNoop } : {}),
+			...(job.noOpToken ? { noOpToken: job.noOpToken } : {}),
+		})),
+	);
+}
+
+function loadSchedulerState(): Record<string, SchedulerJobState> {
+	try {
+		const raw = readFileSync(SCHEDULER_STATE_PATH, "utf-8");
+		const parsed = JSON.parse(raw);
+		if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {};
+		return parsed as Record<string, SchedulerJobState>;
+	} catch {
+		return {};
+	}
+}
+
+function saveSchedulerState(state: Record<string, SchedulerJobState>): void {
+	try {
+		mkdirSync(join(os.homedir(), ".pi", "pi-daemon"), { recursive: true });
+		writeFileSync(SCHEDULER_STATE_PATH, `${JSON.stringify(state, null, 2)}\n`, "utf-8");
+	} catch (error) {
+		log.warn("failed to persist scheduler state", { error: String(error) });
+	}
 }
 
 async function startWithRetry(startFn: () => Promise<void>, onError?: () => Promise<void>): Promise<void> {

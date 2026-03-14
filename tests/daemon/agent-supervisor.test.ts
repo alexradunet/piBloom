@@ -304,4 +304,61 @@ describe("AgentSupervisor", () => {
 
 		await supervisor.shutdown();
 	});
+
+	it("dispatches proactive jobs directly to the target agent and suppresses configured no-op replies", async () => {
+		const host = makeAgent("host", "@pi:bloom", "host");
+		const createdSessions: FakeSession[] = [];
+		const matrixPool = {
+			getRoomAlias: vi.fn().mockResolvedValue("#ops:bloom"),
+			sendText: vi.fn().mockResolvedValue(undefined),
+			setTyping: vi.fn().mockResolvedValue(undefined),
+			stop: vi.fn(),
+		};
+		const supervisor = new AgentSupervisor({
+			agents: [host],
+			matrixPool,
+			sessionBaseDir: "/tmp/sessions",
+			idleTimeoutMs: 60_000,
+			createSession: (opts) => {
+				const session = new FakeSession(opts);
+				createdSessions.push(session);
+				return session;
+			},
+		});
+
+		await supervisor.dispatchProactiveJob({
+			id: "daily-heartbeat",
+			jobId: "daily-heartbeat",
+			agentId: "host",
+			roomId: "!ops:bloom",
+			kind: "heartbeat",
+			prompt: "Review the room and host state. Reply HEARTBEAT_OK if nothing needs surfacing.",
+			quietIfNoop: true,
+			noOpToken: "HEARTBEAT_OK",
+		});
+
+		expect(createdSessions).toHaveLength(1);
+		expect(createdSessions[0]?.sentMessages[0]).toContain("[system] Scheduled heartbeat job: daily-heartbeat");
+		expect(createdSessions[0]?.sentMessages[0]).toContain("Review the room and host state.");
+
+		createdSessions[0]?.triggerAgentEnd("HEARTBEAT_OK");
+		await flushAsyncWork();
+		expect(matrixPool.sendText).not.toHaveBeenCalled();
+
+		await supervisor.dispatchProactiveJob({
+			id: "daily-heartbeat",
+			jobId: "daily-heartbeat",
+			agentId: "host",
+			roomId: "!ops:bloom",
+			kind: "heartbeat",
+			prompt: "Review the room and host state. Reply HEARTBEAT_OK if nothing needs surfacing.",
+			quietIfNoop: true,
+			noOpToken: "HEARTBEAT_OK",
+		});
+		createdSessions[0]?.triggerAgentEnd("The dufs service failed overnight.");
+		await flushAsyncWork();
+		expect(matrixPool.sendText).toHaveBeenCalledWith("host", "!ops:bloom", "The dufs service failed overnight.");
+
+		await supervisor.shutdown();
+	});
 });

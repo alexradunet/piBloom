@@ -251,4 +251,56 @@ matrix:
 		const agents = loadAgentDefinitions({ bloomDir, serverName: "homebox" });
 		expect(agents[0]?.matrix.userId).toBe("@planner:homebox");
 	});
+
+	it("loads proactive heartbeat and cron jobs when configured", () => {
+		const bloomDir = makeBloomDir();
+		writeAgent(
+			bloomDir,
+			"host",
+			`---
+id: host
+name: Host
+matrix:
+  username: pi
+respond:
+  mode: host
+proactive:
+  jobs:
+    - id: daily-heartbeat
+      kind: heartbeat
+      room: "!ops:bloom"
+      interval_minutes: 1440
+      prompt: Review the room and host state. Reply HEARTBEAT_OK if nothing needs surfacing.
+      quiet_if_noop: true
+      no_op_token: HEARTBEAT_OK
+    - id: morning-check
+      kind: cron
+      room: "!ops:bloom"
+      cron: "0 9 * * *"
+      prompt: Send the morning operational check-in.
+---
+# Host
+`,
+		);
+
+		const agents = loadAgentDefinitions({ bloomDir });
+		expect(agents[0]?.proactive?.jobs).toEqual([
+			{
+				id: "daily-heartbeat",
+				kind: "heartbeat",
+				room: "!ops:bloom",
+				intervalMinutes: 1440,
+				prompt: "Review the room and host state. Reply HEARTBEAT_OK if nothing needs surfacing.",
+				quietIfNoop: true,
+				noOpToken: "HEARTBEAT_OK",
+			},
+			{
+				id: "morning-check",
+				kind: "cron",
+				room: "!ops:bloom",
+				cron: "0 9 * * *",
+				prompt: "Send the morning operational check-in.",
+			},
+		]);
+	});
 });

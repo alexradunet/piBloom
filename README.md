@@ -22,6 +22,7 @@ Bloom currently provides:
 - a flat-file durable memory store in `~/Bloom/Objects/`
 - append-only episodic memory in `~/Bloom/Episodes/`
 - an optional multi-agent Matrix daemon with one Pi session per `(room, agent)` pair and one Matrix SDK client per identity
+- daemon-owned proactive jobs for agents, including interval heartbeats and simple cron-style scheduled turns
 - a first-boot flow split between a bash wizard and a Pi-guided persona step
 
 ## Default Install
@@ -118,6 +119,8 @@ Reference material for OS-level infrastructure also lives under `services/`:
 - multi-agent mode when one or more agent overlays parse successfully, with one Matrix SDK client per configured agent and
   one Pi session per `(room, agent)` pair
 - malformed agent overlays are logged and skipped instead of aborting daemon startup
+- proactive jobs declared in agent overlays are scheduled by the daemon and dispatched as synthetic agent turns
+- heartbeat jobs can suppress `HEARTBEAT_OK`-style no-op replies instead of sending room noise
 
 Each room session is backed by Pi's in-process SDK session lifecycle, and Matrix transport uses the official `matrix-js-sdk` with in-memory sync state.
 

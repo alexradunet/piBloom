@@ -267,6 +267,8 @@ Current behavior:
 - skips malformed agent overlays with warnings instead of aborting startup
 - keeps one room session per room in single-agent mode
 - keeps one room session per `(room, agent)` pair in multi-agent mode
+- schedules optional proactive agent jobs declared in agent frontmatter
+- runs heartbeat jobs as synthetic proactive turns and can suppress configured no-op replies such as `HEARTBEAT_OK`
 - prunes duplicate-event and reply-budget state over time so long-lived sessions stay bounded
 
 Key daemon files:
@@ -278,6 +280,7 @@ Key daemon files:
 | `core/daemon/runtime/matrix-js-sdk-bridge.ts` | official Matrix SDK bridge and per-identity client lifecycle |
 | `core/daemon/runtime/pi-room-session.ts` | Pi SDK-backed room session lifecycle |
 | `core/daemon/agent-supervisor.ts` | multi-agent routing and session orchestration |
+| `core/daemon/scheduler.ts` | daemon-owned heartbeat and cron-style proactive scheduling |
 | `core/daemon/router.ts` | routing policy |
 | `core/daemon/room-state.ts` | duplicate, cooldown, and reply-budget tracking |
 
