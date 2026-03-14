@@ -330,4 +330,31 @@ proactive:
 		expect(result.agents).toEqual([]);
 		expect(result.errors).toEqual([expect.stringContaining("invalid interval_minutes")]);
 	});
+
+	it("rejects proactive jobs with unsupported cron expressions", () => {
+		const bloomDir = makeBloomDir();
+		writeAgent(
+			bloomDir,
+			"host",
+			`---
+id: host
+name: Host
+matrix:
+  username: pi
+proactive:
+  jobs:
+    - id: bad-cron
+      kind: cron
+      room: "!ops:bloom"
+      cron: "*/5 * * * *"
+      prompt: Invalid
+---
+# Host
+`,
+		);
+
+		const result = loadAgentDefinitionsResult({ bloomDir });
+		expect(result.agents).toEqual([]);
+		expect(result.errors).toEqual([expect.stringContaining("unsupported cron")]);
+	});
 });

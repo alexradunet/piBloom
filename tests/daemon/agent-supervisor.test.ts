@@ -361,4 +361,57 @@ describe("AgentSupervisor", () => {
 
 		await supervisor.shutdown();
 	});
+
+	it("still delivers proactive replies when quiet_if_noop is disabled or the token does not match", async () => {
+		const host = makeAgent("host", "@pi:bloom", "host");
+		const createdSessions: FakeSession[] = [];
+		const matrixPool = {
+			getRoomAlias: vi.fn().mockResolvedValue("#ops:bloom"),
+			sendText: vi.fn().mockResolvedValue(undefined),
+			setTyping: vi.fn().mockResolvedValue(undefined),
+			stop: vi.fn(),
+		};
+		const supervisor = new AgentSupervisor({
+			agents: [host],
+			matrixPool,
+			sessionBaseDir: "/tmp/sessions",
+			idleTimeoutMs: 60_000,
+			createSession: (opts) => {
+				const session = new FakeSession(opts);
+				createdSessions.push(session);
+				return session;
+			},
+		});
+
+		await supervisor.dispatchProactiveJob({
+			id: "morning-check",
+			jobId: "morning-check",
+			agentId: "host",
+			roomId: "!ops:bloom",
+			kind: "cron",
+			prompt: "Send the morning operational check-in.",
+			quietIfNoop: false,
+			noOpToken: "HEARTBEAT_OK",
+		});
+		createdSessions[0]?.triggerAgentEnd("HEARTBEAT_OK");
+		await flushAsyncWork();
+
+		await supervisor.dispatchProactiveJob({
+			id: "daily-heartbeat",
+			jobId: "daily-heartbeat",
+			agentId: "host",
+			roomId: "!ops:bloom",
+			kind: "heartbeat",
+			prompt: "Review the room and host state.",
+			quietIfNoop: true,
+			noOpToken: "HEARTBEAT_OK",
+		});
+		createdSessions[0]?.triggerAgentEnd("HEARTBEAT_OK but with context");
+		await flushAsyncWork();
+
+		expect(matrixPool.sendText).toHaveBeenNthCalledWith(1, "host", "!ops:bloom", "HEARTBEAT_OK");
+		expect(matrixPool.sendText).toHaveBeenNthCalledWith(2, "host", "!ops:bloom", "HEARTBEAT_OK but with context");
+
+		await supervisor.shutdown();
+	});
 });

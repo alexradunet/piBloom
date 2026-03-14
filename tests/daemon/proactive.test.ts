@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -93,6 +93,9 @@ describe("proactive daemon helpers", () => {
 		const dir = mkdtempSync(join(tmpdir(), "bloom-proactive-"));
 		tempDirs.push(dir);
 		const missingPath = join(dir, "scheduler-state.json");
+		expect(loadSchedulerState(missingPath)).toEqual({});
+
+		writeFileSync(missingPath, "{not json", "utf-8");
 		expect(loadSchedulerState(missingPath)).toEqual({});
 
 		saveSchedulerState(missingPath, {

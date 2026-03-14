@@ -2,6 +2,7 @@ import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { getBloomDir } from "../lib/filesystem.js";
 import { parseFrontmatter } from "../lib/frontmatter.js";
+import { isSupportedCronExpression } from "./scheduler.js";
 
 export interface AgentDefinition {
 	id: string;
@@ -273,6 +274,9 @@ function normalizeProactiveJob(value: unknown, source: string): ProactiveJobDefi
 
 	if (typeof job.cron !== "string" || !job.cron.trim()) {
 		throw new Error(`${source}: invalid cron`);
+	}
+	if (!isSupportedCronExpression(job.cron)) {
+		throw new Error(`${source}: unsupported cron`);
 	}
 
 	return {

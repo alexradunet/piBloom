@@ -132,6 +132,15 @@ export function computeNextRunAt(job: ScheduledJob, now: number, lastRunAt?: num
 	return next.getTime();
 }
 
+export function isSupportedCronExpression(expression: string): boolean {
+	try {
+		parseCron(expression);
+		return true;
+	} catch {
+		return false;
+	}
+}
+
 function parseCron(expression: string): ParsedCron {
 	const trimmed = expression.trim();
 	if (trimmed === "@daily") return { kind: "daily", minute: 0, hour: 0 };

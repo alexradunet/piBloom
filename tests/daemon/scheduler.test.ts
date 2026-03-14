@@ -4,6 +4,7 @@ import {
 	type ScheduledJob,
 	Scheduler,
 	computeNextRunAt,
+	isSupportedCronExpression,
 } from "../../core/daemon/scheduler.js";
 
 describe("computeNextRunAt", () => {
@@ -47,6 +48,19 @@ describe("computeNextRunAt", () => {
 		};
 
 		expect(computeNextRunAt(job, Date.UTC(2026, 2, 14, 8, 30, 0))).toBe(Date.UTC(2026, 2, 14, 9, 0, 0));
+	});
+});
+
+describe("isSupportedCronExpression", () => {
+	it("accepts the small cron subset used by Bloom", () => {
+		expect(isSupportedCronExpression("@daily")).toBe(true);
+		expect(isSupportedCronExpression("@hourly")).toBe(true);
+		expect(isSupportedCronExpression("0 9 * * *")).toBe(true);
+	});
+
+	it("rejects unsupported cron expressions", () => {
+		expect(isSupportedCronExpression("*/5 * * * *")).toBe(false);
+		expect(isSupportedCronExpression("0 9 * * 1")).toBe(false);
 	});
 });
 
