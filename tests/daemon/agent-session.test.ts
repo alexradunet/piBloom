@@ -13,7 +13,7 @@ const createdSessions: Array<{
 	dispose: ReturnType<typeof vi.fn>;
 }> = [];
 
-vi.mock("../../core/daemon/pi-room-session.js", () => ({
+vi.mock("../../core/daemon/runtime/pi-room-session.js", () => ({
 	PiRoomSession: class {
 		public alive = true;
 		public readonly opts: Record<string, unknown>;
@@ -66,7 +66,7 @@ describe("AgentSession", () => {
 	});
 
 	it("creates separate session directories for the same room with different agents", async () => {
-		const { AgentSession } = await import("../../core/daemon/agent-session.js");
+		const { AgentSession } = await import("../../core/daemon/runtime/agent-session.js");
 		const host = makeAgent("host", "@pi:bloom", "host");
 		const planner = makeAgent("planner", "@planner:bloom", "mentioned");
 
@@ -109,7 +109,7 @@ describe("AgentSession", () => {
 	});
 
 	it("forwards sendMessage and dispose to the wrapped Pi room session", async () => {
-		const { AgentSession } = await import("../../core/daemon/agent-session.js");
+		const { AgentSession } = await import("../../core/daemon/runtime/agent-session.js");
 		const planner = makeAgent("planner", "@planner:bloom", "mentioned");
 		const session = new AgentSession({
 			roomId: "!abc:bloom",
@@ -132,7 +132,7 @@ describe("AgentSession", () => {
 	});
 
 	it("wraps callbacks with the agent id", async () => {
-		const { AgentSession } = await import("../../core/daemon/agent-session.js");
+		const { AgentSession } = await import("../../core/daemon/runtime/agent-session.js");
 		const planner = makeAgent("planner", "@planner:bloom", "mentioned");
 		const onAgentEnd = vi.fn();
 		const onEvent = vi.fn();

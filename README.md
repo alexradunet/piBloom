@@ -58,14 +58,14 @@ Operational hardening in the current tree:
 | Path | Purpose |
 |------|---------|
 | `core/` | Bloom core: OS image, daemon, persona, skills, built-in extensions, and shared runtime code |
-| `extensions/` | non-core Pi extensions such as dev and repo tooling |
+| `pi-extensions/` | non-core Pi extensions such as dev and repo tooling |
 | `services/` | bundled service packages and service template |
 | `tests/` | unit, integration, daemon, and extension tests |
 | `docs/` | live project documentation |
 
 ## Core And Extensions
 
-Core extensions live under `core/extensions/`. Optional/operator extensions stay under `extensions/`.
+Core extensions live under `core/pi-extensions/`. Optional/operator extensions stay under `pi-extensions/`.
 
 | Extension | Tools | Hooks / Commands |
 |-----------|-------|------------------|
@@ -81,7 +81,7 @@ Core extensions live under `core/extensions/`. Optional/operator extensions stay
 
 ## Bundled Skills
 
-Bundled skill directories in `core/skills/`:
+Bundled skill directories in `core/pi-skills/`:
 
 - `first-boot`
 - `object-store`

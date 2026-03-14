@@ -36,7 +36,7 @@ describe("handleContainerDeploy", () => {
 		mkdirSync(userSystemdDir, { recursive: true });
 		writeFileSync(join(userSystemdDir, "bloom-code-server.socket"), "[Socket]\n");
 
-		const { handleContainerDeploy } = await import("../../core/extensions/bloom-os/actions.js");
+		const { handleContainerDeploy } = await import("../../core/pi-extensions/bloom-os/actions.js");
 		const ctx = createMockExtensionContext();
 		const result = await handleContainerDeploy("bloom-code-server", undefined, ctx as never);
 

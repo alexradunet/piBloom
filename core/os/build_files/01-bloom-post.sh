@@ -25,8 +25,8 @@ mkdir -p /usr/local/share/bloom/.pi/agent
 echo '{"packages": ["/usr/local/share/bloom"]}' > /usr/local/share/bloom/.pi/agent/settings.json
 
 # Back-compat runtime links for Pi package conventions.
-ln -sfn /usr/local/share/bloom/core/persona /usr/local/share/bloom/persona
-ln -sfn /usr/local/share/bloom/core/skills /usr/local/share/bloom/skills
+ln -sfn /usr/local/share/bloom/core/pi-persona /usr/local/share/bloom/persona
+ln -sfn /usr/local/share/bloom/core/pi-skills /usr/local/share/bloom/skills
 
 # Continuwuity binary
 chmod +x /usr/local/bin/continuwuity

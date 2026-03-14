@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { extractResponseText } from "../../core/daemon/session-events.js";
+import { extractResponseText } from "../../core/daemon/contracts/session.js";
 
 describe("extractResponseText", () => {
 	it("returns string content from the last assistant message", () => {

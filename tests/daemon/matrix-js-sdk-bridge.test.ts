@@ -117,7 +117,7 @@ vi.mock("matrix-js-sdk", () => ({
 	}),
 }));
 
-import { MatrixJsSdkBridge } from "../../core/daemon/matrix-js-sdk-bridge.js";
+import { MatrixJsSdkBridge } from "../../core/daemon/runtime/matrix-js-sdk-bridge.js";
 
 async function flushAsyncWork(): Promise<void> {
 	await new Promise((resolve) => setTimeout(resolve, 0));

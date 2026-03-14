@@ -1,9 +1,8 @@
 import { join } from "node:path";
-import { sanitizeRoomAlias } from "../lib/room-alias.js";
-import type { AgentDefinition } from "./agent-registry.js";
+import { sanitizeRoomAlias } from "../../lib/room-alias.js";
+import type { AgentDefinition } from "../agent-registry.js";
+import type { BloomSessionLike, SessionEvent } from "../contracts/session.js";
 import { PiRoomSession } from "./pi-room-session.js";
-import type { SessionEvent } from "./session-events.js";
-import type { BloomSessionLike } from "./session-like.js";
 
 export interface AgentSessionOptions {
 	roomId: string;

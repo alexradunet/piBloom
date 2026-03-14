@@ -6,11 +6,11 @@ export default defineConfig({
 		environment: "node",
 		coverage: {
 			provider: "v8",
-			include: ["core/lib/**/*.ts", "core/extensions/**/*.ts", "extensions/**/*.ts"],
+			include: ["core/lib/**/*.ts", "core/pi-extensions/**/*.ts", "pi-extensions/**/*.ts"],
 			thresholds: {
 				"core/lib/**/*.ts": { lines: 55, functions: 80, branches: 50, statements: 55 },
-				"core/extensions/**/*.ts": { lines: 15, functions: 20, branches: 8, statements: 15 },
-				"extensions/**/*.ts": { lines: 15, functions: 20, branches: 8, statements: 15 },
+				"core/pi-extensions/**/*.ts": { lines: 15, functions: 20, branches: 8, statements: 15 },
+				"pi-extensions/**/*.ts": { lines: 15, functions: 20, branches: 8, statements: 15 },
 			},
 		},
 	},

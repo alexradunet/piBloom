@@ -23,7 +23,7 @@ OS-level infrastructure is separate from service packages and is baked into the 
 Repository structure note:
 
 - `core/` is Bloom itself: OS image assets, daemon, persona, bundled skills, built-in extensions, and shared runtime code
-- `extensions/` is reserved for non-core/operator extensions such as dev and repo tooling
+- `pi-extensions/` is reserved for non-core/operator extensions such as dev and repo tooling
 
 ## Bloom Directory
 
@@ -255,9 +255,9 @@ Key daemon files:
 | Path | Purpose |
 |------|---------|
 | `core/daemon/index.ts` | bootstrap and mode selection |
-| `core/daemon/matrix-bridge.ts` | Bloom-owned Matrix bridge contract |
-| `core/daemon/matrix-js-sdk-bridge.ts` | official Matrix SDK bridge and per-identity client lifecycle |
-| `core/daemon/pi-room-session.ts` | Pi SDK-backed room session lifecycle |
+| `core/daemon/contracts/matrix.ts` | Bloom-owned Matrix bridge contract |
+| `core/daemon/runtime/matrix-js-sdk-bridge.ts` | official Matrix SDK bridge and per-identity client lifecycle |
+| `core/daemon/runtime/pi-room-session.ts` | Pi SDK-backed room session lifecycle |
 | `core/daemon/agent-supervisor.ts` | multi-agent routing and session orchestration |
 | `core/daemon/router.ts` | routing policy |
 | `core/daemon/room-state.ts` | duplicate, cooldown, and reply-budget tracking |

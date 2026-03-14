@@ -9,12 +9,12 @@ import {
 	SessionManager,
 	SettingsManager,
 } from "@mariozechner/pi-coding-agent";
-import { createLogger } from "../lib/shared.js";
-import { extractResponseText, type SessionEvent } from "./session-events.js";
-import type { BloomSessionLike } from "./session-like.js";
+import { createLogger } from "../../lib/shared.js";
+import { extractResponseText, type SessionEvent } from "../contracts/session.js";
+import type { BloomSessionLike } from "../contracts/session.js";
 
 const log = createLogger("pi-room-session");
-const BLOOM_REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+const BLOOM_REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 
 let sharedResourceLoaderPromise: Promise<{
 	resourceLoader: DefaultResourceLoader;

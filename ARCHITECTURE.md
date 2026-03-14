@@ -22,7 +22,7 @@ Bloom also ships OS-level infrastructure that is part of the image rather than a
 
 ```text
 core/         Bloom core: OS image, daemon, persona, skills, built-in extensions, runtime helpers
-extensions/   non-core Pi extensions
+pi-extensions/   non-core Pi extensions
 cli/          local command-line helpers
 services/     bundled service packages and template
 tests/        unit, integration, and daemon tests
@@ -34,8 +34,8 @@ docs/         live documentation only
 Every extension lives in its own directory:
 
 ```text
-core/extensions/bloom-{name}/
-or extensions/bloom-{name}/
+core/pi-extensions/bloom-{name}/
+or pi-extensions/bloom-{name}/
   index.ts
   actions*.ts
   types.ts
@@ -76,9 +76,9 @@ The daemon is a first-class part of the current architecture.
 | Path | Role |
 |------|------|
 | `core/daemon/index.ts` | daemon bootstrap and mode selection |
-| `core/daemon/matrix-bridge.ts` | Bloom-owned Matrix bridge contract |
-| `core/daemon/matrix-js-sdk-bridge.ts` | official Matrix SDK bridge with per-identity clients |
-| `core/daemon/pi-room-session.ts` | Pi SDK-backed room session lifecycle |
+| `core/daemon/contracts/matrix.ts` | Bloom-owned Matrix bridge contract |
+| `core/daemon/runtime/matrix-js-sdk-bridge.ts` | official Matrix SDK bridge with per-identity clients |
+| `core/daemon/runtime/pi-room-session.ts` | Pi SDK-backed room session lifecycle |
 | `core/daemon/agent-supervisor.ts` | room routing, typing, session lifecycle, sequential handoff |
 
 ### Runtime Model

@@ -20,3 +20,10 @@ export function extractResponseText(messages: readonly Record<string, unknown>[]
 	}
 	return "";
 }
+
+export interface BloomSessionLike {
+	alive: boolean;
+	spawn(): Promise<void>;
+	sendMessage(text: string): Promise<void>;
+	dispose(): void;
+}

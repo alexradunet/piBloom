@@ -1,6 +1,5 @@
 import { ClientEvent, type MatrixClient, type MatrixEvent, MemoryStore, SyncState, createClient } from "matrix-js-sdk";
-import type { MatrixBridge } from "./matrix-bridge.js";
-import type { MatrixIdentity, MatrixTextEvent } from "./matrix-types.js";
+import type { MatrixBridge, MatrixIdentity, MatrixTextEvent } from "../contracts/matrix.js";
 
 interface ClientEntry {
 	identity: MatrixIdentity;

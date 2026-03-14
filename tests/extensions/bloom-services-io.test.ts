@@ -11,7 +11,7 @@ vi.mock("../../core/lib/exec.js", () => ({
 	run: runMock,
 }));
 
-import { installServicePackage } from "../../core/extensions/bloom-services/service-io.js";
+import { installServicePackage } from "../../core/pi-extensions/bloom-services/service-io.js";
 
 describe("installServicePackage", () => {
 	let tempHome: string;

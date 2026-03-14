@@ -28,7 +28,7 @@ vi.mock("../../core/lib/services-manifest.js", () => ({
 	saveManifest: saveManifestMock,
 }));
 
-vi.mock("../../core/extensions/bloom-services/service-io.js", () => ({
+vi.mock("../../core/pi-extensions/bloom-services/service-io.js", () => ({
 	installServicePackage: installServicePackageMock,
 	buildLocalImage: buildLocalImageMock,
 	downloadServiceModels: downloadServiceModelsMock,
@@ -67,7 +67,7 @@ describe("handleInstall", () => {
 			return { ok: true, source: "local", ref: name };
 		});
 
-		const { handleInstall } = await import("../../core/extensions/bloom-services/actions-install.js");
+		const { handleInstall } = await import("../../core/pi-extensions/bloom-services/actions-install.js");
 		const result = (await handleInstall(
 			{ name: "app" },
 			"/tmp/Bloom",

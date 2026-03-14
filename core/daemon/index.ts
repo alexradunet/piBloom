@@ -18,13 +18,13 @@ import { sanitizeRoomAlias } from "../lib/room-alias.js";
 import { createLogger } from "../lib/shared.js";
 import { type AgentDefinition, loadAgentDefinitionsResult } from "./agent-registry.js";
 import { AgentSupervisor } from "./agent-supervisor.js";
-import type { MatrixBridge } from "./matrix-bridge.js";
-import { MatrixJsSdkBridge } from "./matrix-js-sdk-bridge.js";
-import type { MatrixTextEvent } from "./matrix-types.js";
-import { PiRoomSession, type PiRoomSessionOptions } from "./pi-room-session.js";
+import type { MatrixBridge } from "./contracts/matrix.js";
+import { MatrixJsSdkBridge } from "./runtime/matrix-js-sdk-bridge.js";
+import type { MatrixTextEvent } from "./contracts/matrix.js";
+import { PiRoomSession, type PiRoomSessionOptions } from "./runtime/pi-room-session.js";
 import { classifySender, extractMentions } from "./router.js";
-import type { SessionEvent } from "./session-events.js";
-import type { BloomSessionLike } from "./session-like.js";
+import type { SessionEvent } from "./contracts/session.js";
+import type { BloomSessionLike } from "./contracts/session.js";
 
 const log = createLogger("pi-daemon");
 
