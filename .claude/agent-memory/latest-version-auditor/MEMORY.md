@@ -1,1 +1,0 @@
-- [audit-2026-03-12.md](audit-2026-03-12.md) — Dependency audit results: versions, Containerfile pins, API patterns, constraints

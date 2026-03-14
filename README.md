@@ -60,7 +60,6 @@ Operational hardening in the current tree:
 | `extensions/` | Pi extensions |
 | `lib/` | shared logic and host/runtime helpers |
 | `daemon/` | Matrix room daemon and RPC room/session orchestration |
-| `cli/` | local CLI helpers such as `bloom-attach.ts` |
 | `skills/` | bundled skills seeded into `~/Bloom/Skills/` |
 | `services/` | bundled service packages and service template |
 | `persona/` | default persona layers seeded into `~/Bloom/Persona/` |
@@ -115,8 +114,7 @@ Reference material for OS-level infrastructure also lives under `services/`:
   one Pi RPC subprocess per `(room, agent)` pair
 - malformed agent overlays are logged and skipped instead of aborting daemon startup
 
-Each room process runs `pi --mode rpc`, communicates over JSON lines, and exposes a local socket for terminal
-attachment.
+Each room process runs `pi --mode rpc` and communicates over JSON lines.
 
 ## Build and Test
 

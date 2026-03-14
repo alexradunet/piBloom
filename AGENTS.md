@@ -246,7 +246,6 @@ Current behavior:
 - uses `pi --mode rpc`
 - keeps one room process per room in single-agent mode
 - keeps one room process per `(room, agent)` pair in multi-agent mode
-- exposes local room sockets for terminal attachment
 - prunes duplicate-event and reply-budget state over time so long-lived sessions stay bounded
 
 Key daemon files:
@@ -258,7 +257,6 @@ Key daemon files:
 | `daemon/agent-supervisor.ts` | multi-agent routing and session orchestration |
 | `daemon/router.ts` | routing policy |
 | `daemon/room-state.ts` | duplicate, cooldown, and reply-budget tracking |
-| `cli/bloom-attach.ts` | local room socket client |
 
 ## Bundled Skills
 
