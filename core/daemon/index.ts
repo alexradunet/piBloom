@@ -26,7 +26,7 @@ import { classifySender, extractMentions } from "./router.js";
 import { collectScheduledJobs, loadSchedulerState, saveSchedulerState } from "./proactive.js";
 import { MatrixJsSdkBridge } from "./runtime/matrix-js-sdk-bridge.js";
 import { PiRoomSession, type PiRoomSessionOptions } from "./runtime/pi-room-session.js";
-import { type ScheduledJob, Scheduler, type SchedulerJobState } from "./scheduler.js";
+import { Scheduler } from "./scheduler.js";
 
 const log = createLogger("pi-daemon");
 

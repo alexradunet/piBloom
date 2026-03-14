@@ -168,8 +168,8 @@ describe("handleAgentCreate", () => {
 		expect(raw).toContain("id: planner");
 		expect(raw).toContain("name: Planner");
 		expect(raw).toContain("username: planner");
-		expect(raw).toContain("Optional proactive jobs example");
-		expect(raw).toContain("kind: heartbeat");
+		expect(raw).not.toContain("Optional proactive jobs example");
+		expect(raw).not.toContain("HEARTBEAT_OK");
 	});
 
 	it("defaults username to the agent id", async () => {

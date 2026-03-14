@@ -23,6 +23,21 @@ describe("computeNextRunAt", () => {
 		);
 	});
 
+	it("backs off failed heartbeat jobs by one interval instead of retrying immediately", () => {
+		const job: ScheduledJob = {
+			id: "daily-heartbeat",
+			agentId: "host",
+			roomId: "!ops:bloom",
+			kind: "heartbeat",
+			intervalMinutes: 1440,
+			prompt: "Heartbeat",
+		};
+
+		expect(computeNextRunAt(job, Date.UTC(2026, 2, 14, 12, 0, 0), undefined, Date.UTC(2026, 2, 14, 12, 0, 0))).toBe(
+			Date.UTC(2026, 2, 15, 12, 0, 0),
+		);
+	});
+
 	it("schedules cron jobs at the next matching daily time", () => {
 		const job: ScheduledJob = {
 			id: "morning-check",
@@ -90,7 +105,7 @@ describe("Scheduler", () => {
 			now: () => Date.UTC(2026, 2, 14, 12, 0, 0),
 			onTrigger: callback,
 			loadState: () => ({
-				"host::daily-heartbeat": {
+				"host::!ops:bloom::daily-heartbeat": {
 					lastRunAt: Date.UTC(2026, 2, 13, 12, 0, 0),
 				},
 			}),
@@ -111,7 +126,7 @@ describe("Scheduler", () => {
 			}),
 		);
 		expect(persistState).toHaveBeenCalledWith({
-			"host::daily-heartbeat": {
+			"host::!ops:bloom::daily-heartbeat": {
 				lastRunAt: Date.UTC(2026, 2, 14, 12, 0, 0),
 			},
 		});
@@ -121,7 +136,7 @@ describe("Scheduler", () => {
 		vi.useRealTimers();
 	});
 
-	it("does not persist lastRunAt when a trigger fails and keeps scheduling", async () => {
+	it("persists failure timing so failed heartbeat jobs do not requeue immediately", async () => {
 		const callback = vi.fn(async () => {
 			throw new Error("boom");
 		});
@@ -154,7 +169,12 @@ describe("Scheduler", () => {
 		await Promise.resolve();
 
 		expect(callback).toHaveBeenCalledTimes(1);
-		expect(persistState).not.toHaveBeenCalled();
+		expect(persistState).toHaveBeenCalledWith({
+			"host::!ops:bloom::daily-heartbeat": {
+				lastFailureAt: Date.UTC(2026, 2, 14, 12, 0, 0),
+			},
+		});
 		expect(setTimeoutImpl).toHaveBeenCalledTimes(2);
+		expect(setTimeoutImpl.mock.calls[1]?.[1]).toBe(24 * 60 * 60 * 1000);
 	});
 });

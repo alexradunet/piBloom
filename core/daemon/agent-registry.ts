@@ -242,6 +242,14 @@ function normalizeProactive(value: AgentFrontmatter["proactive"], instructionsPa
 	}
 
 	const jobs = rawJobs.map((rawJob, index) => normalizeProactiveJob(rawJob, `${instructionsPath}: proactive.jobs[${index}]`));
+	const seen = new Set<string>();
+	for (const job of jobs) {
+		const key = `${job.room}::${job.id}`;
+		if (seen.has(key)) {
+			throw new Error(`${instructionsPath}: duplicate proactive job '${job.id}' for room '${job.room}'`);
+		}
+		seen.add(key);
+	}
 	return jobs.length > 0 ? { jobs } : undefined;
 }
 

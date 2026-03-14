@@ -99,10 +99,10 @@ describe("proactive daemon helpers", () => {
 		expect(loadSchedulerState(missingPath)).toEqual({});
 
 		saveSchedulerState(missingPath, {
-			"host::daily-heartbeat": { lastRunAt: 123 },
+			"host::!ops:bloom::daily-heartbeat": { lastRunAt: 123 },
 		});
 		expect(loadSchedulerState(missingPath)).toEqual({
-			"host::daily-heartbeat": { lastRunAt: 123 },
+			"host::!ops:bloom::daily-heartbeat": { lastRunAt: 123 },
 		});
 	});
 
@@ -112,10 +112,10 @@ describe("proactive daemon helpers", () => {
 		const statePath = join(dir, "nested", "scheduler-state.json");
 
 		saveSchedulerState(statePath, {
-			"host::daily-heartbeat": { lastRunAt: 456 },
+			"host::!ops:bloom::daily-heartbeat": { lastRunAt: 456 },
 		});
 
-		expect(readFileSync(statePath, "utf-8")).toContain('"host::daily-heartbeat"');
+		expect(readFileSync(statePath, "utf-8")).toContain('"host::!ops:bloom::daily-heartbeat"');
 		expect(readFileSync(statePath, "utf-8")).toContain('"lastRunAt": 456');
 	});
 });

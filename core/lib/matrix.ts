@@ -172,28 +172,7 @@ export function generateAgentInstructionsMarkdown(options: GenerateAgentInstruct
 		description: options.description,
 	};
 
-	const body = `# ${options.name}
-
-${options.rolePrompt}
-
-## Optional proactive jobs example
-
-Add proactive jobs in frontmatter if this agent should run on a schedule. Example:
-
-\`\`\`yaml
-proactive:
-  jobs:
-    - id: daily-heartbeat
-      kind: heartbeat
-      room: "!ops:bloom"
-      interval_minutes: 1440
-      prompt: |
-        Review the room and host state.
-        Reply HEARTBEAT_OK if nothing needs surfacing.
-      quiet_if_noop: true
-      no_op_token: "HEARTBEAT_OK"
-\`\`\`
-`;
+	const body = `# ${options.name}\n\n${options.rolePrompt}\n`;
 	return stringifyFrontmatter(frontmatter, body);
 }
 

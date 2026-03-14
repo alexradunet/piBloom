@@ -12,6 +12,7 @@ export interface ScheduledJob {
 
 export interface SchedulerJobState {
 	lastRunAt?: number;
+	lastFailureAt?: number;
 }
 
 export interface TriggeredJob extends ScheduledJob {
@@ -72,7 +73,14 @@ export class Scheduler {
 
 		const now = this.now();
 		const nextRunAt = Math.min(
-			...this.jobs.map((job) => computeNextRunAt(job, now, this.state[this.stateKey(job)]?.lastRunAt)),
+			...this.jobs.map((job) =>
+				computeNextRunAt(
+					job,
+					now,
+					this.state[this.stateKey(job)]?.lastRunAt,
+					this.state[this.stateKey(job)]?.lastFailureAt,
+				),
+			),
 		);
 		const delayMs = Math.max(0, nextRunAt - now);
 		this.timer = this.setTimeoutImpl(() => {
@@ -84,7 +92,7 @@ export class Scheduler {
 		const now = this.now();
 		for (const job of this.jobs) {
 			const stateKey = this.stateKey(job);
-			const nextRunAt = computeNextRunAt(job, now, this.state[stateKey]?.lastRunAt);
+			const nextRunAt = computeNextRunAt(job, now, this.state[stateKey]?.lastRunAt, this.state[stateKey]?.lastFailureAt);
 			if (nextRunAt > now) continue;
 
 			const triggeredJob: TriggeredJob = {
@@ -96,20 +104,34 @@ export class Scheduler {
 				this.state[stateKey] = { lastRunAt: now };
 				this.saveState(this.state);
 			} catch (error) {
+				this.state[stateKey] = {
+					...this.state[stateKey],
+					lastFailureAt: now,
+				};
+				this.saveState(this.state);
 				this.onError(triggeredJob, error);
 			}
 		}
 	}
 
 	private stateKey(job: ScheduledJob): string {
-		return `${job.agentId}::${job.id}`;
+		return `${job.agentId}::${job.roomId}::${job.id}`;
 	}
 }
 
-export function computeNextRunAt(job: ScheduledJob, now: number, lastRunAt?: number): number {
+export function computeNextRunAt(
+	job: ScheduledJob,
+	now: number,
+	lastRunAt?: number,
+	lastFailureAt?: number,
+): number {
 	if (job.kind === "heartbeat") {
 		const intervalMs = (job.intervalMinutes ?? 0) * 60 * 1000;
-		if (lastRunAt === undefined) return now;
+		if (lastRunAt === undefined && lastFailureAt === undefined) return now;
+		if (lastRunAt === undefined) return (lastFailureAt as number) + intervalMs;
+		if (typeof lastFailureAt === "number" && lastFailureAt > lastRunAt) {
+			return lastFailureAt + intervalMs;
+		}
 		return lastRunAt + intervalMs;
 	}
 
