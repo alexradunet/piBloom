@@ -1,12 +1,16 @@
-# Supply Chain and Image Policy
+# Supply Chain And Image Policy
 
 > 📖 [Emoji Legend](LEGEND.md)
 
-This file documents the trust and reproducibility rules that match the current repository.
+Audience: maintainers changing packaged images, install flows, or image trust policy.
 
-## Current Policy
+## 🌱 Why This Policy Exists
 
-### Published / Pulled Runtime Images
+Bloom packages software that runs on user-owned hosts.
+
+Image sourcing rules exist to make package trust decisions explicit and to avoid silent drift from mutable remote tags.
+
+## 🛡️ How The Current Policy Works
 
 For packaged services and bridges, prefer:
 
@@ -32,7 +36,7 @@ Reason:
 - Bloom rebuilds the local image during install instead of trusting an already-present mutable tag
 - the mutable tag refers to a local artifact, not to a remote registry trust decision
 
-## What `service_install` Does Today
+### What `service_install` Does Today
 
 Depending on the package, installation may:
 
@@ -41,27 +45,24 @@ Depending on the package, installation may:
 - download declared model artifacts into Podman volumes
 - update `~/Bloom/manifest.yaml`
 
-This means installation is not fully hermetic today. It is reproducible at the package-layout level, but some flows
-still depend on the local host and network.
+Installation is not fully hermetic today. It is reproducible at the package-layout level, but some flows still depend on the local host and network.
 
-## OS Image
+## 📚 Reference
 
-The bootc image is built from `core/os/Containerfile` and current `justfile` targets.
+Current repo sources of truth:
 
-Current expectations:
+- `services/catalog.yaml` for packaged service and bridge image refs
+- `services/*/quadlet/` for runtime unit behavior
+- `core/os/Containerfile` and `justfile` for the Bloom OS image
 
-- build with `podman`
-- install with `bootc`
-- keep image- and package-related docs aligned with the actual build flow
+Review checklist:
 
-## Review Checklist
+- are remote runtime images pinned
+- are local-image exceptions documented
+- do docs describe actual installation behavior, including local builds and downloads
+- does `services/catalog.yaml` still match the packaged services in the repo
 
-- are remote runtime images pinned?
-- are local-image exceptions documented?
-- do docs describe the actual installation behavior, including local builds and downloads?
-- does `services/catalog.yaml` still match the packaged services in the repo?
+## 🔗 Related
 
-## Related
-
-- [docs/service-architecture.md](service-architecture.md)
-- [services/catalog.yaml](../services/catalog.yaml)
+- [service-architecture.md](service-architecture.md)
+- [../services/catalog.yaml](../services/catalog.yaml)

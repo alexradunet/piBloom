@@ -1,13 +1,26 @@
 # Bloom Memory Model
 
-Bloom uses a markdown-native memory system with two persistent layers:
+> 📖 [Emoji Legend](LEGEND.md)
+
+Audience: maintainers changing memory tools, storage rules, or retrieval behavior.
+
+## 🌱 Why Bloom Uses Markdown Memory
+
+Bloom memory is intentionally file-based.
+
+The goal is to keep memory:
+
+- inspectable by humans
+- editable without special tooling
+- lightweight enough for a minimal host footprint
+- explicit about what is durable versus temporary
+
+## 🗂️ How The Memory Layers Work
+
+Bloom has two persistent layers:
 
 - `~/Bloom/Objects/` for durable long-term memory
 - `~/Bloom/Episodes/` for append-only episodic capture
-
-This keeps memory inspectable, editable, and lightweight enough for Bloom's minimal OS footprint.
-
-## Layers
 
 ### Working Memory
 
@@ -49,11 +62,28 @@ Use durable objects for:
 
 Durable objects are the canonical long-term memory store.
 
-## Durable Object Schema
+### Promotion Rules
 
-Each durable object is a markdown file with YAML frontmatter.
+Promotion is the process of turning one or more episodes into durable objects.
 
-Required fields:
+Auto-promote only when the information is:
+
+- explicit rather than inferred
+- durable rather than transient
+- useful beyond the immediate turn
+- high-confidence or directly confirmed
+
+Poor promotion candidates:
+
+- speculation
+- transient moods
+- one-off troubleshooting noise
+- weakly inferred personal facts
+- incomplete ideas with no durable value
+
+## 📚 Reference
+
+Durable object required fields:
 
 - `type`
 - `slug`
@@ -81,8 +111,6 @@ Common enums:
 - `confidence`: `low`, `medium`, `high`
 - `status`: `active`, `stale`, `superseded`, `archived`
 
-## Object Types
-
 Current recommended durable types:
 
 - `fact`
@@ -93,96 +121,13 @@ Current recommended durable types:
 - `thread`
 - `relationship`
 
-## Promotion Rules
-
-Promotion is the process of turning one or more episodes into durable objects.
-
-Promotion should be conservative.
-
-Auto-promote only when the information is:
-
-- explicit rather than inferred
-- durable rather than transient
-- useful beyond the immediate turn
-- high-confidence or directly confirmed
-
-Good candidates for promotion:
-
-- explicit user preferences
-- stable user or host facts
-- reusable recovery or operating procedures
-- explicit decisions with rationale
-- persistent project context
-
-Poor candidates for promotion:
-
-- speculation
-- transient moods
-- one-off troubleshooting noise
-- weakly inferred personal facts
-- incomplete ideas with no durable value
-
-## Consolidation Flow
-
-Bloom currently supports three memory transitions:
+Current memory transitions:
 
 1. `episode_create`
-   Capture a raw episode.
 2. `episode_promote`
-   Explicitly promote an episode into a durable object.
 3. `episode_consolidate`
-   Propose or apply conservative promotion candidates from recent episodes.
 
-Consolidation should prefer `propose` first when behavior is uncertain.
-
-## Scope Rules
-
-Scope keeps memory relevant.
-
-- `global`: broadly applicable memory
-- `host`: tied to the current Bloom host
-- `project`: tied to the current repository or project
-- `room`: tied to a specific Matrix room
-- `agent`: tied to a specific Bloom agent overlay
-
-Use `scope_value` whenever scope needs a concrete identity.
-
-Examples:
-
-- `scope: project`, `scope_value: pi-bloom`
-- `scope: room`, `scope_value: ops-room`
-
-Bloom's ranking and session-start digest prefer more specific scope matches over generic global memory when enough context is available.
-
-## Retrieval Model
-
-Bloom retrieval is file-based and in-memory.
-
-- metadata filters narrow candidates first
-- content and summary matching score candidates second
-- scope preference boosts room/project matches
-- only compact digests are injected at session start
-- full object bodies remain tool-accessible on demand
-
-This avoids databases while keeping retrieval useful.
-
-## Operational Guidance
-
-Use episodes first when uncertain.
-
-Use durable objects only for knowledge Bloom should keep and rely on later.
-
-Prefer:
-
-- `memory_update` when correcting an existing durable object
-- `memory_upsert` when unsure whether the durable object already exists
-- `memory_query` before broad text search when metadata can narrow the result set
-
-When promoting or creating scoped memories, set `scope` intentionally and set `scope_value` whenever the scope refers to a specific project, room, host, or agent.
-
-## Current Non-Goals
-
-Bloom memory does not currently rely on:
+Current non-goals:
 
 - SQLite
 - vector databases
@@ -190,4 +135,7 @@ Bloom memory does not currently rely on:
 - automatic per-turn transcript logging
 - compaction summaries as canonical long-term memory
 
-The source of truth remains markdown on disk.
+## 🔗 Related
+
+- [../AGENTS.md](../AGENTS.md)
+- [../README.md](../README.md)

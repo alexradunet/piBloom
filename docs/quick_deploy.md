@@ -2,9 +2,22 @@
 
 > 📖 [Emoji Legend](LEGEND.md)
 
-This guide matches the current `justfile`.
+Audience: operators and maintainers building images or booting test VMs.
 
-## Prerequisites
+## 🌱 Why This Guide Exists
+
+This guide is the operational path for building and booting Bloom from the current `justfile`.
+
+Use it for:
+
+- local image builds
+- QEMU test boots
+- ISO generation
+- manual `bootc` installs
+
+## 🚀 How To Build And Boot Bloom
+
+### Prerequisites
 
 Fedora host dependencies:
 
@@ -20,7 +33,7 @@ cp core/os/disk_config/bib-config.example.toml core/os/disk_config/bib-config.to
 
 Edit `core/os/disk_config/bib-config.toml` with your desired password, SSH key, and optional customizations.
 
-## Fast Dev Path: QEMU
+### Fast Dev Path: QEMU
 
 ```bash
 just build
@@ -28,17 +41,12 @@ just qcow2
 just vm
 ```
 
-Important outputs:
-
-- image tag default: `localhost/bloom-os:latest`
-- qcow2 path: `core/os/output/qcow2/disk.qcow2`
-
 Forwarded ports in `just vm`:
 
 - `2222` -> guest SSH
 - `5000` -> `dufs`
-- `8080`
-- `8081`
+- `8080` -> guest port `8080`
+- `8081` -> `cinny`
 - `8888` -> guest port `80`
 
 Access the VM:
@@ -53,23 +61,21 @@ Stop it:
 just vm-kill
 ```
 
-## ISO Build
+Important note:
 
-Build a local installer ISO:
+- `code-server` runs on host networking inside the guest and listens on guest port `8443`
+- `just vm` does not currently forward guest `8443` to the host, so `code-server` is not reachable from the host unless you add your own QEMU forwarding or access it from inside the guest / mesh
+
+### ISO Build
 
 ```bash
 just iso
-```
-
-Build a production-style ISO flow:
-
-```bash
 just iso-production
 ```
 
 Both write outputs under `core/os/output/`.
 
-## Direct bootc Install
+### Direct bootc Install
 
 For advanced manual installation after a local build:
 
@@ -79,7 +85,15 @@ sudo bootc install to-disk /dev/sdX --source-imgref containers-storage:localhost
 
 Replace `/dev/sdX` with the target disk.
 
-## Related Commands
+## 📚 Reference
+
+Important outputs:
+
+- image tag default: `localhost/bloom-os:latest`
+- qcow2 path: `core/os/output/qcow2/disk.qcow2`
+- production registry default in `justfile`: `ghcr.io/pibloom/bloom-os:latest`
+
+Related `just` commands:
 
 ```bash
 just deps
@@ -87,21 +101,13 @@ just clean
 just lint-os
 ```
 
-## After Boot
-
-On first login:
+After first login:
 
 1. complete `bloom-wizard.sh`
 2. let Pi resume the persona step
-3. use `setup_status` if you need to inspect or resume the Pi-side setup state
+3. use `setup_status` if you need to inspect or resume Pi-side setup state
 
-Fresh-image defaults:
+## 🔗 Related
 
-- installed by preset: SSH, NetBird, local Matrix homeserver
-- started after setup when AI defaults are ready: Pi daemon
-- optional later: `cinny`, `dufs`, `code-server`, bridges
-- offered directly by the first-boot wizard: `cinny`, `dufs`
-- not included by default: Cinny, hosted web proxy stack
-
-See [docs/pibloom-setup.md](pibloom-setup.md) for the full first-boot flow.
-Use [docs/live-testing-checklist.md](live-testing-checklist.md) as the acceptance checklist for a fresh device run.
+- [pibloom-setup.md](pibloom-setup.md)
+- [live-testing-checklist.md](live-testing-checklist.md)

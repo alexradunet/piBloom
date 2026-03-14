@@ -2,18 +2,21 @@
 
 > 📖 [Emoji Legend](LEGEND.md)
 
-This document describes Bloom's current capability model and the service packaging approach that exists in this
-repository today.
+Audience: maintainers and operators deciding how Bloom capabilities should be packaged.
 
-## Capability Hierarchy
+## 🌱 Why This Capability Model Exists
 
-Use the lightest mechanism that solves the problem.
+Bloom uses multiple extension mechanisms because not every problem should become a container or a TypeScript tool.
+
+The rule is simple: use the lightest mechanism that solves the problem.
+
+## 🧩 How To Choose The Right Layer
 
 | Layer | When to use it | Current examples |
 |------|-----------------|------------------|
-| Skill | Pi needs instructions, reference material, or a repeatable procedure | `first-boot`, `recovery`, `service-management` |
-| Extension | Pi needs tools, hooks, commands, or direct session integration | `bloom-os`, `bloom-services`, `bloom-garden` |
-| Service | a standalone workload should run outside the Pi process | `dufs`, `code-server`, Matrix bridges |
+| 📜 Skill | Pi needs instructions, reference material, or a repeatable procedure | `first-boot`, `recovery`, `service-management` |
+| 🧩 Extension | Pi needs tools, hooks, commands, or direct session integration | `bloom-os`, `bloom-services`, `bloom-garden` |
+| 📦 Service | a standalone workload should run outside the Pi process | `dufs`, `code-server`, Matrix bridges |
 
 OS-level infrastructure sits beside this model rather than inside it:
 
@@ -21,12 +24,7 @@ OS-level infrastructure sits beside this model rather than inside it:
 - `netbird.service`
 - `pi-daemon.service`
 
-Repository shape:
-
-- `core/` contains Bloom's built-in platform and product code
-- `core/pi-extensions/` contains Bloom's Pi-facing extensions
-
-## Skills
+### Skills
 
 Bundled skill directories in `core/pi-skills/` are seeded into `~/Bloom/Skills/` by `bloom-garden`:
 
@@ -37,9 +35,7 @@ Bundled skill directories in `core/pi-skills/` are seeded into `~/Bloom/Skills/`
 - `self-evolution`
 - `service-management`
 
-Skills can also be created dynamically through `skill_create`.
-
-## Extensions
+### Extensions
 
 Extensions are the Pi-facing integration layer. They register:
 
@@ -63,11 +59,9 @@ Current extension families:
 | `bloom-dev` | on-device dev workflows |
 | `bloom-setup` | persona-step progress after the first-boot wizard |
 
-## Service Packages
+### Service Packages
 
 Service packages are the optional container workloads shipped in `services/`.
-
-### Package Layout
 
 Typical package:
 
@@ -79,86 +73,50 @@ services/{name}/
   Containerfile          optional, required for locally built images
 ```
 
-`service_install` copies package assets into the user's runtime locations:
+`service_install` copies package assets into runtime locations:
 
 - Quadlet units to `~/.config/containers/systemd/`
 - socket units, when present, to `~/.config/systemd/user/`
 - `SKILL.md` to `~/Bloom/Skills/{name}/`
 - config files to `~/.config/bloom/`
 
-### Bundled Packages
+## 📦 Reference
+
+Bundled packages:
 
 | Package | Image source | Notes |
 |---------|--------------|-------|
 | `cinny` | pinned upstream image | optional Bloom Web Chat client on port `8081` |
-| `dufs` | pinned upstream image | packaged network file server |
-| `code-server` | local image `localhost/bloom-code-server:latest` | built from `services/code-server/Containerfile` when needed |
+| `dufs` | pinned upstream image | packaged WebDAV file server on port `5000` |
+| `code-server` | local image `localhost/bloom-code-server:latest` | built from `services/code-server/Containerfile` and exposed on port `8443` |
 | `_template` | scaffold source | basis for new service packages |
 
-Reference-only infrastructure skill docs also live under `services/`:
+Machine-readable catalog:
 
-- `services/matrix/SKILL.md`
-- `services/netbird/SKILL.md`
+- `services/catalog.yaml` contains packaged service and bridge metadata
 
-### Catalog
+Current manifest workflow:
 
-`services/catalog.yaml` is the machine-readable catalog used by Bloom:
+- desired service state lives in `~/Bloom/manifest.yaml`
+- `manifest_show`, `manifest_sync`, `manifest_set_service`, and `manifest_apply` operate on that state
+- `manifest_apply(dry_run=true)` reports planned installs and unit actions without mutating the host
+- reconciliation occurs through user systemd / Quadlet units
 
-- `services:` contains package metadata such as version, category, image, port, and preflight commands
-- `bridges:` contains Matrix bridge image metadata
-
-## Manifest Workflow
-
-Bloom keeps desired service state in `~/Bloom/manifest.yaml`.
-
-Tools:
-
-- `manifest_show`
-- `manifest_sync`
-- `manifest_set_service`
-- `manifest_apply`
-
-Current behavior:
-
-- `manifest_apply` can install missing packaged services
-- `manifest_apply` prompts for confirmation before live changes
-- `manifest_apply(dry_run=true)` reports the planned installs and unit actions without mutating the host
-- service state is reconciled through user systemd / Quadlet units
-- manifest entries may be updated by service installation and dependency installation flows
-
-## Matrix Bridges
-
-Bridge lifecycle is managed through `bloom-services`.
-
-Current supported bridge names from `services/catalog.yaml`:
+Current bridge names from `services/catalog.yaml`:
 
 - `whatsapp`
 - `telegram`
 - `signal`
-
-Bridge creation currently:
-
-- pulls the configured bridge image
-- writes a Quadlet unit
-- writes starter bridge config
-- points the bridge at the local Matrix homeserver
-- starts the bridge service
-
-## Daemon and Services
-
-The room daemon is not a service package. It is OS-level infrastructure that coordinates Pi sessions for Matrix rooms.
 
 Keep this distinction clear:
 
 - daemon: core platform runtime
 - service packages: optional user workloads
 
-For the daemon's runtime modes, proactive job model, and module layout, see [docs/daemon-architecture.md](daemon-architecture.md).
+## 🔗 Related
 
-## Related
-
-- [README.md](../README.md)
-- [ARCHITECTURE.md](../ARCHITECTURE.md)
-- [docs/daemon-architecture.md](daemon-architecture.md)
-- [docs/supply-chain.md](supply-chain.md)
-- [services/README.md](../services/README.md)
+- [../README.md](../README.md)
+- [../AGENTS.md](../AGENTS.md)
+- [../services/README.md](../services/README.md)
+- [daemon-architecture.md](daemon-architecture.md)
+- [supply-chain.md](supply-chain.md)

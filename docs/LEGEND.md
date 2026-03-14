@@ -2,34 +2,42 @@
 
 This document defines the emoji notation used across Bloom documentation for visual scanning and consistent reference.
 
-## Notation Table
+## 🧩 Notation Table
 
 | Emoji | Concept |
 |-------|---------|
-| 🌱 | Bloom (the platform) |
-| 🤖 | Pi (the agent) |
-| 📜 | Skill |
-| 🧩 | Extension |
-| 📦 | Service (OCI container) |
-| 🌿 | Garden (vault) |
-| 🪞 | Persona |
-| 💻 | OS / bootc |
-| 📡 | Channels / IPC |
-| 🛡️ | Guardrails / Safety |
-| 📓 | Journal |
-| 🔍 | Audit |
-| 🗂️ | Objects / Memory |
-| 🚀 | Deploy / Build |
+| 🌱 | Bloom / purpose / overview |
+| 🤖 | Pi / agent behavior |
+| 📜 | Skill / written guidance |
+| 🧩 | Extension / integration layer |
+| 📦 | Service / OCI workload |
+| 🌿 | Bloom directory / host layout |
+| 🪞 | Persona / identity |
+| 💻 | OS / build / host operations |
+| 📡 | Daemon / messaging / IPC |
+| 🛡️ | Guardrails / trust / safety |
+| 📓 | Episodes / journals / checklists |
+| 🔍 | Audit / inspection |
+| 🗂️ | Objects / memory / reference |
+| 🚀 | Deploy / build / release |
+| 🧭 | Navigation / entry points |
+| 📚 | Documentation maps / references |
+| 🔗 | Related links |
 
-## Usage
+## 📚 Usage
 
-- **Section headers** use emojis as visual anchors (e.g., `## 🧩 Extensions`)
-- **Table rows** use emojis as type prefixes for scanning
-- **CLAUDE.md is excluded** — it's loaded into AI context windows and must stay lean
-- **`SKILL.md` and `core/pi-persona/` files are excluded** — they're consumed by Pi at runtime, not developers
+- use emoji in section headers on root docs and `docs/*.md`
+- keep emoji meaning stable across pages so the same symbol implies the same kind of content
+- prefer emoji as visual anchors, not decoration
+- keep one doc section per concern instead of mixing overview, procedure, and reference randomly
+
+Excluded from this convention:
+
+- `SKILL.md` files, because they are runtime-consumed instructions
+- `core/pi-persona/` files, because they are loaded into Pi context
 
 ## 🔗 Related
 
-- [README](../README.md) — Project overview
-- [AGENTS.md](../AGENTS.md) — Extension, tool, and hook reference
-- [Service Architecture](service-architecture.md) — Extensibility hierarchy details
+- [../README.md](../README.md)
+- [../AGENTS.md](../AGENTS.md)
+- [service-architecture.md](service-architecture.md)

@@ -1,159 +1,104 @@
-# ARCHITECTURE.md
+# Architecture
 
-Bloom's current architecture and repository rules.
+> 📖 [Emoji Legend](docs/LEGEND.md)
 
-## Product Shape
+This document is maintainer-facing architecture guidance for the current Bloom repository.
 
-Bloom has three layers:
+## 🌱 Why The System Looks Like This
+
+Bloom is intentionally built from simple host-native primitives:
+
+- markdown for durable human-readable state
+- TypeScript extensions for Pi integration
+- systemd and Quadlet for long-running workloads
+- a bootc image for host distribution
+
+The design goal is inspectability over abstraction. Bloom should be understandable from the repo and from the host filesystem without requiring hidden control planes or databases.
+
+## 🧩 How The Product Is Shaped
+
+Bloom has three capability layers:
 
 | Layer | What it is | Typical use |
 |------|-------------|-------------|
-| Skill | markdown instructions in `SKILL.md` | procedures, guidance, checklists |
-| Extension | in-process TypeScript | Pi-facing tools, hooks, commands |
-| Service | packaged container workload | isolated long-running software |
+| 📜 Skill | markdown instructions in `SKILL.md` | procedures, guidance, checklists |
+| 🧩 Extension | in-process TypeScript | Pi-facing tools, hooks, commands |
+| 📦 Service | packaged container workload | isolated long-running software |
 
-Bloom also ships OS-level infrastructure that is part of the image rather than a service package:
+OS-level infrastructure is separate from service packages and part of the image:
 
 - `bloom-matrix.service`
 - `netbird.service`
 - `pi-daemon.service`
 
-## Repository Structure
+Repository structure:
 
 ```text
-core/         Bloom core: OS image, daemon, persona, skills, built-in extensions, runtime helpers
+core/                 Bloom core: OS image, daemon, persona, skills, built-in extensions, runtime helpers
 core/pi-extensions/   Pi-facing Bloom extensions
-services/     bundled service packages and template
-tests/        unit, integration, and daemon tests
-docs/         live documentation only
+services/             bundled service packages and template
+tests/                unit, integration, daemon, and extension tests
+docs/                 live documentation
 ```
 
-## Extension Conventions
+## 💻 How To Extend Bloom
 
-Every extension lives in its own directory:
+Use the lightest mechanism that solves the problem.
 
-```text
-core/pi-extensions/bloom-{name}/
-  index.ts
-  actions*.ts
-  types.ts
-```
+- choose a Skill when Pi only needs instructions or reference material
+- choose an Extension when Pi needs tools, hooks, commands, or session integration
+- choose a Service when software should run outside the Pi process
 
-Rules:
+Extension conventions:
 
-1. `index.ts` is the registration entry point.
-2. Tool handlers and hook logic live in `actions.ts` or focused `actions-*.ts` files.
-3. `types.ts` is optional but preferred when the extension owns non-trivial types.
-4. Core runtime helpers belong in `core/lib/`. Non-core shared helpers can remain outside `core/` only when they truly support optional extensions.
+1. `index.ts` is the registration entry point
+2. handler logic should live in `actions.ts` or focused `actions-*.ts` files
+3. `types.ts` is optional but preferred when an extension owns non-trivial types
+4. reusable core helpers belong in `core/lib/`
 
 Current exception worth documenting honestly:
 
 - some extensions still keep light gating or setup helpers in `index.ts`
-- some `core/lib/` modules perform filesystem or process work, so it should be read as shared library code, not as a
-  strictly pure functional layer
+- some `core/lib/` modules are host-aware and perform filesystem or process work
 
-## Shared Library
+## 📡 Daemon Architecture Guidance
 
-`core/lib/` currently mixes three kinds of modules:
+The daemon is first-class platform code, not an add-on.
 
-- pure data/format helpers such as `frontmatter.ts`, `audit.ts`, and most of `setup.ts`
-- path and environment helpers such as `filesystem.ts`
-- host-aware helpers that may read files or execute commands such as `services-catalog.ts`, `services-manifest.ts`,
-  `services-validation.ts`, and `repo.ts`
+Current invariants:
 
-Rule:
+1. start in single-agent fallback mode when no valid overlays exist
+2. start in multi-agent mode when at least one `~/Bloom/Agents/*/AGENTS.md` parses successfully
+3. skip malformed overlays with warnings instead of aborting startup
+4. bound duplicate-event, cooldown, and reply-budget state over time
+5. suppress fresh multi-agent handoffs and proactive dispatch during supervisor shutdown
 
-- keep reusable core logic in `core/lib/`, but do not claim purity unless the module is actually side-effect free
+Use [docs/daemon-architecture.md](docs/daemon-architecture.md) for the runtime walkthrough and [AGENTS.md](AGENTS.md) for the exact current file and tool reference.
 
-## Daemon
+## 📜 Documentation Policy
 
-The daemon is a first-class part of the current architecture.
-
-### Entry Points
-
-| Path | Role |
-|------|------|
-| `core/daemon/index.ts` | daemon bootstrap and mode selection |
-| `core/daemon/contracts/matrix.ts` | Bloom-owned Matrix bridge contract |
-| `core/daemon/runtime/matrix-js-sdk-bridge.ts` | official Matrix SDK bridge with per-identity clients |
-| `core/daemon/runtime/pi-room-session.ts` | Pi SDK-backed room session lifecycle |
-| `core/daemon/single-agent-runtime.ts` | extracted single-agent runtime lifecycle and message flow |
-| `core/daemon/agent-supervisor.ts` | room routing, typing, session lifecycle, sequential handoff |
-| `core/daemon/multi-agent-runtime.ts` | extracted multi-agent runtime lifecycle and scheduler wiring |
-| `core/daemon/lifecycle.ts` | shared startup retry/backoff helper |
-| `core/daemon/scheduler.ts` | daemon-owned proactive heartbeat and cron-style scheduling |
-| `core/daemon/room-failures.ts` | room failure window and quarantine handling |
-
-### Runtime Model
-
-1. The daemon starts in single-agent fallback mode when no agent overlays exist.
-2. The daemon starts in multi-agent mode when at least one `~/Bloom/Agents/*/AGENTS.md` parses successfully.
-3. Malformed agent overlays are skipped with warnings instead of aborting daemon startup.
-4. Duplicate-event, cooldown, and per-root reply state is bounded and pruned over time for long-lived daemon sessions.
-5. Matrix events are normalized by the official Matrix SDK bridge and handed to Bloom routing logic.
-6. Idle room sessions are disposed after `BLOOM_DAEMON_IDLE_TIMEOUT_MS` unless more traffic arrives.
-7. In multi-agent mode, the daemon may also dispatch synthetic proactive turns from agent-declared heartbeat or cron jobs.
-8. During supervisor shutdown, new sequential multi-agent handoffs and proactive dispatches are suppressed so room shutdown cannot enqueue fresh work.
-9. Heartbeat failures back off by their configured interval; they do not spin in immediate retry loops.
-10. Proactive scheduler state is persisted per `(agent, room, job)` so identical job ids can exist in different rooms.
-
-This is custom Bloom orchestration code and should be treated as such when reviewing changes.
-
-For the more narrative developer-facing walkthrough, see [docs/daemon-architecture.md](docs/daemon-architecture.md).
-
-## Bloom Directory
-
-Bloom seeds and manages the following under `~/Bloom/` unless `BLOOM_DIR` overrides it:
-
-```text
-Persona/
-Skills/
-Evolutions/
-Objects/
-Episodes/
-Agents/
-audit/
-guardrails.yaml
-manifest.yaml
-blueprint-versions.json
-```
-
-## Service Packages
-
-Service packages live in `services/{name}/` and usually contain:
-
-```text
-Containerfile            optional, required for locally built images
-SKILL.md                 required
-quadlet/                 required
-```
-
-The current repository includes packaged services for `dufs` and `code-server`, plus a reusable `_template`.
+Bloom documentation is part of the product surface.
 
 Rules:
 
-1. Use `Containerfile`, never `Dockerfile`.
-2. Use `podman`, never `docker`.
-3. Use `bloom-{name}` for Bloom-managed unit names.
-4. Prefer pinned image tags or digests for published images.
-5. Document any mutable local-image exception explicitly and make rebuild behavior explicit in docs.
+1. root docs and `docs/*.md` must describe the current repository state
+2. keep one authoritative location per fact instead of duplicating operational detail across pages
+3. when code changes tools, hooks, paths, daemon behavior, setup flow, service workflow, ports, or build commands, update the authoritative doc in the same change
+4. root pages should route readers; detailed facts belong in focused guides or reference docs
+5. use emoji anchors from [docs/LEGEND.md](docs/LEGEND.md) in root and `docs/` pages
+6. delete stale design archives instead of keeping dead competing docs
 
-## Documentation Policy
+## 📚 Reference
 
-Only keep live documentation in the main docs tree.
+Important current references:
 
-Rules:
+- [AGENTS.md](AGENTS.md) for tools, hooks, paths, and runtime facts
+- [docs/daemon-architecture.md](docs/daemon-architecture.md) for daemon behavior and module layout
+- [docs/service-architecture.md](docs/service-architecture.md) for the capability hierarchy and package model
+- [docs/README.md](docs/README.md) for the full docs map
 
-1. Root docs and `docs/*.md` should describe the current repository state.
-2. Delete stale design archives instead of letting them compete with live docs.
-3. When code changes user-facing tools, hooks, paths, daemon behavior, setup flow, or service workflow, update:
-   - `README.md`
-   - `AGENTS.md`
-   - any directly affected guide in `docs/`
+## 🔗 Related
 
-## Review Checklist
-
-- Does the change match the current daemon and service model rather than an older one?
-- Are docs updated to reflect the actual runtime behavior?
-- Are obsolete files removed instead of preserved as dead history?
-- Are user-facing tool names, paths, and workflows still correct?
+- [README.md](README.md)
+- [AGENTS.md](AGENTS.md)
+- [docs/README.md](docs/README.md)

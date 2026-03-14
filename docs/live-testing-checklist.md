@@ -2,15 +2,23 @@
 
 > 📖 [Emoji Legend](LEGEND.md)
 
-Use this checklist for the first real Bloom run on a mini PC or other fresh machine.
+Audience: operators validating a fresh Bloom image on real hardware or a realistic VM.
 
-## Clean Install
+## 🌱 Why This Checklist Exists
+
+This is the acceptance checklist for first real Bloom runs.
+
+Use it to verify that setup, messaging, services, and recovery paths still match the shipped documentation.
+
+## 🚀 How To Run The Check
+
+### Clean Install
 
 1. Install the image from a freshly built artifact.
 2. Boot the machine and confirm login works on the local console.
 3. Verify the first-login wizard starts automatically.
 
-## First Boot
+### First Boot
 
 1. Complete the password step.
 2. Bring the machine online and confirm outbound network access works.
@@ -21,34 +29,38 @@ Use this checklist for the first real Bloom run on a mini PC or other fresh mach
 Expected result:
 Pi resumes cleanly after reboot and does not require manual cleanup of partial wizard state.
 
-## Core Runtime
+### Core Runtime
 
 1. Confirm `pi-daemon.service` is active in the user session.
 2. Confirm `bloom-matrix.service` is active.
 3. Verify the `#general:bloom` room exists and Pi replies to a message.
 4. If agent overlays exist, confirm malformed overlays are skipped without killing the daemon.
 
-## Service Lifecycle
+### Service Lifecycle
 
 1. Run `manifest_show` and confirm the manifest is readable.
 2. Install one packaged service with `service_install`.
-   For `dufs`, confirm it serves only `~/Public/Bloom`, not the full home directory.
-3. Run `manifest_apply` twice in a row and confirm the second run is boring.
-4. Disable a service in the manifest and confirm it stops cleanly.
-5. If a socket-activated service exists, confirm Bloom starts the socket unit rather than forcing the service unit.
+3. For `dufs`, confirm it serves only `~/Public/Bloom`, not the full home directory.
+4. Run `manifest_apply` twice in a row and confirm the second run is boring.
+5. Disable a service in the manifest and confirm it stops cleanly.
 
-## Recovery Cases
+### Recovery Cases
 
 1. Interrupt the wizard during Matrix setup, log back in, and confirm setup resumes instead of re-registering from scratch.
 2. Force one service dependency failure and confirm the requested primary service is not partially installed.
 3. Corrupt `~/Bloom/manifest.yaml` and confirm Bloom quarantines it and recreates an empty manifest.
 
-## Ship Gate
+## 📚 Reference
 
-Do not call the build release-ready until all of these are true:
+Ship gate:
 
 - first-boot completes on a clean machine
 - one reboot cycle preserves expected state
 - Matrix messaging works end to end
 - service install/apply/disable works without manual cleanup
-- the known risks for any optional service defaults are documented
+- known risks for any optional service defaults are documented
+
+## 🔗 Related
+
+- [pibloom-setup.md](pibloom-setup.md)
+- [quick_deploy.md](quick_deploy.md)

@@ -1,25 +1,16 @@
 # Bloom Service Packages
 
+This document is the operator-facing package reference for bundled services.
+
+## 🌱 Why This Page Exists
+
+Use this page when you need the current packaged service inventory and the practical install/runtime shape of those packages.
+
+For capability-model decisions, use [../docs/service-architecture.md](../docs/service-architecture.md).
+
+## 📦 How Bundled Packages Work
+
 Bundled service packages live in `services/`.
-
-## Current Packages
-
-| Path | Role |
-|------|------|
-| `services/cinny/` | packaged web chat client using a pinned upstream image |
-| `services/dufs/` | packaged service using a pinned upstream image |
-| `services/code-server/` | packaged service built as a local image when needed |
-| `services/_template/` | scaffold template for new packages |
-| `services/catalog.yaml` | service and bridge metadata catalog |
-
-Reference-only infrastructure docs:
-
-| Path | Role |
-|------|------|
-| `services/matrix/SKILL.md` | Matrix infrastructure notes |
-| `services/netbird/SKILL.md` | NetBird infrastructure notes |
-
-## Package Shape
 
 Typical package:
 
@@ -31,10 +22,6 @@ services/{name}/
   Containerfile     optional, for locally built images
 ```
 
-## Installation Flow
-
-`service_install` and `manifest_apply` operate on these packages. Bridge tools use the `bridges:` section in `services/catalog.yaml` but do not require a per-bridge package directory under `services/`.
-
 Current install behavior:
 
 1. find the package in the repo, system share, or current working tree
@@ -44,14 +31,28 @@ Current install behavior:
 5. build local images for `localhost/*` refs when needed
 6. reload and optionally start the user unit
 
-## Scaffold Source
+## 📚 Reference
 
-`services/_template/` is the scaffold basis for generated service packages.
+Current packages:
 
-Current scaffold output from `service_scaffold` is intentionally lightweight:
+| Path | Role |
+|------|------|
+| `services/cinny/` | packaged Bloom Web Chat client using a pinned upstream image on port `8081` |
+| `services/dufs/` | packaged WebDAV file server using a pinned upstream image on port `5000` |
+| `services/code-server/` | packaged editor service built as a local image and exposed on port `8443` |
+| `services/_template/` | scaffold template source for new packages |
+| `services/catalog.yaml` | service and bridge metadata catalog |
 
-- Quadlet container unit
-- optional socket unit
-- `SKILL.md`
+Reference-only infrastructure docs:
 
-It does not yet expand into a full template-generated source tree automatically.
+| Path | Role |
+|------|------|
+| `services/matrix/SKILL.md` | Matrix infrastructure notes |
+| `services/netbird/SKILL.md` | NetBird infrastructure notes |
+
+Bridge tools use the `bridges:` section in `services/catalog.yaml` and do not require a per-bridge package directory under `services/`.
+
+## 🔗 Related
+
+- [../docs/service-architecture.md](../docs/service-architecture.md)
+- [../docs/supply-chain.md](../docs/supply-chain.md)

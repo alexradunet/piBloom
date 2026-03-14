@@ -2,19 +2,19 @@
 
 > 📖 [Emoji Legend](docs/LEGEND.md)
 
-Bloom is a Pi package plus OS image that teaches Pi about its host, its services, and its own operating model.
+This file is the Bloom reference index for current tools, hooks, runtime paths, and packaged capabilities.
 
-## Current Model
+## 🌱 Current Model
 
 Bloom extends Pi through three mechanisms:
 
 | Layer | What | Current use |
 |------|------|-------------|
-| Skill | bundled or user-created `SKILL.md` files | guidance, procedures, service docs |
-| Extension | in-process TypeScript | tools, hooks, commands, stateful host integration |
-| Service | packaged container workloads | optional long-running user services |
+| 📜 Skill | bundled or user-created `SKILL.md` files | guidance, procedures, service docs |
+| 🧩 Extension | in-process TypeScript | tools, hooks, commands, stateful host integration |
+| 📦 Service | packaged container workloads | optional long-running user services |
 
-OS-level infrastructure is separate from service packages and is baked into the image:
+OS-level infrastructure is separate from service packages and baked into the image:
 
 - `bloom-matrix.service`
 - `netbird.service`
@@ -25,7 +25,7 @@ Repository structure note:
 - `core/` is Bloom itself: OS image assets, daemon, persona, bundled skills, built-in extensions, and shared runtime code
 - `core/pi-extensions/` contains all Pi-facing Bloom extensions, including dev and repo helpers
 
-## Bloom Directory
+## 🌿 Bloom Directory
 
 Default Bloom home is `~/Bloom/` unless `BLOOM_DIR` is set.
 
@@ -55,7 +55,7 @@ Related state outside `~/Bloom/`:
 | `~/.config/systemd/user/` | user socket units and user services |
 | `~/.config/bloom/` | service env/config files |
 
-## Extensions
+## 🧩 Extensions
 
 ### `bloom-persona`
 
@@ -253,17 +253,11 @@ Tools:
 
 Hooks:
 
-- `before_agent_start` injects persona-setup guidance only after the bash wizard is complete and before the persona step
-  is marked done
+- `before_agent_start` injects persona-setup guidance only after the bash wizard is complete and before the persona step is marked done
 
-## Daemon
+## 📡 Daemon
 
 `pi-daemon.service` is the always-on Matrix daemon.
-
-Developer overview:
-
-- see [docs/daemon-architecture.md](docs/daemon-architecture.md) for the readable runtime walkthrough
-- use this section as the compact reference for paths and current behavior
 
 Current behavior:
 
@@ -302,7 +296,6 @@ Notes:
 - `cron` currently supports `@hourly`, `@daily`, and fixed `minute hour * * *`
 - duplicate proactive job ids are rejected within the same room for a single agent overlay
 - heartbeat failures back off by the configured interval instead of immediately looping
-- generated starter `AGENTS.md` files do not include proactive tutorial text in the runtime prompt body
 
 Key daemon files:
 
@@ -321,7 +314,7 @@ Key daemon files:
 | `core/daemon/router.ts` | routing policy |
 | `core/daemon/room-state.ts` | duplicate, cooldown, and reply-budget tracking |
 
-## Bundled Skills
+## 📜 Bundled Skills
 
 Bundled skill directories seeded into `~/Bloom/Skills/`:
 
@@ -332,12 +325,13 @@ Bundled skill directories seeded into `~/Bloom/Skills/`:
 - `self-evolution`
 - `service-management`
 
-## Bundled Service Packages
+## 📦 Bundled Service Packages
 
 Current packages in `services/`:
 
 | Package | Status |
 |---------|--------|
+| `cinny` | packaged web client installable via `service_install` |
 | `dufs` | packaged service installable via `service_install` |
 | `code-server` | packaged service with local image build flow |
 | `_template` | scaffold source for new packages |
@@ -349,17 +343,27 @@ Additional service documentation in-tree:
 | `services/matrix/SKILL.md` | Matrix infrastructure reference |
 | `services/netbird/SKILL.md` | NetBird infrastructure reference |
 
-## Safety and Trust
+## 🛡️ Safety And Trust
 
 - shell command guardrails are loaded from `~/Bloom/guardrails.yaml` if present, else from the packaged default
 - service manifests live in `~/Bloom/manifest.yaml`
 - service image trust rules are documented in [docs/supply-chain.md](docs/supply-chain.md)
 - PR-based repo workflow is documented in [docs/fleet-pr-workflow.md](docs/fleet-pr-workflow.md)
 
-## Related Docs
+## 📚 Reference Routing
+
+Use this file when you need exact current-state facts.
+
+- For repo rules and architecture intent: [ARCHITECTURE.md](ARCHITECTURE.md)
+- For daemon walkthroughs: [docs/daemon-architecture.md](docs/daemon-architecture.md)
+- For service/package model: [docs/service-architecture.md](docs/service-architecture.md)
+- For operator workflows: [docs/README.md](docs/README.md)
+
+## 🔗 Related Docs
 
 - [README.md](README.md)
 - [ARCHITECTURE.md](ARCHITECTURE.md)
+- [docs/README.md](docs/README.md)
 - [docs/daemon-architecture.md](docs/daemon-architecture.md)
 - [docs/memory-model.md](docs/memory-model.md)
 - [docs/service-architecture.md](docs/service-architecture.md)

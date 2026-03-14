@@ -2,69 +2,58 @@
 
 > 📖 [Emoji Legend](LEGEND.md)
 
+Audience: maintainers contributing from a Bloom device.
+
+## 🌱 Why This Flow Exists
+
+Bloom assumes the on-device clone participates in a fork-and-PR workflow rather than direct pushes to `main`.
+
+This keeps device-side contribution aligned with the repo tooling shipped in Bloom.
+
+## 🚀 How To Contribute From A Device
+
 Bloom assumes the repo clone used for contribution lives at:
 
 - `~/.bloom/pi-bloom`
 
-The supported repo tools are:
+Supported repo tools:
 
 - `bloom_repo`
 - `bloom_repo_submit_pr`
-- the `bloom-dev` PR helpers for pushing skills, services, and extensions
+- `bloom-dev` PR helpers for pushing skills, services, and extensions
 
-## Recommended Flow
+Recommended flow:
 
 1. authenticate GitHub on the device
+2. configure the clone and remotes
+3. inspect repo status
+4. sync from upstream
+5. make and validate changes
+6. submit a PR
+
+Example commands:
 
 ```bash
 gh auth login
 gh auth status
-```
-
-2. configure the clone and remotes
-
-```text
-bloom_repo(action="configure", repo_url="https://github.com/pibloom/pi-bloom.git")
-```
-
-Optionally provide a fork:
-
-```text
-bloom_repo(action="configure", repo_url="https://github.com/pibloom/pi-bloom.git", fork_url="https://github.com/<you>/pi-bloom.git")
-```
-
-3. inspect status
-
-```text
-bloom_repo(action="status")
-```
-
-4. sync from upstream
-
-```text
-bloom_repo(action="sync", branch="main")
-```
-
-5. make and validate changes
-
-```bash
 cd ~/.bloom/pi-bloom
 npm run build
 npm run check
 npm run test
 ```
 
-6. submit a PR
+Tool calls:
 
 ```text
+bloom_repo(action="configure", repo_url="https://github.com/pibloom/pi-bloom.git")
+bloom_repo(action="status")
+bloom_repo(action="sync", branch="main")
 bloom_repo_submit_pr(title="docs: ...")
 ```
 
-## Current Tool Behavior
+## 📚 Reference
 
-### `bloom_repo`
-
-Actions:
+`bloom_repo` actions:
 
 - `configure`
 - `status`
@@ -76,9 +65,7 @@ Current repo assumptions:
 - `upstream` is the canonical repo
 - `origin` is the writable fork or alternative push target
 
-### `bloom_repo_submit_pr`
-
-Current behavior:
+`bloom_repo_submit_pr` behavior:
 
 - confirms with the user
 - verifies git and GitHub auth state
@@ -88,25 +75,7 @@ Current behavior:
 - pushes to `origin`
 - creates a PR against `upstream`
 
-### `bloom-dev` PR helpers
+## 🔗 Related
 
-`bloom-dev` also provides:
-
-- `dev_submit_pr`
-- `dev_push_skill`
-- `dev_push_service`
-- `dev_push_extension`
-
-These operate on the same local repo clone under `~/.bloom/pi-bloom` after dev mode is enabled.
-
-## Expectations
-
-- do not push directly to `main`
-- prefer fork + PR flow
-- validate locally before opening a PR
-- keep documentation aligned with the code you changed
-
-## Related
-
-- [README.md](../README.md)
-- [AGENTS.md](../AGENTS.md)
+- [../README.md](../README.md)
+- [../AGENTS.md](../AGENTS.md)

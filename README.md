@@ -3,190 +3,110 @@
 > 📖 [Emoji Legend](docs/LEGEND.md)
 
 Bloom is a Pi package and bootc-based OS image for running Pi as a personal, self-hosted companion on a Fedora host.
-This repository contains:
 
-- the Bloom core: OS image assets, Pi runtime integration, persona, skills, and built-in extensions
-- optional extensions and bundled service packages
-- the Matrix room daemon: a long-running service that bridges Matrix rooms to Pi SDK-backed sessions through the official Matrix JS SDK
+## 🌱 Why Bloom Exists
 
-## What Ships Today
+Bloom packages Pi, host integration, memory, and optional services into one self-hosted system.
 
-Bloom currently provides:
+Bloom exists to give Pi:
+
+- a durable home directory under `~/Bloom/`
+- first-class host tools for OS, services, and repo workflows
+- a private Matrix-based messaging surface
+- a minimal but inspectable operating model based on files, systemd, and containers
+
+## 🚀 What Ships Today
+
+Current platform capabilities:
 
 - Bloom directory management and blueprint seeding for `~/Bloom/`
 - persona injection, shell guardrails, durable-memory digest injection, and compaction context persistence
-- an audit trail for tool calls and tool results
-- OS management tools for `bootc`, containers, systemd, health, and scheduled reboot
-- repository bootstrap, sync, and PR submission helpers
+- audit logging for tool calls and tool results
+- host OS management tools for `bootc`, containers, systemd, health, and reboot scheduling
+- repo bootstrap, sync, and PR submission helpers
 - service scaffolding, installation, smoke testing, manifest management, and bridge lifecycle tools
-- a flat-file durable memory store in `~/Bloom/Objects/`
+- markdown-native durable memory in `~/Bloom/Objects/`
 - append-only episodic memory in `~/Bloom/Episodes/`
-- an optional multi-agent Matrix daemon with one Pi session per `(room, agent)` pair and one Matrix SDK client per identity
-- daemon-owned proactive jobs for agents, including interval heartbeats and simple cron-style scheduled turns
+- a Matrix room daemon with single-agent fallback and optional multi-agent routing
+- proactive daemon jobs for heartbeat and simple cron-style scheduled turns
 - a first-boot flow split between a bash wizard and a Pi-guided persona step
 
-## Default Install
+## 🧭 Start Here
 
-The default OS image is intentionally small. On a fresh box, Bloom installs:
+Choose the entry point that matches your job:
+
+- Maintainers: [ARCHITECTURE.md](ARCHITECTURE.md), [AGENTS.md](AGENTS.md), and [docs/README.md](docs/README.md)
+- Operators: [docs/pibloom-setup.md](docs/pibloom-setup.md), [docs/quick_deploy.md](docs/quick_deploy.md), and [docs/live-testing-checklist.md](docs/live-testing-checklist.md)
+- Service/package work: [docs/service-architecture.md](docs/service-architecture.md) and [services/README.md](services/README.md)
+
+## 💻 Default Install
+
+The base image stays intentionally small.
+
+Installed by default:
 
 - `sshd.service`
 - `netbird.service`
 - `bloom-matrix.service`
-- `pi-daemon.service` after setup when AI credentials/defaults are ready
+- `pi-daemon.service` after setup once AI auth and defaults are ready
 
-Optional packaged services are not installed automatically. Today that includes:
+Optional packaged services:
 
 - `cinny`
 - `dufs`
 - `code-server`
 
-Bridge workloads are available separately through `bridge_create` / `bridge_remove` / `bridge_status`:
+Optional bridge workloads:
 
 - `whatsapp`
 - `telegram`
 - `signal`
 
-Not installed by default:
-
-- `cinny`
-- any bundled web reverse proxy
-
-Operational hardening in the current tree:
-
-- invalid `~/Bloom/Agents/*/AGENTS.md` files are skipped with warnings instead of crashing the daemon
-- daemon duplicate/cooldown/reply-budget state is bounded so long-running processes do not grow unbounded maps forever
-- corrupt `~/Bloom/manifest.yaml` files are quarantined to `manifest.yaml.corrupt-*` before Bloom falls back to an empty manifest
-- `manifest_apply` now attempts persistent `systemctl --user enable --now` / `disable --now`, with start/stop fallback when enablement is not supported
-- local `localhost/*` service images are rebuilt on install so mutable tags do not silently reuse stale code
-
-## Repository Layout
+## 🌿 Repository Layout
 
 | Path | Purpose |
 |------|---------|
 | `core/` | Bloom core: OS image, daemon, persona, skills, built-in extensions, and shared runtime code |
 | `core/pi-extensions/` | Pi-facing Bloom extensions, including dev and repo tooling |
-| `services/` | bundled service packages and service template |
+| `services/` | bundled service packages and service metadata |
 | `tests/` | unit, integration, daemon, and extension tests |
 | `docs/` | live project documentation |
 
-## Core And Extensions
+## 🧩 Capability Model
 
-All Pi-facing extensions now live under `core/pi-extensions/`.
+Bloom extends Pi through three layers:
 
-| Extension | Tools | Hooks / Commands |
-|-----------|-------|------------------|
-| `bloom-persona` | — | `session_start`, `before_agent_start`, `tool_call`, `session_before_compact` |
-| `bloom-audit` | `audit_review` | `session_start`, `tool_call`, `tool_result` |
-| `bloom-os` | `bootc`, `container`, `systemd_control`, `system_health`, `update_status`, `schedule_reboot` | `before_agent_start` |
-| `bloom-repo` | `bloom_repo`, `bloom_repo_submit_pr` | — |
-| `bloom-services` | `service_scaffold`, `service_install`, `service_test`, `manifest_show`, `manifest_sync`, `manifest_set_service`, `manifest_apply`, `bridge_create`, `bridge_remove`, `bridge_status` | `session_start` |
-| `bloom-episodes` | `episode_create`, `episode_list`, `episode_promote`, `episode_consolidate` | — |
-| `bloom-objects` | `memory_create`, `memory_update`, `memory_upsert`, `memory_read`, `memory_query`, `memory_search`, `memory_link`, `memory_list` | — |
-| `bloom-garden` | `garden_status`, `skill_create`, `skill_list`, `agent_create`, `persona_evolve` | `session_start`, `resources_discover`, `/bloom` |
-| `bloom-dev` | `dev_enable`, `dev_disable`, `dev_status`, `dev_code_server`, `dev_build`, `dev_switch`, `dev_rollback`, `dev_loop`, `dev_test`, `dev_submit_pr`, `dev_push_skill`, `dev_push_service`, `dev_push_extension`, `dev_install_package` | — |
-| `bloom-setup` | `setup_status`, `setup_advance`, `setup_reset` | `before_agent_start` |
+| Layer | What it is | Typical use |
+|------|-------------|-------------|
+| 📜 Skill | markdown instructions in `SKILL.md` | procedures, guidance, checklists |
+| 🧩 Extension | in-process TypeScript | Pi-facing tools, hooks, commands |
+| 📦 Service | packaged container workload | isolated long-running software |
 
-## Bundled Skills
+OS-level infrastructure sits beside those layers:
 
-Bundled skill directories in `core/pi-skills/`:
+- `bloom-matrix.service`
+- `netbird.service`
+- `pi-daemon.service`
 
-- `first-boot`
-- `object-store`
-- `os-operations`
-- `recovery`
-- `self-evolution`
-- `service-management`
+See [docs/service-architecture.md](docs/service-architecture.md) for the full capability model.
 
-## Bundled Service Packages
+## 📚 Documentation Map
 
-| Package | Current role |
-|---------|--------------|
-| `cinny` | packaged web chat client exposed on port `8081` and preconfigured for the local Bloom Matrix server |
-| `dufs` | packaged Quadlet service exposed on port `5000` |
-| `code-server` | packaged service built locally as `localhost/bloom-code-server:latest` |
-| `_template` | scaffold template for new services |
+The documentation system is organized as `Why / How / Reference`.
 
-Reference material for OS-level infrastructure also lives under `services/`:
+| Topic | Why | How | Reference |
+|------|-----|-----|-----------|
+| Docs hub | [docs/README.md](docs/README.md) | [docs/README.md](docs/README.md) | [docs/README.md](docs/README.md) |
+| Architecture | [ARCHITECTURE.md](ARCHITECTURE.md) | [ARCHITECTURE.md](ARCHITECTURE.md) | [AGENTS.md](AGENTS.md) |
+| Daemon | [docs/daemon-architecture.md](docs/daemon-architecture.md) | [docs/daemon-architecture.md](docs/daemon-architecture.md) | [AGENTS.md](AGENTS.md) |
+| Services | [docs/service-architecture.md](docs/service-architecture.md) | [services/README.md](services/README.md) | [docs/service-architecture.md](docs/service-architecture.md) |
+| Setup / deploy | [docs/pibloom-setup.md](docs/pibloom-setup.md) | [docs/quick_deploy.md](docs/quick_deploy.md) | [docs/live-testing-checklist.md](docs/live-testing-checklist.md) |
+| Memory | [docs/memory-model.md](docs/memory-model.md) | [docs/memory-model.md](docs/memory-model.md) | [AGENTS.md](AGENTS.md) |
+| Trust / supply chain | [docs/supply-chain.md](docs/supply-chain.md) | [docs/supply-chain.md](docs/supply-chain.md) | [docs/supply-chain.md](docs/supply-chain.md) |
+| Contribution workflow | [docs/fleet-pr-workflow.md](docs/fleet-pr-workflow.md) | [docs/fleet-pr-workflow.md](docs/fleet-pr-workflow.md) | [AGENTS.md](AGENTS.md) |
 
-- `services/matrix/SKILL.md`
-- `services/netbird/SKILL.md`
+## 🔗 Related
 
-## Daemon Model
-
-`core/daemon/index.ts` starts the Bloom room daemon in one of two modes:
-
-- single-agent fallback when no valid agent definitions exist in `~/Bloom/Agents/*/AGENTS.md`
-- multi-agent mode when one or more agent overlays parse successfully, with one Matrix SDK client per configured agent and
-  one Pi session per `(room, agent)` pair
-- malformed agent overlays are logged and skipped instead of aborting daemon startup
-- proactive jobs declared in agent overlays are scheduled by the daemon and dispatched as synthetic agent turns
-- heartbeat jobs can suppress `HEARTBEAT_OK`-style no-op replies instead of sending room noise
-
-Each room session is backed by Pi's in-process SDK session lifecycle, and Matrix transport uses the official `matrix-js-sdk` with in-memory sync state.
-
-For the full runtime map, proactive job semantics, and helper/module layout, see [docs/daemon-architecture.md](docs/daemon-architecture.md).
-
-### Proactive Job Shape
-
-Agent overlays may declare optional proactive jobs in frontmatter:
-
-```yaml
-proactive:
-  jobs:
-    - id: daily-heartbeat
-      kind: heartbeat
-      room: "!ops:bloom"
-      interval_minutes: 1440
-      prompt: |
-        Review the room and host state.
-        Reply HEARTBEAT_OK if nothing needs surfacing.
-      quiet_if_noop: true
-      no_op_token: HEARTBEAT_OK
-    - id: morning-check
-      kind: cron
-      room: "!ops:bloom"
-      cron: "0 9 * * *"
-      prompt: Send the morning operational check-in.
-```
-
-Current constraints:
-
-- `heartbeat` jobs use `interval_minutes`
-- `cron` jobs currently support only `@hourly`, `@daily`, and fixed `minute hour * * *` expressions
-- job ids must be unique per `(room, id)` within an agent overlay
-- scheduler state is persisted per `(agent, room, job)` so the same agent can schedule the same job id in different rooms independently
-
-## Build and Test
-
-```bash
-npm install
-npm run build
-npm run check
-npm run test
-```
-
-`npm run check` uses the locally installed `biome` binary from project dependencies; it no longer shells out through
-`npx`.
-
-Additional commands:
-
-```bash
-npm run test:coverage
-just build
-just qcow2
-just iso
-just vm
-just vm-ssh
-```
-
-## Key Docs
-
-- [AGENTS.md](AGENTS.md) for the complete tool, hook, path, and feature reference
-- [ARCHITECTURE.md](ARCHITECTURE.md) for the current structure and design rules
-- [docs/daemon-architecture.md](docs/daemon-architecture.md) for the daemon runtime model, proactive jobs, and helper layout
-- [docs/memory-model.md](docs/memory-model.md) for the long-term memory model and promotion rules
-- [docs/service-architecture.md](docs/service-architecture.md) for the Skill / Extension / Service model
-- [docs/pibloom-setup.md](docs/pibloom-setup.md) for first boot
-- [docs/quick_deploy.md](docs/quick_deploy.md) for image build and install
-- [docs/fleet-pr-workflow.md](docs/fleet-pr-workflow.md) for repo contribution flow
-- [docs/supply-chain.md](docs/supply-chain.md) for image and package trust rules
+- [docs/README.md](docs/README.md)
+- [ARCHITECTURE.md](ARCHITECTURE.md)
+- [AGENTS.md](AGENTS.md)

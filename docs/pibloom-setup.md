@@ -2,71 +2,53 @@
 
 > 📖 [Emoji Legend](LEGEND.md)
 
-Bloom's first-boot experience is split into two phases.
+Audience: operators bringing up a fresh Bloom host.
 
-## Phase 1: Bash Wizard
+## 🌱 Why Setup Is Split In Two
+
+Bloom separates deterministic machine setup from Pi-guided personalization.
+
+That split keeps:
+
+- host provisioning in a predictable bash flow
+- persona customization in Pi where it belongs
+- interrupted setup resumable without redoing the entire host bootstrap
+
+## 💻 How First Boot Works
+
+Bloom's first-boot experience has two phases.
+
+### Phase 1: Bash Wizard
 
 `bloom-wizard.sh` handles deterministic machine setup on first interactive login.
 
 Current responsibilities:
 
-1. password change and basic connectivity checks
+1. password change and connectivity checks
 2. NetBird enrollment
 3. primary Matrix account bootstrap
 4. AI provider defaults for Pi
 5. optional bundled service choices
 
-What the wizard leaves installed by default:
+Optional service prompts offered by the wizard:
 
-- NetBird
-- the local Matrix homeserver
-- Pi's Matrix daemon once AI setup is ready
+- Bloom Web Chat (`cinny`) on port `8081`
+- `dufs` WebDAV file server on port `5000`
 
-What it does not install by default:
+What the wizard does not install by default:
 
-- Cinny unless you explicitly choose Bloom Web Chat
-- dufs unless you explicitly choose the file server
 - `code-server`
 - Matrix bridges
 
-The wizard currently offers two optional service prompts:
+### Phase 2: Pi Persona Step
 
-- Bloom Web Chat, which installs Cinny preconfigured for this Bloom node's Matrix server
-- dufs, which serves `~/Public/Bloom` over WebDAV on port `5000`
-
-The wizard writes completion state under `~/.bloom/` and hands control back to Pi when finished.
-
-## Phase 2: Pi Persona Step
-
-After the wizard is complete, `bloom-setup` tracks a single Pi-side setup step:
+After the wizard is complete, `bloom-setup` tracks a single Pi-side step:
 
 - `persona`
 
-That step is recorded in `~/.bloom/setup-state.json` and completed when Pi finishes the persona customization flow.
+Pi injects setup guidance until that step is marked complete.
 
-Relevant files:
-
-| Path | Purpose |
-|------|---------|
-| `~/.bloom/.setup-complete` | wizard complete sentinel |
-| `~/.bloom/setup-state.json` | Pi-side setup state |
-| `~/.bloom/wizard-state/persona-done` | persona step complete marker |
-
-## Tools
-
-`bloom-setup` provides:
-
-- `setup_status`
-- `setup_advance`
-- `setup_reset`
-
-Current behavior:
-
-- before the wizard completes, `setup_status` reports that Pi is waiting for the wizard
-- after the wizard completes, Pi injects persona-step guidance until the `persona` step is marked complete
-- the wizard enables `pi-daemon.service` only when both Pi auth and default model settings are present; otherwise it leaves the daemon disabled until AI setup is completed
-
-## Recovery
+### Recovery
 
 If setup state is corrupt:
 
@@ -81,20 +63,31 @@ If you want to restart all Pi-side setup state:
 
 - use `setup_reset()` with no step
 
-## After Setup
+## 📚 Reference
 
-Typical next actions:
+Relevant files:
 
-- inspect host status with `system_health`
-- inspect service state with `manifest_show`
-- install or apply services with `service_install` or `manifest_apply`
-- install `code-server` later with `service_install(name="code-server")` if you want the on-device editor
-- create additional Matrix agents with `agent_create`
+| Path | Purpose |
+|------|---------|
+| `~/.bloom/.setup-complete` | wizard complete sentinel |
+| `~/.bloom/setup-state.json` | Pi-side setup state |
+| `~/.bloom/wizard-state/persona-done` | persona step complete marker |
+| `~/.pi/matrix-credentials.json` | primary Matrix credentials |
 
-The setup completion summary now prints the current NetBird name, mesh IP, and any installed service URLs it can confirm, including Bloom Web Chat when Cinny is installed.
+Current tool surface:
 
-## Related
+- `setup_status`
+- `setup_advance`
+- `setup_reset`
 
-- [docs/quick_deploy.md](quick_deploy.md)
-- [docs/live-testing-checklist.md](live-testing-checklist.md)
-- [AGENTS.md](../AGENTS.md)
+Current behavior:
+
+- before the wizard completes, `setup_status` reports that Pi is waiting for the wizard
+- after the wizard completes, Pi injects persona-step guidance until the `persona` step is marked complete
+- the wizard enables `pi-daemon.service` only when both Pi auth and default model settings are present
+
+## 🔗 Related
+
+- [quick_deploy.md](quick_deploy.md)
+- [live-testing-checklist.md](live-testing-checklist.md)
+- [../AGENTS.md](../AGENTS.md)
