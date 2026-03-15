@@ -38,9 +38,15 @@ export class MatrixJsSdkBridge implements MatrixBridge {
 				userId: identity.userId,
 				store: new MemoryStore({ localStorage: undefined }),
 			});
-			this.attachEventHandlers(identity, client);
-			await this.startClient(client);
 			this.clients.set(identity.id, { identity, client });
+			this.attachEventHandlers(identity, client);
+			try {
+				await this.startClient(client);
+			} catch (error) {
+				this.clients.delete(identity.id);
+				client.stopClient();
+				throw error;
+			}
 		}
 	}
 

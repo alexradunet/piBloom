@@ -17,10 +17,10 @@
 	},
 	"peerDependencies": {
 		"@mariozechner/pi-ai": "*",
-		"@mariozechner/pi-coding-agent": "*",
-		"@sinclair/typebox": "*"
+		"@mariozechner/pi-coding-agent": "*"
 	},
 	"dependencies": {
+		"@sinclair/typebox": "^0.34.0",
 		"hosted-git-info": "^9.0.2",
 		"js-yaml": "^4.1.0",
 		"matrix-js-sdk": "^41.1.0"
@@ -29,7 +29,6 @@
 		"@biomejs/biome": "^1.9.4",
 		"@mariozechner/pi-ai": "^0.57.1",
 		"@mariozechner/pi-coding-agent": "^0.57.1",
-		"@sinclair/typebox": "^0.34.0",
 		"@types/hosted-git-info": "^3.0.5",
 		"@types/js-yaml": "^4.0.9",
 		"@vitest/coverage-v8": "^4.0.18",

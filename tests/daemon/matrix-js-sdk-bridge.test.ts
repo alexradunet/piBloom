@@ -175,6 +175,47 @@ describe("MatrixJsSdkBridge", () => {
 		});
 	});
 
+	it("can use a client during startup if an event arrives as initial sync completes", async () => {
+		mockCreateClient.mockImplementationOnce(() => {
+			const client = new MockClient();
+			Object.defineProperty(client, "startClient", {
+				value: vi.fn(async () => {
+				client.emit("sync", "PREPARED", null, undefined);
+				client.emit(
+					"event",
+					new MockMatrixEvent({
+						type: "m.room.message",
+						roomId: "!room:bloom",
+						sender: "@alex:bloom",
+						eventId: "$evt-race",
+						timestamp: 1_000,
+						content: { msgtype: "m.text", body: "hello during startup" },
+					}),
+				);
+				}),
+			});
+			mockClients.push(client);
+			return client;
+		});
+
+		const bridge = new MatrixJsSdkBridge({
+			identities: [
+				{
+					id: "host",
+					userId: "@pi:bloom",
+					homeserver: "http://localhost:6167",
+					accessToken: "host-token",
+				},
+			],
+		});
+		bridge.onTextEvent((identityId, event) => {
+			void bridge.setTyping(identityId, event.roomId, true);
+		});
+
+		await expect(bridge.start()).resolves.toBeUndefined();
+		expect(mockClients[0]?.sendTyping).toHaveBeenCalledWith("!room:bloom", true, 30_000);
+	});
+
 	it("dedupes the same event seen by multiple identity clients", async () => {
 		const bridge = new MatrixJsSdkBridge({
 			identities: [
