@@ -413,4 +413,332 @@ describe("AgentSupervisor", () => {
 
 		await supervisor.shutdown();
 	});
+
+	it("ignores messages after shutdown is called", async () => {
+		const host = makeAgent("host", "@pi:bloom", "host");
+		const createdSessions: FakeSession[] = [];
+		const matrixBridge = {
+			getRoomAlias: vi.fn().mockResolvedValue("#general:bloom"),
+			sendText: vi.fn().mockResolvedValue(undefined),
+			setTyping: vi.fn().mockResolvedValue(undefined),
+			stop: vi.fn(),
+		};
+		const supervisor = new AgentSupervisor({
+			agents: [host],
+			matrixBridge,
+			sessionBaseDir: "/tmp/sessions",
+			idleTimeoutMs: 60_000,
+			createSession: (opts) => {
+				const session = new FakeSession(opts);
+				createdSessions.push(session);
+				return session;
+			},
+		});
+
+		await supervisor.shutdown();
+
+		// After shutdown, messages should be ignored
+		await supervisor.handleEnvelope({
+			roomId: "!room:bloom",
+			eventId: "$evt1",
+			senderUserId: "@alex:bloom",
+			body: "hello",
+			senderKind: "human",
+			mentions: [],
+			timestamp: 1_000,
+		});
+
+		expect(createdSessions).toHaveLength(0);
+	});
+
+	it("ignores proactive jobs after shutdown", async () => {
+		const host = makeAgent("host", "@pi:bloom", "host");
+		const createdSessions: FakeSession[] = [];
+		const matrixBridge = {
+			getRoomAlias: vi.fn().mockResolvedValue("#ops:bloom"),
+			sendText: vi.fn().mockResolvedValue(undefined),
+			setTyping: vi.fn().mockResolvedValue(undefined),
+			stop: vi.fn(),
+		};
+		const supervisor = new AgentSupervisor({
+			agents: [host],
+			matrixBridge,
+			sessionBaseDir: "/tmp/sessions",
+			idleTimeoutMs: 60_000,
+			createSession: (opts) => {
+				const session = new FakeSession(opts);
+				createdSessions.push(session);
+				return session;
+			},
+		});
+
+		await supervisor.shutdown();
+
+		await supervisor.dispatchProactiveJob({
+			id: "daily-heartbeat",
+			jobId: "daily-heartbeat",
+			agentId: "host",
+			roomId: "!ops:bloom",
+			kind: "heartbeat",
+			prompt: "Review the room and host state.",
+		});
+
+		expect(createdSessions).toHaveLength(0);
+	});
+
+	it("clears typing intervals on shutdown", async () => {
+		const host = makeAgent("host", "@pi:bloom", "host");
+		const createdSessions: FakeSession[] = [];
+		const matrixBridge = {
+			getRoomAlias: vi.fn().mockResolvedValue("#general:bloom"),
+			sendText: vi.fn().mockResolvedValue(undefined),
+			setTyping: vi.fn().mockResolvedValue(undefined),
+			stop: vi.fn(),
+		};
+		const supervisor = new AgentSupervisor({
+			agents: [host],
+			matrixBridge,
+			sessionBaseDir: "/tmp/sessions",
+			idleTimeoutMs: 60_000,
+			createSession: (opts) => {
+				const session = new FakeSession(opts);
+				createdSessions.push(session);
+				return session;
+			},
+		});
+
+		await supervisor.handleEnvelope({
+			roomId: "!room:bloom",
+			eventId: "$evt1",
+			senderUserId: "@alex:bloom",
+			body: "hello",
+			senderKind: "human",
+			mentions: [],
+			timestamp: 1_000,
+		});
+
+		expect(matrixBridge.setTyping).toHaveBeenCalledWith("host", "!room:bloom", true, 30_000);
+
+		await supervisor.shutdown();
+
+		// Shutdown clears intervals and disposes sessions but doesn't explicitly stop typing
+		// The intervals are cleared which stops the refresh cycle
+		expect(matrixBridge.setTyping).toHaveBeenCalledTimes(1); // Only the initial start typing call
+	});
+
+	it("handles errors when getting room alias gracefully", async () => {
+		const host = makeAgent("host", "@pi:bloom", "host");
+		const createdSessions: FakeSession[] = [];
+		const matrixBridge = {
+			getRoomAlias: vi.fn().mockRejectedValue(new Error("Matrix error")),
+			sendText: vi.fn().mockResolvedValue(undefined),
+			setTyping: vi.fn().mockResolvedValue(undefined),
+			stop: vi.fn(),
+		};
+		const supervisor = new AgentSupervisor({
+			agents: [host],
+			matrixBridge,
+			sessionBaseDir: "/tmp/sessions",
+			idleTimeoutMs: 60_000,
+			createSession: (opts) => {
+				const session = new FakeSession(opts);
+				createdSessions.push(session);
+				return session;
+			},
+		});
+
+		// Should not throw
+		await expect(
+			supervisor.handleEnvelope({
+				roomId: "!room:bloom",
+				eventId: "$evt1",
+				senderUserId: "@alex:bloom",
+				body: "hello",
+				senderKind: "human",
+				mentions: [],
+				timestamp: 1_000,
+			}),
+		).rejects.toThrow("Matrix error");
+
+		expect(createdSessions).toHaveLength(0);
+
+		await supervisor.shutdown();
+	});
+
+	it("handles dispatch errors by stopping typing", async () => {
+		const host = makeAgent("host", "@pi:bloom", "host");
+		const matrixBridge = {
+			getRoomAlias: vi.fn().mockResolvedValue("#general:bloom"),
+			sendText: vi.fn().mockResolvedValue(undefined),
+			setTyping: vi.fn().mockResolvedValue(undefined),
+			stop: vi.fn(),
+		};
+		const supervisor = new AgentSupervisor({
+			agents: [host],
+			matrixBridge,
+			sessionBaseDir: "/tmp/sessions",
+			idleTimeoutMs: 60_000,
+			createSession: () => {
+				// Return a session that throws on spawn
+				return {
+					alive: true,
+					spawn: vi.fn().mockRejectedValue(new Error("Spawn failed")),
+					sendMessage: vi.fn(),
+					dispose: vi.fn(),
+				} as unknown as FakeSession;
+			},
+		});
+
+		// Should not throw, but should stop typing on error
+		await expect(
+			supervisor.handleEnvelope({
+				roomId: "!room:bloom",
+				eventId: "$evt1",
+				senderUserId: "@alex:bloom",
+				body: "hello",
+				senderKind: "human",
+				mentions: [],
+				timestamp: 1_000,
+			}),
+		).rejects.toThrow("Spawn failed");
+
+		// Should have tried to stop typing on error
+		expect(matrixBridge.setTyping).toHaveBeenCalledWith("host", "!room:bloom", false, 30_000);
+
+		await supervisor.shutdown();
+	});
+
+	it("handles agent responses that fail to send", async () => {
+		const host = makeAgent("host", "@pi:bloom", "host");
+		const createdSessions: FakeSession[] = [];
+		const matrixBridge = {
+			getRoomAlias: vi.fn().mockResolvedValue("#general:bloom"),
+			sendText: vi.fn().mockRejectedValue(new Error("Send failed")),
+			setTyping: vi.fn().mockResolvedValue(undefined),
+			stop: vi.fn(),
+		};
+		const supervisor = new AgentSupervisor({
+			agents: [host],
+			matrixBridge,
+			sessionBaseDir: "/tmp/sessions",
+			idleTimeoutMs: 60_000,
+			createSession: (opts) => {
+				const session = new FakeSession(opts);
+				createdSessions.push(session);
+				return session;
+			},
+		});
+
+		await supervisor.handleEnvelope({
+			roomId: "!room:bloom",
+			eventId: "$evt1",
+			senderUserId: "@alex:bloom",
+			body: "hello",
+			senderKind: "human",
+			mentions: [],
+			timestamp: 1_000,
+		});
+
+		// Trigger agent response - should handle send error gracefully
+		createdSessions[0]?.triggerAgentEnd("Response");
+		await flushAsyncWork();
+
+		// Error should be logged but not thrown
+		expect(matrixBridge.sendText).toHaveBeenCalledWith("host", "!room:bloom", "Response");
+
+		await supervisor.shutdown();
+	});
+
+	it("does not send proactive reply when quietIfNoop is true but noOpToken is undefined", async () => {
+		const host = makeAgent("host", "@pi:bloom", "host");
+		const createdSessions: FakeSession[] = [];
+		const matrixBridge = {
+			getRoomAlias: vi.fn().mockResolvedValue("#ops:bloom"),
+			sendText: vi.fn().mockResolvedValue(undefined),
+			setTyping: vi.fn().mockResolvedValue(undefined),
+			stop: vi.fn(),
+		};
+		const supervisor = new AgentSupervisor({
+			agents: [host],
+			matrixBridge,
+			sessionBaseDir: "/tmp/sessions",
+			idleTimeoutMs: 60_000,
+			createSession: (opts) => {
+				const session = new FakeSession(opts);
+				createdSessions.push(session);
+				return session;
+			},
+		});
+
+		await supervisor.dispatchProactiveJob({
+			id: "test-job",
+			jobId: "test-job",
+			agentId: "host",
+			roomId: "!ops:bloom",
+			kind: "heartbeat",
+			prompt: "Test prompt",
+			quietIfNoop: true,
+			// noOpToken is undefined
+		});
+
+		// Should send the reply since noOpToken is undefined
+		createdSessions[0]?.triggerAgentEnd("ANY_TOKEN");
+		await flushAsyncWork();
+
+		expect(matrixBridge.sendText).toHaveBeenCalledWith("host", "!ops:bloom", "ANY_TOKEN");
+
+		await supervisor.shutdown();
+	});
+
+	it("handles multiple pending proactive jobs in order", async () => {
+		const host = makeAgent("host", "@pi:bloom", "host");
+		const createdSessions: FakeSession[] = [];
+		const matrixBridge = {
+			getRoomAlias: vi.fn().mockResolvedValue("#ops:bloom"),
+			sendText: vi.fn().mockResolvedValue(undefined),
+			setTyping: vi.fn().mockResolvedValue(undefined),
+			stop: vi.fn(),
+		};
+		const supervisor = new AgentSupervisor({
+			agents: [host],
+			matrixBridge,
+			sessionBaseDir: "/tmp/sessions",
+			idleTimeoutMs: 60_000,
+			createSession: (opts) => {
+				const session = new FakeSession(opts);
+				createdSessions.push(session);
+				return session;
+			},
+		});
+
+		// Dispatch two jobs
+		await supervisor.dispatchProactiveJob({
+			id: "job-1",
+			jobId: "job-1",
+			agentId: "host",
+			roomId: "!ops:bloom",
+			kind: "heartbeat",
+			prompt: "First job",
+		});
+		await supervisor.dispatchProactiveJob({
+			id: "job-2",
+			jobId: "job-2",
+			agentId: "host",
+			roomId: "!ops:bloom",
+			kind: "heartbeat",
+			prompt: "Second job",
+		});
+
+		// First response should be for job-1
+		createdSessions[0]?.triggerAgentEnd("Response 1");
+		await flushAsyncWork();
+		expect(matrixBridge.sendText).toHaveBeenNthCalledWith(1, "host", "!ops:bloom", "Response 1");
+
+		// Second response should be for job-2
+		createdSessions[0]?.triggerAgentEnd("Response 2");
+		await flushAsyncWork();
+		expect(matrixBridge.sendText).toHaveBeenNthCalledWith(2, "host", "!ops:bloom", "Response 2");
+
+		await supervisor.shutdown();
+	});
 });

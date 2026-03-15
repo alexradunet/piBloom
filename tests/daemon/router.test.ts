@@ -268,4 +268,186 @@ describe("routeRoomEnvelope", () => {
 			}),
 		).toEqual({ targets: [], reason: "ignored-budget" });
 	});
+
+	it("ignores self messages", () => {
+		const state = createRoomState();
+		const result = routeRoomEnvelope(
+			{
+				roomId: "!room:bloom",
+				eventId: "$evt-self",
+				senderUserId: "@pi:bloom",
+				body: "I am the bot",
+				senderKind: "self",
+				mentions: [],
+				timestamp: 1_000,
+			},
+			agents,
+			state,
+		);
+
+		expect(result).toEqual({ targets: [], reason: "ignored-self" });
+	});
+
+	it("blocks agent-to-self mentions", () => {
+		const state = createRoomState();
+		const result = routeRoomEnvelope(
+			{
+				roomId: "!room:bloom",
+				eventId: "$evt13",
+				senderUserId: "@planner:bloom",
+				body: "@planner:bloom talk to myself",
+				senderKind: "agent",
+				senderAgentId: "planner",
+				mentions: ["@planner:bloom"],
+				timestamp: 1_000,
+			},
+			agents,
+			state,
+		);
+
+		// Should not route to self
+		expect(result.targets).not.toContain("planner");
+	});
+
+	it("blocks unknown sender kinds", () => {
+		const state = createRoomState();
+		const result = routeRoomEnvelope(
+			{
+				roomId: "!room:bloom",
+				eventId: "$evt14",
+				senderUserId: "@unknown:bloom",
+				body: "hello",
+				senderKind: "unknown" as const,
+				mentions: [],
+				timestamp: 1_000,
+			},
+			agents,
+			state,
+		);
+
+		expect(result).toEqual({ targets: [], reason: "ignored-policy" });
+	});
+
+	it("allows routing after cooldown expires", () => {
+		const state = createRoomState();
+		const baseEnvelope = {
+			roomId: "!room:bloom",
+			senderUserId: "@alex:bloom",
+			body: "hello",
+			senderKind: "human" as const,
+			mentions: [] as string[],
+		};
+
+		// First message routes
+		expect(routeRoomEnvelope({ ...baseEnvelope, eventId: "$evt15", timestamp: 30_000 }, agents, state)).toEqual({
+			targets: ["host"],
+			reason: "host-default",
+		});
+
+		// Within cooldown, blocked
+		expect(routeRoomEnvelope({ ...baseEnvelope, eventId: "$evt16", timestamp: 30_500 }, agents, state)).toEqual({
+			targets: [],
+			reason: "ignored-cooldown",
+		});
+
+		// After cooldown (1500ms), routes again
+		expect(routeRoomEnvelope({ ...baseEnvelope, eventId: "$evt17", timestamp: 31_600 }, agents, state)).toEqual({
+			targets: ["host"],
+			reason: "host-default",
+		});
+	});
+
+	it("respects custom total reply budget", () => {
+		const state = createRoomState();
+		const baseEnvelope = {
+			roomId: "!room:bloom",
+			senderUserId: "@alex:bloom",
+			body: "hello",
+			senderKind: "human" as const,
+			mentions: [] as string[],
+		};
+
+		// With budget of 1 and same root event
+		expect(
+			routeRoomEnvelope({ ...baseEnvelope, eventId: "$evt18", timestamp: 40_000 }, agents, state, {
+				rootEventId: "$root-budget",
+				totalReplyBudget: 1,
+			}),
+		).toEqual({ targets: ["host"], reason: "host-default" });
+
+		// Second message blocked by budget (same root)
+		expect(
+			routeRoomEnvelope({ ...baseEnvelope, eventId: "$evt19", timestamp: 42_000 }, agents, state, {
+				rootEventId: "$root-budget",
+				totalReplyBudget: 1,
+			}),
+		).toEqual({ targets: [], reason: "ignored-budget" });
+	});
+
+	it("blocks agent-to-agent routing when allowAgentMentions is false", () => {
+		const restrictedAgent: AgentDefinition = {
+			...critic,
+			respond: { ...critic.respond, allowAgentMentions: false },
+		};
+		const restrictedAgents = [host, planner, restrictedAgent, silent];
+		const state = createRoomState();
+
+		const result = routeRoomEnvelope(
+			{
+				roomId: "!room:bloom",
+				eventId: "$evt20",
+				senderUserId: "@planner:bloom",
+				body: "@critic:bloom please review",
+				senderKind: "agent",
+				senderAgentId: "planner",
+				mentions: ["@critic:bloom"],
+				timestamp: 1_000,
+			},
+			restrictedAgents,
+			state,
+		);
+
+		expect(result).toEqual({ targets: [], reason: "ignored-policy" });
+	});
+
+	it("ignores messages with no host agent when there are no mentions", () => {
+		const noHostAgents = [planner, critic, silent];
+		const state = createRoomState();
+
+		const result = routeRoomEnvelope(
+			{
+				roomId: "!room:bloom",
+				eventId: "$evt21",
+				senderUserId: "@alex:bloom",
+				body: "hello",
+				senderKind: "human",
+				mentions: [],
+				timestamp: 1_000,
+			},
+			noHostAgents,
+			state,
+		);
+
+		expect(result).toEqual({ targets: [], reason: "ignored-policy" });
+	});
+
+	it("handles empty agents list", () => {
+		const state = createRoomState();
+
+		const result = routeRoomEnvelope(
+			{
+				roomId: "!room:bloom",
+				eventId: "$evt22",
+				senderUserId: "@alex:bloom",
+				body: "hello",
+				senderKind: "human",
+				mentions: [],
+				timestamp: 1_000,
+			},
+			[],
+			state,
+		);
+
+		expect(result).toEqual({ targets: [], reason: "ignored-policy" });
+	});
 });

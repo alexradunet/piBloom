@@ -2,6 +2,7 @@ import { join } from "node:path";
 import { sanitizeRoomAlias } from "../lib/room-alias.js";
 import { createLogger } from "../lib/shared.js";
 import type { AgentDefinition } from "./agent-registry.js";
+import type { DaemonConfig } from "./config.js";
 import type { BloomSessionLike, SessionEvent } from "./contracts/session.js";
 import { createRoomState } from "./room-state.js";
 import { type RoomEnvelope, routeRoomEnvelope } from "./router.js";
@@ -9,9 +10,6 @@ import { PiRoomSession, type PiRoomSessionOptions } from "./runtime/pi-room-sess
 import type { TriggeredJob } from "./scheduler.js";
 
 const log = createLogger("agent-supervisor");
-const TYPING_TIMEOUT_MS = 30_000;
-const TYPING_REFRESH_MS = 20_000;
-const TOTAL_REPLY_BUDGET = 4;
 
 export interface MatrixBridgeLike {
 	sendText(agentId: string, roomId: string, text: string): Promise<void>;
@@ -26,6 +24,7 @@ export interface AgentSupervisorOptions {
 	sessionBaseDir: string;
 	idleTimeoutMs: number;
 	createSession?: (opts: AgentSessionOptions) => BloomSessionLike;
+	config?: DaemonConfig;
 }
 
 export interface AgentSessionOptions {
@@ -51,8 +50,9 @@ export class AgentSupervisor {
 	private readonly matrixBridge: MatrixBridgeLike;
 	private readonly sessionBaseDir: string;
 	private readonly idleTimeoutMs: number;
+	private readonly config: DaemonConfig;
 	private readonly createSession: (opts: AgentSessionOptions) => BloomSessionLike;
-	private readonly roomState = createRoomState();
+	private readonly roomState: ReturnType<typeof createRoomState>;
 	private readonly pendingProactiveJobs = new Map<string, PendingProactiveJob[]>();
 	private readonly sessions = new Map<string, BloomSessionLike>();
 	private readonly preambleSent = new Set<string>();
@@ -64,13 +64,22 @@ export class AgentSupervisor {
 		this.matrixBridge = options.matrixBridge ?? missingMatrixBridge();
 		this.sessionBaseDir = options.sessionBaseDir;
 		this.idleTimeoutMs = options.idleTimeoutMs;
+		this.config = options.config ?? getDefaultConfig();
+		this.roomState = createRoomState({
+			processedEventTtlMs: this.config.processedEventTtlMs,
+			rootReplyTtlMs: this.config.rootReplyTtlMs,
+			roomAgentTtlMs: this.config.roomAgentTtlMs,
+			maxProcessedEvents: this.config.maxProcessedEvents,
+			maxRootReplies: this.config.maxRootReplies,
+			maxRoomAgentEntries: this.config.maxRoomAgentEntries,
+		});
 		this.createSession = options.createSession ?? ((opts) => new PiRoomSession(buildPiRoomSessionOptions(opts)));
 	}
 
 	async handleEnvelope(envelope: RoomEnvelope): Promise<void> {
 		if (this.shuttingDown) return;
 		const decision = routeRoomEnvelope(envelope, this.agents, this.roomState, {
-			totalReplyBudget: TOTAL_REPLY_BUDGET,
+			totalReplyBudget: this.config.totalReplyBudget,
 		});
 		if (decision.targets.length === 0) return;
 
@@ -198,10 +207,10 @@ export class AgentSupervisor {
 		const key = this.sessionKey(roomId, agentId);
 		if (this.typingIntervals.has(key)) return;
 
-		void this.matrixBridge.setTyping(agentId, roomId, true, TYPING_TIMEOUT_MS);
+		void this.matrixBridge.setTyping(agentId, roomId, true, this.config.typingTimeoutMs);
 		const interval = setInterval(() => {
-			void this.matrixBridge.setTyping(agentId, roomId, true, TYPING_TIMEOUT_MS);
-		}, TYPING_REFRESH_MS);
+			void this.matrixBridge.setTyping(agentId, roomId, true, this.config.typingTimeoutMs);
+		}, this.config.typingRefreshMs);
 		interval.unref();
 		this.typingIntervals.set(key, interval);
 	}
@@ -213,7 +222,7 @@ export class AgentSupervisor {
 			clearInterval(interval);
 			this.typingIntervals.delete(key);
 		}
-		void this.matrixBridge.setTyping(agentId, roomId, false, TYPING_TIMEOUT_MS);
+		void this.matrixBridge.setTyping(agentId, roomId, false, this.config.typingTimeoutMs);
 	}
 
 	private buildPreamble(agent: AgentDefinition, roomAlias: string): string {
@@ -280,5 +289,24 @@ function buildPiRoomSessionOptions(opts: AgentSessionOptions): PiRoomSessionOpti
 		onAgentEnd: (text) => opts.onAgentEnd(opts.agent.id, text),
 		onEvent: (event) => opts.onEvent(opts.agent.id, event),
 		onExit: (code) => opts.onExit(opts.agent.id, code),
+	};
+}
+
+function getDefaultConfig(): DaemonConfig {
+	return {
+		idleTimeoutMs: 15 * 60 * 1000,
+		typingTimeoutMs: 30_000,
+		typingRefreshMs: 20_000,
+		totalReplyBudget: 4,
+		processedEventTtlMs: 5 * 60 * 1000,
+		rootReplyTtlMs: 60 * 60 * 1000,
+		roomAgentTtlMs: 60 * 60 * 1000,
+		maxProcessedEvents: 10_000,
+		maxRootReplies: 2_000,
+		maxRoomAgentEntries: 2_000,
+		seenEventTtlMs: 10 * 60 * 1000,
+		maxSeenEventIds: 10_000,
+		initialRetryDelayMs: 5_000,
+		maxRetryDelayMs: 300_000,
 	};
 }

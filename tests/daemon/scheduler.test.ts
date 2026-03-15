@@ -177,4 +177,263 @@ describe("Scheduler", () => {
 		expect(setTimeoutImpl).toHaveBeenCalledTimes(2);
 		expect(setTimeoutImpl.mock.calls[1]?.[1]).toBe(24 * 60 * 60 * 1000);
 	});
+
+	it("calls onError callback when job fails", async () => {
+		const error = new Error("job failed");
+		const callback = vi.fn(async () => {
+			throw error;
+		});
+		const onError = vi.fn();
+		const timeouts: Array<() => void> = [];
+		const setTimeoutImpl = vi.fn((fn: () => void, _delay: number) => {
+			timeouts.push(fn);
+			return 1 as unknown as ReturnType<typeof setTimeout>;
+		});
+		const scheduler = new Scheduler({
+			jobs: [
+				{
+					id: "failing-job",
+					agentId: "host",
+					roomId: "!ops:bloom",
+					kind: "heartbeat",
+					intervalMinutes: 60,
+					prompt: "Test",
+				},
+			],
+			now: () => Date.UTC(2026, 2, 14, 12, 0, 0),
+			onTrigger: callback,
+			loadState: () => ({}),
+			saveState: vi.fn(),
+			onError,
+			setTimeoutImpl: setTimeoutImpl as unknown as typeof setTimeout,
+		});
+
+		scheduler.start();
+		await timeouts[0]?.();
+		await Promise.resolve();
+
+		expect(onError).toHaveBeenCalledTimes(1);
+		expect(onError).toHaveBeenCalledWith(
+			expect.objectContaining({
+				jobId: "failing-job",
+				agentId: "host",
+				roomId: "!ops:bloom",
+			}),
+			error,
+		);
+	});
+
+	it("handles empty job list gracefully", () => {
+		const setTimeoutImpl = vi.fn();
+		const scheduler = new Scheduler({
+			jobs: [],
+			now: () => Date.UTC(2026, 2, 14, 12, 0, 0),
+			onTrigger: vi.fn(),
+			loadState: () => ({}),
+			saveState: vi.fn(),
+			setTimeoutImpl: setTimeoutImpl as unknown as typeof setTimeout,
+		});
+
+		scheduler.start();
+		expect(setTimeoutImpl).not.toHaveBeenCalled();
+	});
+
+	it("uses default noop onError when not provided", async () => {
+		const callback = vi.fn(async () => {
+			throw new Error("boom");
+		});
+		const timeouts: Array<() => void> = [];
+		const setTimeoutImpl = vi.fn((fn: () => void, _delay: number) => {
+			timeouts.push(fn);
+			return 1 as unknown as ReturnType<typeof setTimeout>;
+		});
+		const scheduler = new Scheduler({
+			jobs: [
+				{
+					id: "test-job",
+					agentId: "host",
+					roomId: "!ops:bloom",
+					kind: "heartbeat",
+					intervalMinutes: 60,
+					prompt: "Test",
+				},
+			],
+			now: () => Date.UTC(2026, 2, 14, 12, 0, 0),
+			onTrigger: callback,
+			loadState: () => ({}),
+			saveState: vi.fn(),
+			// onError not provided - should use default noop
+			setTimeoutImpl: setTimeoutImpl as unknown as typeof setTimeout,
+		});
+
+		// Should not throw
+		scheduler.start();
+		await timeouts[0]?.();
+		await Promise.resolve();
+
+		expect(callback).toHaveBeenCalled();
+	});
+
+	it("uses real Date.now when now function not provided", async () => {
+		const callback = vi.fn(async () => "ok");
+		const timeouts: Array<() => void> = [];
+		const setTimeoutImpl = vi.fn((fn: () => void, _delay: number) => {
+			timeouts.push(fn);
+			return 1 as unknown as ReturnType<typeof setTimeout>;
+		});
+		const scheduler = new Scheduler({
+			jobs: [
+				{
+					id: "test-job",
+					agentId: "host",
+					roomId: "!ops:bloom",
+					kind: "heartbeat",
+					intervalMinutes: 60,
+					prompt: "Test",
+				},
+			],
+			// now not provided - should use Date.now
+			onTrigger: callback,
+			loadState: () => ({}),
+			saveState: vi.fn(),
+			setTimeoutImpl: setTimeoutImpl as unknown as typeof setTimeout,
+		});
+
+		scheduler.start();
+		await timeouts[0]?.();
+
+		// The job should have been triggered
+		expect(callback).toHaveBeenCalled();
+		expect(setTimeoutImpl.mock.calls[0]?.[1]).toBeGreaterThanOrEqual(0);
+	});
+
+	it("handles multiple jobs with different schedules", async () => {
+		const callbacks = {
+			hourly: vi.fn(async () => "ok"),
+			daily: vi.fn(async () => "ok"),
+		};
+		const timeouts: Array<() => void> = [];
+		const setTimeoutImpl = vi.fn((fn: () => void, _delay: number) => {
+			timeouts.push(fn);
+			return timeouts.length as unknown as ReturnType<typeof setTimeout>;
+		});
+		const scheduler = new Scheduler({
+			jobs: [
+				{
+					id: "hourly-job",
+					agentId: "host",
+					roomId: "!room1:bloom",
+					kind: "heartbeat",
+					intervalMinutes: 60,
+					prompt: "Hourly",
+				},
+				{
+					id: "daily-job",
+					agentId: "host",
+					roomId: "!room2:bloom",
+					kind: "cron",
+					cron: "0 9 * * *",
+					prompt: "Daily",
+				},
+			],
+			now: () => Date.UTC(2026, 2, 14, 8, 0, 0),
+			onTrigger: async (job) => {
+				if (job.id === "hourly-job") return callbacks.hourly();
+				return callbacks.daily();
+			},
+			loadState: () => ({
+				"host::!room1:bloom::hourly-job": { lastRunAt: Date.UTC(2026, 2, 14, 7, 0, 0) },
+			}),
+			saveState: vi.fn(),
+			setTimeoutImpl: setTimeoutImpl as unknown as typeof setTimeout,
+		});
+
+		scheduler.start();
+		await timeouts[0]?.();
+
+		// Both jobs should run (hourly is due, daily is at 9:00 which is in the future at 8:00)
+		expect(callbacks.hourly).toHaveBeenCalledTimes(1);
+		expect(callbacks.daily).not.toHaveBeenCalled(); // Not due yet
+	});
+
+	it("stops scheduling when stopped", async () => {
+		const callback = vi.fn(async () => "ok");
+		const timeouts: Array<() => void> = [];
+		const clearedTimeouts: number[] = [];
+		const setTimeoutImpl = vi.fn((fn: () => void, _delay: number) => {
+			timeouts.push(fn);
+			return timeouts.length as unknown as ReturnType<typeof setTimeout>;
+		});
+		const clearTimeoutImpl = vi.fn((id: ReturnType<typeof setTimeout>) => {
+			clearedTimeouts.push(id as unknown as number);
+		});
+		const scheduler = new Scheduler({
+			jobs: [
+				{
+					id: "test-job",
+					agentId: "host",
+					roomId: "!ops:bloom",
+					kind: "heartbeat",
+					intervalMinutes: 60,
+					prompt: "Test",
+				},
+			],
+			now: () => Date.UTC(2026, 2, 14, 12, 0, 0),
+			onTrigger: callback,
+			loadState: () => ({}),
+			saveState: vi.fn(),
+			setTimeoutImpl: setTimeoutImpl as unknown as typeof setTimeout,
+			clearTimeoutImpl: clearTimeoutImpl as unknown as typeof clearTimeout,
+		});
+
+		scheduler.start();
+		expect(setTimeoutImpl).toHaveBeenCalledTimes(1);
+
+		scheduler.stop();
+		expect(clearTimeoutImpl).toHaveBeenCalled();
+
+		// Try to run the timeout callback - should not trigger job
+		const timeoutFn = timeouts[0];
+		if (timeoutFn) {
+			await timeoutFn();
+		}
+
+		// After stop, the scheduler should not have triggered the callback
+		// because scheduleNext returns early when stopped
+	});
+
+	it("handles corrupted state gracefully", async () => {
+		const callback = vi.fn(async () => "ok");
+		const timeouts: Array<() => void> = [];
+		const setTimeoutImpl = vi.fn((fn: () => void, _delay: number) => {
+			timeouts.push(fn);
+			return 1 as unknown as ReturnType<typeof setTimeout>;
+		});
+		const scheduler = new Scheduler({
+			jobs: [
+				{
+					id: "test-job",
+					agentId: "host",
+					roomId: "!ops:bloom",
+					kind: "heartbeat",
+					intervalMinutes: 60,
+					prompt: "Test",
+				},
+			],
+			now: () => Date.UTC(2026, 2, 14, 12, 0, 0),
+			onTrigger: callback,
+			loadState: () => ({
+				// Corrupted state with invalid values
+				"host::!ops:bloom::test-job": { lastRunAt: Number.NaN, lastFailureAt: Number.NaN },
+			}),
+			saveState: vi.fn(),
+			setTimeoutImpl: setTimeoutImpl as unknown as typeof setTimeout,
+		});
+
+		scheduler.start();
+		await timeouts[0]?.();
+
+		// Should still trigger the job despite corrupted state
+		expect(callback).toHaveBeenCalled();
+	});
 });

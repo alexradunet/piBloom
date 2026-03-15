@@ -77,6 +77,44 @@ Current rules:
 - heartbeat failures back off by the configured interval instead of tight-loop retrying
 - heartbeat replies can be suppressed when `quiet_if_noop: true` and the reply exactly matches `no_op_token`
 
+### Cron Expression Support
+
+The scheduler supports a limited subset of cron expressions:
+
+| Expression | Description |
+|------------|-------------|
+| `@hourly` | Run at the start of every hour |
+| `@daily` | Run at midnight UTC daily |
+| `MM HH * * *` | Daily at specific minute and hour (UTC) |
+
+**Not supported**: Day-of-month, month, and day-of-week fields must be `*`.
+
+**Valid examples**:
+```yaml
+# Daily at 9:00 AM UTC
+cron: "0 9 * * *"
+
+# Daily at 2:30 PM UTC
+cron: "30 14 * * *"
+
+# Every hour (same as @hourly)
+cron: "0 * * * *"
+```
+
+**Invalid examples**:
+```yaml
+# NOT SUPPORTED: specific day of week
+cron: "0 9 * * 1"  # Mondays at 9 AM
+
+# NOT SUPPORTED: specific day of month
+cron: "0 9 15 * *"  # 15th of every month
+
+# NOT SUPPORTED: sub-hour intervals
+cron: "*/5 * * * *"  # Every 5 minutes
+```
+
+All cron jobs run in UTC time.
+
 ## 📚 Reference
 
 Important implementation files:

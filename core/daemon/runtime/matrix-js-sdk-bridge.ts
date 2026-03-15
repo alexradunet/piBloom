@@ -10,10 +10,12 @@ interface ClientEntry {
 export interface MatrixJsSdkBridgeOptions {
 	identities: readonly MatrixIdentity[];
 	initialSyncLimit?: number;
+	seenEventTtlMs?: number;
+	maxSeenEventIds?: number;
 }
 
-const SEEN_EVENT_TTL_MS = 10 * 60 * 1000;
-const MAX_SEEN_EVENT_IDS = 10_000;
+const DEFAULT_SEEN_EVENT_TTL_MS = 10 * 60 * 1000;
+const DEFAULT_MAX_SEEN_EVENT_IDS = 10_000;
 const NOOP = () => {};
 
 export class MatrixJsSdkBridge implements MatrixBridge {
@@ -24,6 +26,14 @@ export class MatrixJsSdkBridge implements MatrixBridge {
 
 	constructor(options: MatrixJsSdkBridgeOptions) {
 		this.options = options;
+	}
+
+	private get seenEventTtlMs(): number {
+		return this.options.seenEventTtlMs ?? DEFAULT_SEEN_EVENT_TTL_MS;
+	}
+
+	private get maxSeenEventIds(): number {
+		return this.options.maxSeenEventIds ?? DEFAULT_MAX_SEEN_EVENT_IDS;
 	}
 
 	onTextEvent(handler: (identityId: string, event: MatrixTextEvent) => void): void {
@@ -168,8 +178,8 @@ export class MatrixJsSdkBridge implements MatrixBridge {
 	}
 
 	private pruneSeenEventIds(now: number): void {
-		pruneExpiredEntries(this.seenEventIds, now, (timestamp) => timestamp, SEEN_EVENT_TTL_MS);
-		enforceMapLimit(this.seenEventIds, MAX_SEEN_EVENT_IDS - 1);
+		pruneExpiredEntries(this.seenEventIds, now, (timestamp) => timestamp, this.seenEventTtlMs);
+		enforceMapLimit(this.seenEventIds, this.maxSeenEventIds - 1);
 	}
 }
 

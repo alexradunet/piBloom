@@ -15,18 +15,19 @@ import {
 } from "../lib/matrix.js";
 import { createLogger } from "../lib/shared.js";
 import { type AgentDefinition, loadAgentDefinitionsResult } from "./agent-registry.js";
+import { loadDaemonConfig } from "./config.js";
 import { startWithRetry } from "./lifecycle.js";
 import { createMultiAgentRuntime } from "./multi-agent-runtime.js";
 import { loadSchedulerState, saveSchedulerState } from "./proactive.js";
 
 const log = createLogger("pi-daemon");
 
-const IDLE_TIMEOUT_MS = Number.parseInt(process.env.BLOOM_DAEMON_IDLE_TIMEOUT_MS ?? "", 10) || 15 * 60 * 1000;
+const config = loadDaemonConfig();
 const SESSION_BASE = join(os.homedir(), ".pi", "agent", "sessions", "bloom-rooms");
 const SCHEDULER_STATE_PATH = join(os.homedir(), ".pi", "pi-daemon", "scheduler-state.json");
 
 async function main(): Promise<void> {
-	log.info("starting pi-daemon", { idleTimeoutMs: IDLE_TIMEOUT_MS });
+	log.info("starting pi-daemon", { idleTimeoutMs: config.idleTimeoutMs });
 
 	const credentials = loadPrimaryMatrixCredentials();
 	const { agents: configuredAgents, errors } = loadAgentDefinitionsResult();
@@ -66,7 +67,7 @@ async function runDaemon(
 	const runtime = createMultiAgentRuntime({
 		agents,
 		sessionBaseDir: SESSION_BASE,
-		idleTimeoutMs: IDLE_TIMEOUT_MS,
+		idleTimeoutMs: config.idleTimeoutMs,
 		loadAgentCredentials,
 		loadSchedulerState: () => loadSchedulerState(SCHEDULER_STATE_PATH),
 		saveSchedulerState: (state) => {
@@ -109,6 +110,8 @@ async function runDaemon(
 			await runtime.stop();
 		},
 		{
+			initialDelayMs: config.initialRetryDelayMs,
+			maxDelayMs: config.maxRetryDelayMs,
 			onRetry: (error, retryDelay) => {
 				log.error("failed to start daemon transport, retrying", {
 					error: String(error),

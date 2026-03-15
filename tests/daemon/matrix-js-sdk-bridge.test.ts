@@ -345,4 +345,363 @@ describe("MatrixJsSdkBridge", () => {
 		mockClients[0]?.getLocalAliases.mockRejectedValueOnce(new Error("no aliases"));
 		await expect(bridge.getRoomAlias("host", "!room:bloom")).resolves.toBe("!room:bloom");
 	});
+
+	it("ignores events from self", async () => {
+		const bridge = new MatrixJsSdkBridge({
+			identities: [
+				{
+					id: "host",
+					userId: "@pi:bloom",
+					homeserver: "http://localhost:6167",
+					accessToken: "host-token",
+				},
+			],
+		});
+		const onTextEvent = vi.fn();
+		bridge.onTextEvent(onTextEvent);
+
+		await bridge.start();
+
+		mockClients[0]?.emit(
+			"event",
+			new MockMatrixEvent({
+				type: "m.room.message",
+				roomId: "!room:bloom",
+				sender: "@pi:bloom", // Self
+				eventId: "$evt-self",
+				timestamp: 1_000,
+				content: { msgtype: "m.text", body: "hello" },
+			}),
+		);
+		await flushAsyncWork();
+
+		expect(onTextEvent).not.toHaveBeenCalled();
+	});
+
+	it("ignores events without room id or sender", async () => {
+		const bridge = new MatrixJsSdkBridge({
+			identities: [
+				{
+					id: "host",
+					userId: "@pi:bloom",
+					homeserver: "http://localhost:6167",
+					accessToken: "host-token",
+				},
+			],
+		});
+		const onTextEvent = vi.fn();
+		bridge.onTextEvent(onTextEvent);
+
+		await bridge.start();
+
+		// No roomId
+		mockClients[0]?.emit(
+			"event",
+			new MockMatrixEvent({
+				type: "m.room.message",
+				sender: "@alex:bloom",
+				eventId: "$evt1",
+				timestamp: 1_000,
+				content: { msgtype: "m.text", body: "hello" },
+			}),
+		);
+		await flushAsyncWork();
+
+		// No sender
+		mockClients[0]?.emit(
+			"event",
+			new MockMatrixEvent({
+				type: "m.room.message",
+				roomId: "!room:bloom",
+				eventId: "$evt2",
+				timestamp: 1_000,
+				content: { msgtype: "m.text", body: "hello" },
+			}),
+		);
+		await flushAsyncWork();
+
+		expect(onTextEvent).not.toHaveBeenCalled();
+	});
+
+	it("ignores non-text message types", async () => {
+		const bridge = new MatrixJsSdkBridge({
+			identities: [
+				{
+					id: "host",
+					userId: "@pi:bloom",
+					homeserver: "http://localhost:6167",
+					accessToken: "host-token",
+				},
+			],
+		});
+		const onTextEvent = vi.fn();
+		bridge.onTextEvent(onTextEvent);
+
+		await bridge.start();
+
+		// Image message
+		mockClients[0]?.emit(
+			"event",
+			new MockMatrixEvent({
+				type: "m.room.message",
+				roomId: "!room:bloom",
+				sender: "@alex:bloom",
+				eventId: "$evt-image",
+				timestamp: 1_000,
+				content: { msgtype: "m.image", url: "mxc://..." },
+			}),
+		);
+		await flushAsyncWork();
+
+		// Non-message event type
+		mockClients[0]?.emit(
+			"event",
+			new MockMatrixEvent({
+				type: "m.room.topic",
+				roomId: "!room:bloom",
+				sender: "@alex:bloom",
+				eventId: "$evt-topic",
+				timestamp: 1_000,
+				content: { topic: "New topic" },
+			}),
+		);
+		await flushAsyncWork();
+
+		expect(onTextEvent).not.toHaveBeenCalled();
+	});
+
+	it("ignores messages with invalid sender format", async () => {
+		const bridge = new MatrixJsSdkBridge({
+			identities: [
+				{
+					id: "host",
+					userId: "@pi:bloom",
+					homeserver: "http://localhost:6167",
+					accessToken: "host-token",
+				},
+			],
+		});
+		const onTextEvent = vi.fn();
+		bridge.onTextEvent(onTextEvent);
+
+		await bridge.start();
+
+		// Invalid sender format
+		mockClients[0]?.emit(
+			"event",
+			new MockMatrixEvent({
+				type: "m.room.message",
+				roomId: "!room:bloom",
+				sender: "invalid-sender",
+				eventId: "$evt1",
+				timestamp: 1_000,
+				content: { msgtype: "m.text", body: "hello" },
+			}),
+		);
+		await flushAsyncWork();
+
+		expect(onTextEvent).not.toHaveBeenCalled();
+	});
+
+	it("does not autojoin when autojoin is disabled", async () => {
+		const bridge = new MatrixJsSdkBridge({
+			identities: [
+				{
+					id: "host",
+					userId: "@pi:bloom",
+					homeserver: "http://localhost:6167",
+					accessToken: "host-token",
+					autojoin: false,
+				},
+			],
+		});
+
+		await bridge.start();
+
+		mockClients[0]?.emit(
+			"event",
+			new MockMatrixEvent({
+				type: "m.room.member",
+				roomId: "!invite:bloom",
+				sender: "@admin:bloom",
+				eventId: "$evt2",
+				timestamp: 1_000,
+				content: { membership: "invite" },
+				stateKey: "@pi:bloom",
+			}),
+		);
+		await flushAsyncWork();
+
+		expect(mockClients[0]?.joinRoom).not.toHaveBeenCalled();
+	});
+
+	it("does not autojoin for invites not targeting the identity", async () => {
+		const bridge = new MatrixJsSdkBridge({
+			identities: [
+				{
+					id: "host",
+					userId: "@pi:bloom",
+					homeserver: "http://localhost:6167",
+					accessToken: "host-token",
+					autojoin: true,
+				},
+			],
+		});
+
+		await bridge.start();
+
+		// Invite for someone else
+		mockClients[0]?.emit(
+			"event",
+			new MockMatrixEvent({
+				type: "m.room.member",
+				roomId: "!invite:bloom",
+				sender: "@admin:bloom",
+				eventId: "$evt2",
+				timestamp: 1_000,
+				content: { membership: "invite" },
+				stateKey: "@other:bloom",
+			}),
+		);
+		await flushAsyncWork();
+
+		expect(mockClients[0]?.joinRoom).not.toHaveBeenCalled();
+	});
+
+	it("does not autojoin for non-invite membership events", async () => {
+		const bridge = new MatrixJsSdkBridge({
+			identities: [
+				{
+					id: "host",
+					userId: "@pi:bloom",
+					homeserver: "http://localhost:6167",
+					accessToken: "host-token",
+					autojoin: true,
+				},
+			],
+		});
+
+		await bridge.start();
+
+		// Join event (not invite)
+		mockClients[0]?.emit(
+			"event",
+			new MockMatrixEvent({
+				type: "m.room.member",
+				roomId: "!room:bloom",
+				sender: "@admin:bloom",
+				eventId: "$evt2",
+				timestamp: 1_000,
+				content: { membership: "join" },
+				stateKey: "@pi:bloom",
+			}),
+		);
+		await flushAsyncWork();
+
+		expect(mockClients[0]?.joinRoom).not.toHaveBeenCalled();
+	});
+
+	it("throws when using unknown identity", async () => {
+		const bridge = new MatrixJsSdkBridge({
+			identities: [
+				{
+					id: "host",
+					userId: "@pi:bloom",
+					homeserver: "http://localhost:6167",
+					accessToken: "host-token",
+				},
+			],
+		});
+
+		await bridge.start();
+
+		await expect(bridge.sendText("unknown", "!room:bloom", "hello")).rejects.toThrow(
+			"Unknown Matrix identity: unknown",
+		);
+		await expect(bridge.setTyping("unknown", "!room:bloom", true)).rejects.toThrow("Unknown Matrix identity: unknown");
+		await expect(bridge.getRoomAlias("unknown", "!room:bloom")).rejects.toThrow("Unknown Matrix identity: unknown");
+	});
+
+	it("stops all clients on stop", async () => {
+		const bridge = new MatrixJsSdkBridge({
+			identities: [
+				{
+					id: "host",
+					userId: "@pi:bloom",
+					homeserver: "http://localhost:6167",
+					accessToken: "host-token",
+				},
+				{
+					id: "planner",
+					userId: "@planner:bloom",
+					homeserver: "http://localhost:6167",
+					accessToken: "planner-token",
+				},
+			],
+		});
+
+		await bridge.start();
+		bridge.stop();
+
+		expect(mockClients[0]?.stopClient).toHaveBeenCalled();
+		expect(mockClients[1]?.stopClient).toHaveBeenCalled();
+	});
+
+	it("uses fallback when event id is missing", async () => {
+		const bridge = new MatrixJsSdkBridge({
+			identities: [
+				{
+					id: "host",
+					userId: "@pi:bloom",
+					homeserver: "http://localhost:6167",
+					accessToken: "host-token",
+				},
+			],
+		});
+		const onTextEvent = vi.fn();
+		bridge.onTextEvent(onTextEvent);
+
+		await bridge.start();
+
+		mockClients[0]?.emit(
+			"event",
+			new MockMatrixEvent({
+				type: "m.room.message",
+				roomId: "!room:bloom",
+				sender: "@alex:bloom",
+				// eventId is undefined
+				timestamp: 1_000,
+				content: { msgtype: "m.text", body: "hello" },
+			}),
+		);
+		await flushAsyncWork();
+
+		expect(onTextEvent).toHaveBeenCalledWith(
+			"host",
+			expect.objectContaining({
+				eventId: "unknown",
+			}),
+		);
+	});
+
+	it("falls back to local aliases when room has no canonical or alt aliases", async () => {
+		const bridge = new MatrixJsSdkBridge({
+			identities: [
+				{
+					id: "host",
+					userId: "@pi:bloom",
+					homeserver: "http://localhost:6167",
+					accessToken: "host-token",
+				},
+			],
+		});
+
+		await bridge.start();
+
+		mockClients[0]?.getRoom.mockReturnValue(new MockRoom(null, []));
+		mockClients[0]?.getLocalAliases.mockResolvedValue({ aliases: ["#local:bloom"] });
+
+		const alias = await bridge.getRoomAlias("host", "!room:bloom");
+		expect(alias).toBe("#local:bloom");
+	});
 });
