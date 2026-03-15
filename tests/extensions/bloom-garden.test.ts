@@ -2,8 +2,6 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { createMockExtensionAPI } from "../helpers/mock-extension-api.js";
-import { createMockExtensionContext } from "../helpers/mock-extension-context.js";
 import {
 	ensureBloom,
 	getPackageDir,
@@ -12,6 +10,8 @@ import {
 	handleSkillCreate,
 	handleSkillList,
 } from "../../core/pi-extensions/bloom-garden/actions.js";
+import { createMockExtensionAPI } from "../helpers/mock-extension-api.js";
+import { createMockExtensionContext } from "../helpers/mock-extension-context.js";
 
 let bloomDir: string;
 
@@ -102,7 +102,7 @@ describe("bloom-garden extension", () => {
 
 		expect(pendingReply).toEqual({ action: "handled" });
 		expect(api._sentMessages).toContainEqual({
-			message: expect.stringContaining('approved'),
+			message: expect.stringContaining("approved"),
 			options: undefined,
 		});
 
@@ -120,10 +120,7 @@ describe("bloom-garden extension", () => {
 		);
 
 		expect(second.content[0]?.text).toContain("created agent: finance");
-		expect(handleAgentCreateMock).toHaveBeenCalledWith(
-			expect.any(String),
-			expect.objectContaining({ id: "finance" }),
-		);
+		expect(handleAgentCreateMock).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({ id: "finance" }));
 	});
 
 	it("applies tokenless deny to the most recent pending confirmation", async () => {

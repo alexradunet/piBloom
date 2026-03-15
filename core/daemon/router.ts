@@ -94,15 +94,7 @@ export function routeRoomEnvelope(
 		return { targets: [], reason: "ignored-budget" };
 	}
 
-	if (
-		isAgentCoolingDown(
-			state,
-			envelope.roomId,
-			targetAgent.id,
-			envelope.timestamp,
-			targetAgent.respond.cooldownMs,
-		)
-	) {
+	if (isAgentCoolingDown(state, envelope.roomId, targetAgent.id, envelope.timestamp, targetAgent.respond.cooldownMs)) {
 		return { targets: [], reason: "ignored-cooldown" };
 	}
 
@@ -150,7 +142,9 @@ function getHumanTargetDecision(
 ): InitialTargetDecision {
 	if (hadExplicitMention && mentionedAgents.length > 0) {
 		const [firstMentionedAgent] = mentionedAgents;
-		return firstMentionedAgent ? { targets: [firstMentionedAgent], reason: "explicit-mention" } : { targets: [], reason: "ignored-policy" };
+		return firstMentionedAgent
+			? { targets: [firstMentionedAgent], reason: "explicit-mention" }
+			: { targets: [], reason: "ignored-policy" };
 	}
 
 	const hostAgent = agents.find((agent) => agent.respond.mode === "host");

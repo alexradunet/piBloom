@@ -261,11 +261,10 @@ Hooks:
 
 Current behavior:
 
-- starts in single-agent mode if no agent overlays exist
-- starts in multi-agent mode if at least one `~/Bloom/Agents/*/AGENTS.md` is valid
+- always runs through one supervisor/runtime path
+- synthesizes a default host agent from the primary Pi account if no valid agent overlays exist
 - skips malformed agent overlays with warnings instead of aborting startup
-- keeps one room session per room in single-agent mode
-- keeps one room session per `(room, agent)` pair in multi-agent mode
+- keeps one room session per `(room, agent)` pair
 - schedules optional proactive agent jobs declared in agent frontmatter
 - runs heartbeat jobs as synthetic proactive turns and can suppress configured no-op replies such as `HEARTBEAT_OK`
 - prunes duplicate-event and reply-budget state over time so long-lived sessions stay bounded
@@ -301,16 +300,14 @@ Key daemon files:
 
 | Path | Purpose |
 |------|---------|
-| `core/daemon/index.ts` | bootstrap and mode selection |
+| `core/daemon/index.ts` | bootstrap and default-host fallback selection |
 | `core/daemon/contracts/matrix.ts` | Bloom-owned Matrix bridge contract |
 | `core/daemon/runtime/matrix-js-sdk-bridge.ts` | official Matrix SDK bridge and per-identity client lifecycle |
 | `core/daemon/runtime/pi-room-session.ts` | Pi SDK-backed room session lifecycle |
-| `core/daemon/single-agent-runtime.ts` | extracted single-agent room runtime, retries, and shutdown behavior |
-| `core/daemon/agent-supervisor.ts` | multi-agent routing and session orchestration |
-| `core/daemon/multi-agent-runtime.ts` | extracted multi-agent bridge, supervisor, and scheduler lifecycle |
+| `core/daemon/agent-supervisor.ts` | room routing, session orchestration, and proactive dispatch |
+| `core/daemon/multi-agent-runtime.ts` | unified bridge, supervisor, and scheduler lifecycle |
 | `core/daemon/lifecycle.ts` | shared retry/backoff helper for daemon startup |
 | `core/daemon/scheduler.ts` | daemon-owned heartbeat and cron-style proactive scheduling |
-| `core/daemon/room-failures.ts` | single-agent room failure window and quarantine handling |
 | `core/daemon/router.ts` | routing policy |
 | `core/daemon/room-state.ts` | duplicate, cooldown, and reply-budget tracking |
 

@@ -306,7 +306,9 @@ describe("requireConfirmation", () => {
 			},
 		} as never;
 		const result = await requireConfirmation(ctx, "delete file");
-		expect(result).toMatch(/^Confirmation required for "delete file"\. Reply here with "confirm [a-z0-9]{6}" to approve or "deny [a-z0-9]{6}" to cancel\.$/);
+		expect(result).toMatch(
+			/^Confirmation required for "delete file"\. Reply here with "confirm [a-z0-9]{6}" to approve or "deny [a-z0-9]{6}" to cancel\.$/,
+		);
 		fs.rmSync(dir, { recursive: true, force: true });
 	});
 

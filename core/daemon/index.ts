@@ -33,10 +33,7 @@ async function main(): Promise<void> {
 	for (const error of errors) {
 		log.warn("skipping invalid agent definition", { error });
 	}
-	const agents =
-		configuredAgents.length > 0
-			? configuredAgents
-			: [createDefaultAgent(credentials)];
+	const agents = configuredAgents.length > 0 ? configuredAgents : [createDefaultAgent(credentials)];
 
 	if (configuredAgents.length === 0) {
 		log.info("no valid multi-agent definitions found, using default host agent", {

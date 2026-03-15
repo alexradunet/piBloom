@@ -109,9 +109,13 @@ describe("bloom-setup startup gating", () => {
 		const result = await api.fireEvent("before_agent_start", { systemPrompt: "BASE_PROMPT" });
 
 		expect(result).toEqual({
-			systemPrompt: expect.stringContaining("Before sending any normal reply in this session, you must call setup_status()"),
+			systemPrompt: expect.stringContaining(
+				"Before sending any normal reply in this session, you must call setup_status()",
+			),
 		});
-		expect((result as { systemPrompt: string }).systemPrompt).toContain("Your first action for this session is setup_status().");
+		expect((result as { systemPrompt: string }).systemPrompt).toContain(
+			"Your first action for this session is setup_status().",
+		);
 		expect((result as { systemPrompt: string }).systemPrompt).toContain("BASE_PROMPT");
 	});
 
@@ -134,7 +138,10 @@ describe("setup_advance daemon reconciliation", () => {
 
 		await loadExtension();
 		const tool = api._registeredTools.find((entry) => entry.name === "setup_advance") as {
-			execute: (toolCallId: string, params: { step: "persona"; result: "completed" }) => Promise<{
+			execute: (
+				toolCallId: string,
+				params: { step: "persona"; result: "completed" },
+			) => Promise<{
 				content: Array<{ text: string }>;
 			}>;
 		};

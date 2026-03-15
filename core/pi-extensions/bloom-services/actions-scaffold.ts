@@ -139,7 +139,9 @@ interface ServiceCatalogFile {
 function loadCatalog(catalogPath: string): ServiceCatalogFile {
 	if (!existsSync(catalogPath)) return { version: 1, services: {} };
 	const raw = readFileSync(catalogPath, "utf-8");
-	return (jsYaml.load(raw, { schema: jsYaml.JSON_SCHEMA }) as ServiceCatalogFile | null) ?? { version: 1, services: {} };
+	return (
+		(jsYaml.load(raw, { schema: jsYaml.JSON_SCHEMA }) as ServiceCatalogFile | null) ?? { version: 1, services: {} }
+	);
 }
 
 function saveCatalog(catalogPath: string, catalog: ServiceCatalogFile) {
@@ -183,12 +185,12 @@ function writeCatalogEntry(
 		next.path_hint = params.path_hint ?? current.path_hint;
 		next.access_path = params.access_path ?? current.access_path ?? "/";
 	} else {
-		delete next.home_visible;
-		delete next.port;
-		delete next.title;
-		delete next.icon_text;
-		delete next.path_hint;
-		delete next.access_path;
+		next.home_visible = undefined;
+		next.port = undefined;
+		next.title = undefined;
+		next.icon_text = undefined;
+		next.path_hint = undefined;
+		next.access_path = undefined;
 	}
 	services[params.name] = next;
 	catalog.services = services;

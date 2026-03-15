@@ -7,42 +7,36 @@ import type { PiRoomSessionOptions } from "../../core/daemon/runtime/pi-room-ses
 
 type SessionListener = (event: Record<string, unknown>) => void;
 
-const {
-	mockPrompt,
-	mockDispose,
-	mockCreateCodingTools,
-	mockLoaderReload,
-	mockCreateAgentSession,
-	mockFakeSession,
-} = vi.hoisted(() => {
-	let listener: SessionListener | null = null;
-	const fakeSession = {
-		isStreaming: false,
-		prompt: vi.fn().mockResolvedValue(undefined),
-		dispose: vi.fn(),
-		subscribe: vi.fn((fn: SessionListener) => {
-			listener = fn;
-			return () => {
-				listener = null;
-			};
-		}),
-		emit(event: Record<string, unknown>) {
-			listener?.(event);
-		},
-	};
+const { mockPrompt, mockDispose, mockCreateCodingTools, mockLoaderReload, mockCreateAgentSession, mockFakeSession } =
+	vi.hoisted(() => {
+		let listener: SessionListener | null = null;
+		const fakeSession = {
+			isStreaming: false,
+			prompt: vi.fn().mockResolvedValue(undefined),
+			dispose: vi.fn(),
+			subscribe: vi.fn((fn: SessionListener) => {
+				listener = fn;
+				return () => {
+					listener = null;
+				};
+			}),
+			emit(event: Record<string, unknown>) {
+				listener?.(event);
+			},
+		};
 
-	return {
-		mockPrompt: fakeSession.prompt,
-		mockDispose: fakeSession.dispose,
-		mockCreateCodingTools: vi.fn().mockReturnValue([]),
-		mockLoaderReload: vi.fn().mockResolvedValue(undefined),
-		mockCreateAgentSession: vi.fn().mockResolvedValue({
-			session: fakeSession,
-			extensionsResult: { extensions: [], errors: [], runtime: undefined },
-		}),
-		mockFakeSession: fakeSession,
-	};
-});
+		return {
+			mockPrompt: fakeSession.prompt,
+			mockDispose: fakeSession.dispose,
+			mockCreateCodingTools: vi.fn().mockReturnValue([]),
+			mockLoaderReload: vi.fn().mockResolvedValue(undefined),
+			mockCreateAgentSession: vi.fn().mockResolvedValue({
+				session: fakeSession,
+				extensionsResult: { extensions: [], errors: [], runtime: undefined },
+			}),
+			mockFakeSession: fakeSession,
+		};
+	});
 
 vi.mock("@mariozechner/pi-coding-agent", () => ({
 	createAgentSession: mockCreateAgentSession,

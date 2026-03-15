@@ -42,9 +42,8 @@ Current behavior:
 
 - one Matrix client per configured or synthesized agent identity
 - one Pi session per `(room, agent)`
-- routing based on host mode, mentions, cooldowns, and per-root reply budgets
-- sequential handoff when multiple agents are explicitly targeted in order
-- supervisor shutdown suppresses fresh handoffs and proactive dispatch
+- routing based on host mode, the first eligible explicit mention, cooldowns, and per-root reply budgets
+- supervisor shutdown suppresses fresh message and proactive dispatch
 
 ### Proactive Jobs
 

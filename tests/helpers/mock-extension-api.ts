@@ -16,7 +16,10 @@ export interface MockExtensionAPI {
 	_registeredCommands: RegisteredCommand[];
 	_eventHandlers: Map<string, Array<(...args: unknown[]) => unknown>>;
 	_sentMessages: Array<{ message: string; options?: unknown }>;
-	_sentCustomMessages: Array<{ message: { customType: string; content: unknown; display: boolean; details?: unknown }; options?: unknown }>;
+	_sentCustomMessages: Array<{
+		message: { customType: string; content: unknown; display: boolean; details?: unknown };
+		options?: unknown;
+	}>;
 	_appendedEntries: Array<{ customType: string; data: unknown }>;
 	_sessionName: string | null;
 	on: ReturnType<typeof vi.fn>;
@@ -35,7 +38,10 @@ export function createMockExtensionAPI(): MockExtensionAPI {
 	const commands: RegisteredCommand[] = [];
 	const handlers = new Map<string, Array<(...args: unknown[]) => unknown>>();
 	const messages: Array<{ message: string; options?: unknown }> = [];
-	const customMessages: Array<{ message: { customType: string; content: unknown; display: boolean; details?: unknown }; options?: unknown }> = [];
+	const customMessages: Array<{
+		message: { customType: string; content: unknown; display: boolean; details?: unknown };
+		options?: unknown;
+	}> = [];
 	const entries: Array<{ customType: string; data: unknown }> = [];
 	let _sessionName: string | null = null;
 
@@ -65,9 +71,11 @@ export function createMockExtensionAPI(): MockExtensionAPI {
 			messages.push({ message, options });
 		}),
 
-		sendMessage: vi.fn((message: { customType: string; content: unknown; display: boolean; details?: unknown }, options?: unknown) => {
-			customMessages.push({ message, options });
-		}),
+		sendMessage: vi.fn(
+			(message: { customType: string; content: unknown; display: boolean; details?: unknown }, options?: unknown) => {
+				customMessages.push({ message, options });
+			},
+		),
 
 		appendEntry: vi.fn((customType: string, data: unknown) => {
 			entries.push({ customType, data });

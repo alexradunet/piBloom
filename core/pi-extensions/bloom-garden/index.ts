@@ -8,6 +8,7 @@
  */
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import { Type } from "@sinclair/typebox";
+import { type RegisteredExtensionTool, defineTool, registerTools } from "../../lib/extension-tools.js";
 import { getBloomDir } from "../../lib/filesystem.js";
 import { formatResumeMessage, resolveInteractionReply } from "../../lib/interactions.js";
 import { requestSelection, requireConfirmation } from "../../lib/shared.js";
@@ -24,9 +25,87 @@ import {
 	handleSkillList,
 } from "./actions.js";
 
+type BloomCommandContext = Parameters<Parameters<ExtensionAPI["registerCommand"]>[1]["handler"]>[1];
+
 export default function (pi: ExtensionAPI) {
 	const bloomDir = getBloomDir();
 	const packageDir = getPackageDir();
+	const tools: RegisteredExtensionTool[] = [
+		defineTool({
+			name: "garden_status",
+			label: "Bloom Status",
+			description: "Show Bloom directory location and blueprint state",
+			parameters: Type.Object({}),
+			async execute() {
+				return handleGardenStatus(bloomDir);
+			},
+		}),
+		defineTool({
+			name: "skill_create",
+			label: "Create Skill",
+			description: "Create a new skill markdown file in the Bloom directory",
+			parameters: Type.Object({
+				name: Type.String({ description: "Skill name (kebab-case, e.g. meal-planning)" }),
+				description: Type.String({ description: "One-line skill description" }),
+				content: Type.String({ description: "Skill body in markdown (instructions, guidelines, examples)" }),
+			}),
+			async execute(_toolCallId, params) {
+				return handleSkillCreate(bloomDir, params);
+			},
+		}),
+		defineTool({
+			name: "skill_list",
+			label: "List Skills",
+			description: "List all skills in the Bloom directory",
+			parameters: Type.Object({}),
+			async execute() {
+				return handleSkillList(bloomDir);
+			},
+		}),
+		defineTool({
+			name: "agent_create",
+			label: "Create Matrix Agent",
+			description: "Provision a new Bloom Matrix agent account and create its AGENTS.md overlay in the Bloom directory",
+			promptGuidelines: ["Changes require explicit user approval before applying."],
+			parameters: Type.Object({
+				id: Type.String({ description: "Agent id in kebab-case (e.g. planner)" }),
+				name: Type.String({ description: "Human-readable agent name (e.g. Planner)" }),
+				username: Type.Optional(Type.String({ description: "Matrix username (defaults to id)" })),
+				description: Type.String({ description: "One-line description of the agent's role" }),
+				role_prompt: Type.String({ description: "Starter role instructions to write into AGENTS.md" }),
+				model: Type.Optional(Type.String({ description: "Optional default model hint" })),
+				thinking: Type.Optional(
+					Type.String({ description: "Optional thinking level: off|minimal|low|medium|high|xhigh" }),
+				),
+				respond_mode: Type.Optional(Type.String({ description: "Optional response mode: host|mentioned|silent" })),
+			}),
+			async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
+				const createParams = params as AgentCreateParams;
+				const denied = await requireConfirmation(ctx, `Create Matrix agent ${createParams.id}`);
+				if (denied) return { content: [{ type: "text" as const, text: denied }], details: {}, isError: true };
+				return handleAgentCreate(bloomDir, createParams);
+			},
+		}),
+		defineTool({
+			name: "persona_evolve",
+			label: "Propose Persona Change",
+			description: "Propose a change to a persona layer, tracked as an evolution object",
+			promptGuidelines: ["Changes require explicit user approval before applying."],
+			parameters: Type.Object({
+				layer: Type.String({ description: "Persona layer to change: SOUL, BODY, FACULTY, or SKILL" }),
+				slug: Type.String({ description: "Evolution slug (e.g. add-health-awareness)" }),
+				title: Type.String({ description: "Short description of the proposed change" }),
+				proposal: Type.String({ description: "Detailed description of what to change and why" }),
+			}),
+			async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
+				const slug = "slug" in params && typeof params.slug === "string" ? params.slug : "persona change";
+				const denied = await requireConfirmation(ctx, `Apply persona evolution ${slug}`);
+				if (denied) return { content: [{ type: "text" as const, text: denied }], details: {}, isError: true };
+				return handlePersonaEvolve(bloomDir, params);
+			},
+		}),
+	];
+	registerTools(pi, tools);
 
 	pi.on("session_start", (_event, ctx) => {
 		ensureBloom(bloomDir);
@@ -44,73 +123,9 @@ export default function (pi: ExtensionAPI) {
 		}
 	});
 
-	pi.registerTool({
-		name: "garden_status",
-		label: "Bloom Status",
-		description: "Show Bloom directory location and blueprint state",
-		parameters: Type.Object({}),
-		async execute() {
-			return handleGardenStatus(bloomDir);
-		},
-	});
-
 	pi.registerCommand("bloom", {
 		description: "Bloom directory management: /bloom init | status | update-blueprints",
-		handler: async (args: string, ctx) => {
-			let sub = args.trim().split(/\s+/)[0] ?? "";
-			if (!sub) {
-				const selection = await requestSelection(
-					ctx,
-					"bloom-command",
-					"Choose a Bloom command action",
-					["init", "status", "update-blueprints"],
-					{
-						resumeMessage:
-							'The user selected the Bloom command action "{{value}}". Carry out that action now.',
-					},
-				);
-				if (!selection.value) {
-					if (selection.prompt) {
-						pi.sendMessage(
-							{
-								customType: "bloom-interaction",
-								content: selection.prompt,
-								display: true,
-							},
-							{ triggerTurn: false },
-						);
-					}
-					return;
-				}
-				sub = selection.value;
-			}
-
-			switch (sub) {
-				case "init": {
-					ensureBloom(bloomDir);
-					seedBlueprints(bloomDir, packageDir);
-					ctx.ui.notify("Bloom initialized", "info");
-					break;
-				}
-				case "status": {
-					pi.sendUserMessage("Show bloom status using the garden_status tool.", { deliverAs: "followUp" });
-					break;
-				}
-				case "update-blueprints": {
-					const count = handleUpdateBlueprints(bloomDir, packageDir);
-					if (count === 0) {
-						ctx.ui.notify("All blueprints are up to date", "info");
-					} else {
-						ctx.ui.notify(`Updated ${count} blueprint(s)`, "info");
-					}
-					break;
-				}
-				default: {
-					ctx.ui.notify("Usage: /bloom init | status | update-blueprints", "info");
-					break;
-				}
-			}
-		},
+		handler: async (args: string, ctx) => handleBloomCommand(pi, bloomDir, packageDir, args, ctx),
 	});
 
 	pi.on("resources_discover", () => {
@@ -136,72 +151,64 @@ export default function (pi: ExtensionAPI) {
 		);
 		return { action: "handled" as const };
 	});
+}
 
-	pi.registerTool({
-		name: "skill_create",
-		label: "Create Skill",
-		description: "Create a new skill markdown file in the Bloom directory",
-		parameters: Type.Object({
-			name: Type.String({ description: "Skill name (kebab-case, e.g. meal-planning)" }),
-			description: Type.String({ description: "One-line skill description" }),
-			content: Type.String({ description: "Skill body in markdown (instructions, guidelines, examples)" }),
-		}),
-		async execute(_toolCallId, params) {
-			return handleSkillCreate(bloomDir, params);
-		},
-	});
+async function handleBloomCommand(
+	pi: ExtensionAPI,
+	bloomDir: string,
+	packageDir: string,
+	args: string,
+	ctx: BloomCommandContext,
+): Promise<void> {
+	const subcommand = await resolveBloomSubcommand(pi, args, ctx);
+	if (!subcommand) return;
 
-	pi.registerTool({
-		name: "skill_list",
-		label: "List Skills",
-		description: "List all skills in the Bloom directory",
-		parameters: Type.Object({}),
-		async execute() {
-			return handleSkillList(bloomDir);
-		},
-	});
+	switch (subcommand) {
+		case "init":
+			ensureBloom(bloomDir);
+			seedBlueprints(bloomDir, packageDir);
+			ctx.ui.notify("Bloom initialized", "info");
+			return;
+		case "status":
+			pi.sendUserMessage("Show bloom status using the garden_status tool.", { deliverAs: "followUp" });
+			return;
+		case "update-blueprints": {
+			const count = handleUpdateBlueprints(bloomDir, packageDir);
+			ctx.ui.notify(count === 0 ? "All blueprints are up to date" : `Updated ${count} blueprint(s)`, "info");
+			return;
+		}
+		default:
+			ctx.ui.notify("Usage: /bloom init | status | update-blueprints", "info");
+	}
+}
 
-	pi.registerTool({
-		name: "agent_create",
-		label: "Create Matrix Agent",
-		description: "Provision a new Bloom Matrix agent account and create its AGENTS.md overlay in the Bloom directory",
-		promptGuidelines: ["Changes require explicit user approval before applying."],
-		parameters: Type.Object({
-			id: Type.String({ description: "Agent id in kebab-case (e.g. planner)" }),
-			name: Type.String({ description: "Human-readable agent name (e.g. Planner)" }),
-			username: Type.Optional(Type.String({ description: "Matrix username (defaults to id)" })),
-			description: Type.String({ description: "One-line description of the agent's role" }),
-			role_prompt: Type.String({ description: "Starter role instructions to write into AGENTS.md" }),
-			model: Type.Optional(Type.String({ description: "Optional default model hint" })),
-			thinking: Type.Optional(
-				Type.String({ description: "Optional thinking level: off|minimal|low|medium|high|xhigh" }),
-			),
-			respond_mode: Type.Optional(Type.String({ description: "Optional response mode: host|mentioned|silent" })),
-		}),
-		async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
-			const createParams = params as AgentCreateParams;
-			const denied = await requireConfirmation(ctx, `Create Matrix agent ${createParams.id}`);
-			if (denied) return { content: [{ type: "text" as const, text: denied }], details: {}, isError: true };
-			return handleAgentCreate(bloomDir, createParams);
-		},
-	});
+async function resolveBloomSubcommand(
+	pi: ExtensionAPI,
+	args: string,
+	ctx: BloomCommandContext,
+): Promise<string | null> {
+	const subcommand = args.trim().split(/\s+/)[0] ?? "";
+	if (subcommand) return subcommand;
 
-	pi.registerTool({
-		name: "persona_evolve",
-		label: "Propose Persona Change",
-		description: "Propose a change to a persona layer, tracked as an evolution object",
-		promptGuidelines: ["Changes require explicit user approval before applying."],
-		parameters: Type.Object({
-			layer: Type.String({ description: "Persona layer to change: SOUL, BODY, FACULTY, or SKILL" }),
-			slug: Type.String({ description: "Evolution slug (e.g. add-health-awareness)" }),
-			title: Type.String({ description: "Short description of the proposed change" }),
-			proposal: Type.String({ description: "Detailed description of what to change and why" }),
-		}),
-		async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
-			const slug = "slug" in params && typeof params.slug === "string" ? params.slug : "persona change";
-			const denied = await requireConfirmation(ctx, `Apply persona evolution ${slug}`);
-			if (denied) return { content: [{ type: "text" as const, text: denied }], details: {}, isError: true };
-			return handlePersonaEvolve(bloomDir, params);
+	const selection = await requestSelection(
+		ctx,
+		"bloom-command",
+		"Choose a Bloom command action",
+		["init", "status", "update-blueprints"],
+		{
+			resumeMessage: 'The user selected the Bloom command action "{{value}}". Carry out that action now.',
 		},
-	});
+	);
+	if (selection.value) return selection.value;
+	if (selection.prompt) {
+		pi.sendMessage(
+			{
+				customType: "bloom-interaction",
+				content: selection.prompt,
+				display: true,
+			},
+			{ triggerTurn: false },
+		);
+	}
+	return null;
 }

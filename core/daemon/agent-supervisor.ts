@@ -1,6 +1,6 @@
 import { join } from "node:path";
-import { createLogger } from "../lib/shared.js";
 import { sanitizeRoomAlias } from "../lib/room-alias.js";
+import { createLogger } from "../lib/shared.js";
 import type { AgentDefinition } from "./agent-registry.js";
 import type { BloomSessionLike, SessionEvent } from "./contracts/session.js";
 import { createRoomState } from "./room-state.js";
@@ -259,7 +259,6 @@ export class AgentSupervisor {
 		}
 		return job;
 	}
-
 }
 
 function missingMatrixBridge(): never {

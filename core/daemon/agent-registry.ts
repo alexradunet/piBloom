@@ -1,6 +1,6 @@
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
-import { Type, type Static } from "@sinclair/typebox";
+import { type Static, Type } from "@sinclair/typebox";
 import { Value } from "@sinclair/typebox/value";
 import { getBloomDir } from "../lib/filesystem.js";
 import { parseFrontmatter } from "../lib/frontmatter.js";
@@ -166,8 +166,7 @@ function normalizeAgentDefinition(
 		respond: {
 			mode: normalized.respond?.mode ?? DEFAULT_RESPOND_MODE,
 			allowAgentMentions: normalized.respond?.allow_agent_mentions ?? DEFAULT_ALLOW_AGENT_MENTIONS,
-			maxPublicTurnsPerRoot:
-				normalized.respond?.max_public_turns_per_root ?? DEFAULT_MAX_PUBLIC_TURNS_PER_ROOT,
+			maxPublicTurnsPerRoot: normalized.respond?.max_public_turns_per_root ?? DEFAULT_MAX_PUBLIC_TURNS_PER_ROOT,
 			cooldownMs: normalized.respond?.cooldown_ms ?? DEFAULT_COOLDOWN_MS,
 		},
 		...(normalizeTools(normalized.tools) ? { tools: normalizeTools(normalized.tools) } : {}),
@@ -200,9 +199,7 @@ function parseAgentFrontmatter(attributes: unknown, instructionsPath: string): A
 	throw new Error(`${instructionsPath}: invalid ${field}`);
 }
 
-function normalizeTools(
-	value: AgentFrontmatter["tools"],
-): AgentDefinition["tools"] | undefined {
+function normalizeTools(value: AgentFrontmatter["tools"]): AgentDefinition["tools"] | undefined {
 	if (!value) return undefined;
 	const allow = value.allow;
 	const deny = value.deny;

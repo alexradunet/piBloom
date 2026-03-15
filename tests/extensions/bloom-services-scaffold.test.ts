@@ -13,13 +13,7 @@ describe("handleScaffold", () => {
 		fs.writeFileSync(path.join(repoDir, "package.json"), "{}\n");
 		fs.writeFileSync(
 			path.join(repoDir, "services", "catalog.yaml"),
-			[
-				"version: 1",
-				"source_repo: https://github.com/pibloom/pi-bloom",
-				"services: {}",
-				"bridges: {}",
-				"",
-			].join("\n"),
+			["version: 1", "source_repo: https://github.com/pibloom/pi-bloom", "services: {}", "bridges: {}", ""].join("\n"),
 		);
 	});
 
@@ -50,8 +44,8 @@ describe("handleScaffold", () => {
 		expect(catalog).toContain("demo-api:");
 		expect(catalog).toContain("home_visible: true");
 		expect(catalog).toContain("port: 9080");
-		expect(catalog).toContain('title: Demo API');
-		expect(catalog).toContain('access_path: /health');
+		expect(catalog).toContain("title: Demo API");
+		expect(catalog).toContain("access_path: /health");
 	});
 
 	it("rejects web services without a published port", async () => {

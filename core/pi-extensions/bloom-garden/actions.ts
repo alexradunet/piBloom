@@ -148,21 +148,11 @@ function loadPrimaryMatrixConfigFromDisk(homeDir = os.homedir()): { homeserver: 
 }
 
 export async function handleAgentCreate(bloomDir: string, params: AgentCreateParams, deps: AgentCreateDeps = {}) {
-	if (!/^[a-z0-9][a-z0-9-]*$/.test(params.id)) {
-		return errorResult(`invalid agent id: ${params.id} (expected kebab-case)`);
+	const target = validateAgentCreateTarget(bloomDir, params);
+	if ("error" in target) {
+		return errorResult(target.error);
 	}
-
-	const username = params.username ?? params.id;
-	if (!/^[a-z0-9][a-z0-9-]*$/.test(username)) {
-		return errorResult(`invalid username: ${username} (expected lowercase letters, numbers, hyphens)`);
-	}
-
-	let agentDir: string;
-	try {
-		agentDir = safePath(bloomDir, "Agents", params.id);
-	} catch {
-		return errorResult("Path traversal blocked: invalid agent id");
-	}
+	const { username, agentDir } = target;
 
 	const instructionsPath = path.join(agentDir, "AGENTS.md");
 	const credentialsPath = matrixAgentCredentialsPath(params.id, deps.homeDir ?? os.homedir());
@@ -204,17 +194,11 @@ export async function handleAgentCreate(bloomDir: string, params: AgentCreatePar
 		}),
 	);
 
-	const restartDaemon =
-		deps.restartDaemon ??
-		(async () => {
-			const result = await run("systemctl", ["--user", "restart", "pi-daemon.service"]);
-			return result.exitCode === 0 ? { ok: true as const } : { ok: false as const, error: result.stderr || result.stdout };
-		});
+	const restartDaemon = deps.restartDaemon ?? restartPiDaemon;
 	const restartResult = await restartDaemon();
-	const restartNote =
-		restartResult.ok
-			? "\npi-daemon restarted to load the new agent."
-			: `\nWarning: agent was created, but pi-daemon could not be restarted automatically.\n${truncate(restartResult.error)}`;
+	const restartNote = restartResult.ok
+		? "\npi-daemon restarted to load the new agent."
+		: `\nWarning: agent was created, but pi-daemon could not be restarted automatically.\n${truncate(restartResult.error)}`;
 
 	return {
 		content: [
@@ -232,6 +216,34 @@ export async function handleAgentCreate(bloomDir: string, params: AgentCreatePar
 			...(restartResult.ok ? {} : { daemonRestartError: truncate(restartResult.error) }),
 		},
 	};
+}
+
+function validateAgentCreateTarget(
+	bloomDir: string,
+	params: AgentCreateParams,
+): { username: string; agentDir: string } | { error: string } {
+	if (!/^[a-z0-9][a-z0-9-]*$/.test(params.id)) {
+		return { error: `invalid agent id: ${params.id} (expected kebab-case)` };
+	}
+
+	const username = params.username ?? params.id;
+	if (!/^[a-z0-9][a-z0-9-]*$/.test(username)) {
+		return { error: `invalid username: ${username} (expected lowercase letters, numbers, hyphens)` };
+	}
+
+	try {
+		return {
+			username,
+			agentDir: safePath(bloomDir, "Agents", params.id),
+		};
+	} catch {
+		return { error: "Path traversal blocked: invalid agent id" };
+	}
+}
+
+async function restartPiDaemon(): Promise<{ ok: true } | { ok: false; error: string }> {
+	const result = await run("systemctl", ["--user", "restart", "pi-daemon.service"]);
+	return result.exitCode === 0 ? { ok: true } : { ok: false, error: result.stderr || result.stdout };
 }
 
 export function handlePersonaEvolve(

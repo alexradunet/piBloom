@@ -7,13 +7,9 @@
 	"engines": {
 		"node": ">=22"
 	},
-	"keywords": [
-		"pi-package"
-	],
+	"keywords": ["pi-package"],
 	"pi": {
-		"extensions": [
-			"./core/pi-extensions"
-		]
+		"extensions": ["./core/pi-extensions"]
 	},
 	"peerDependencies": {
 		"@mariozechner/pi-ai": "*",

@@ -67,11 +67,11 @@ The daemon is first-class platform code, not an add-on.
 
 Current invariants:
 
-1. start in single-agent fallback mode when no valid overlays exist
-2. start in multi-agent mode when at least one `~/Bloom/Agents/*/AGENTS.md` parses successfully
+1. always run through one supervisor/runtime path
+2. synthesize a default host agent from the primary Pi account when no valid overlays exist
 3. skip malformed overlays with warnings instead of aborting startup
 4. bound duplicate-event, cooldown, and reply-budget state over time
-5. suppress fresh multi-agent handoffs and proactive dispatch during supervisor shutdown
+5. suppress fresh dispatch during supervisor shutdown
 
 Use [docs/daemon-architecture.md](docs/daemon-architecture.md) for the runtime walkthrough and [AGENTS.md](AGENTS.md) for the exact current file and tool reference.
 

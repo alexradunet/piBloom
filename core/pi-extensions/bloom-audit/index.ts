@@ -8,6 +8,7 @@
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import { Type } from "@sinclair/typebox";
 import { sanitize } from "../../lib/audit.js";
+import { type RegisteredExtensionTool, defineTool, registerTools } from "../../lib/extension-tools.js";
 import { appendAudit, ensureAuditDir, handleAuditReview, rotateAudit } from "./actions.js";
 
 export default function (pi: ExtensionAPI) {
@@ -44,18 +45,23 @@ export default function (pi: ExtensionAPI) {
 		});
 	});
 
-	pi.registerTool({
-		name: "audit_review",
-		label: "Audit Review",
-		description: "Review recent tool calls/results from the Bloom audit trail.",
-		parameters: Type.Object({
-			days: Type.Optional(Type.Number({ description: "How many days to scan (1-30)", default: 1 })),
-			limit: Type.Optional(Type.Number({ description: "Max entries to return (1-500)", default: 50 })),
-			tool: Type.Optional(Type.String({ description: "Optional tool name filter (e.g. bash, bootc)" })),
-			include_inputs: Type.Optional(Type.Boolean({ description: "Include sanitized input snippets", default: false })),
+	const tools: RegisteredExtensionTool[] = [
+		defineTool({
+			name: "audit_review",
+			label: "Audit Review",
+			description: "Review recent tool calls/results from the Bloom audit trail.",
+			parameters: Type.Object({
+				days: Type.Optional(Type.Number({ description: "How many days to scan (1-30)", default: 1 })),
+				limit: Type.Optional(Type.Number({ description: "Max entries to return (1-500)", default: 50 })),
+				tool: Type.Optional(Type.String({ description: "Optional tool name filter (e.g. bash, bootc)" })),
+				include_inputs: Type.Optional(
+					Type.Boolean({ description: "Include sanitized input snippets", default: false }),
+				),
+			}),
+			async execute(_toolCallId, params) {
+				return handleAuditReview(params);
+			},
 		}),
-		async execute(_toolCallId, params) {
-			return handleAuditReview(params);
-		},
-	});
+	];
+	registerTools(pi, tools);
 }

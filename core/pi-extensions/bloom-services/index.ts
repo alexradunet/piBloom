@@ -10,7 +10,7 @@ import { join } from "node:path";
 import { StringEnum } from "@mariozechner/pi-ai";
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import { Type } from "@sinclair/typebox";
-import { defineTool, registerTools, type RegisteredExtensionTool } from "../../lib/extension-tools.js";
+import { type RegisteredExtensionTool, defineTool, registerTools } from "../../lib/extension-tools.js";
 import { getBloomDir } from "../../lib/filesystem.js";
 import { handleManifestApply } from "./actions-apply.js";
 import { handleBridgeCreate, handleBridgeRemove, handleBridgeStatus } from "./actions-bridges.js";
@@ -27,206 +27,214 @@ export default function (pi: ExtensionAPI) {
 
 	const tools: RegisteredExtensionTool[] = [
 		defineTool({
-		name: "service_scaffold",
-		label: "Scaffold Service Package",
-		description: "Generate a new Bloom service package (quadlet + SKILL.md) from a template.",
-		promptGuidelines: ["Use pinned image tags or digests; avoid latest/latest-* tags."],
-		parameters: Type.Object({
-			name: Type.String({ description: "Service name (kebab-case, e.g. my-api)" }),
-			description: Type.String({ description: "Short service description" }),
-			image: Type.String({ description: "Container image reference" }),
-			version: Type.Optional(Type.String({ description: "Service package version", default: "0.1.0" })),
-			category: Type.Optional(Type.String({ description: "Category annotation (e.g. utility, media)" })),
-			optional: Type.Optional(Type.Boolean({ description: "Whether the packaged service is optional", default: true })),
-			port: Type.Optional(Type.Number({ description: "Exposed local port (if any)" })),
-			container_port: Type.Optional(Type.Number({ description: "Port inside container", default: 8000 })),
-			web_service: Type.Optional(
-				Type.Boolean({
-					description: "Whether this service should appear on Bloom Home as a browser-reachable service",
-				}),
-			),
-			title: Type.Optional(Type.String({ description: "Display title for Bloom Home cards" })),
-			icon_text: Type.Optional(Type.String({ description: "Short icon badge text for Bloom Home" })),
-			path_hint: Type.Optional(Type.String({ description: "Optional local path hint shown on Bloom Home" })),
-			access_path: Type.Optional(Type.String({ description: "Optional URL path appended on Bloom Home", default: "/" })),
-			network: Type.Optional(Type.String({ description: "Podman network name", default: "host" })),
-			memory: Type.Optional(Type.String({ description: "Memory limit (e.g. 256m)", default: "256m" })),
-			socket_activated: Type.Optional(
-				Type.Boolean({ description: "Generate .socket activation unit", default: false }),
-			),
-			overwrite: Type.Optional(Type.Boolean({ description: "Overwrite existing files if present", default: false })),
+			name: "service_scaffold",
+			label: "Scaffold Service Package",
+			description: "Generate a new Bloom service package (quadlet + SKILL.md) from a template.",
+			promptGuidelines: ["Use pinned image tags or digests; avoid latest/latest-* tags."],
+			parameters: Type.Object({
+				name: Type.String({ description: "Service name (kebab-case, e.g. my-api)" }),
+				description: Type.String({ description: "Short service description" }),
+				image: Type.String({ description: "Container image reference" }),
+				version: Type.Optional(Type.String({ description: "Service package version", default: "0.1.0" })),
+				category: Type.Optional(Type.String({ description: "Category annotation (e.g. utility, media)" })),
+				optional: Type.Optional(
+					Type.Boolean({ description: "Whether the packaged service is optional", default: true }),
+				),
+				port: Type.Optional(Type.Number({ description: "Exposed local port (if any)" })),
+				container_port: Type.Optional(Type.Number({ description: "Port inside container", default: 8000 })),
+				web_service: Type.Optional(
+					Type.Boolean({
+						description: "Whether this service should appear on Bloom Home as a browser-reachable service",
+					}),
+				),
+				title: Type.Optional(Type.String({ description: "Display title for Bloom Home cards" })),
+				icon_text: Type.Optional(Type.String({ description: "Short icon badge text for Bloom Home" })),
+				path_hint: Type.Optional(Type.String({ description: "Optional local path hint shown on Bloom Home" })),
+				access_path: Type.Optional(
+					Type.String({ description: "Optional URL path appended on Bloom Home", default: "/" }),
+				),
+				network: Type.Optional(Type.String({ description: "Podman network name", default: "host" })),
+				memory: Type.Optional(Type.String({ description: "Memory limit (e.g. 256m)", default: "256m" })),
+				socket_activated: Type.Optional(
+					Type.Boolean({ description: "Generate .socket activation unit", default: false }),
+				),
+				overwrite: Type.Optional(Type.Boolean({ description: "Overwrite existing files if present", default: false })),
+			}),
+			async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
+				return handleScaffold(
+					params as {
+						name: string;
+						description: string;
+						image: string;
+						version?: string;
+						category?: string;
+						optional?: boolean;
+						port?: number;
+						container_port?: number;
+						web_service?: boolean;
+						title?: string;
+						icon_text?: string;
+						path_hint?: string;
+						access_path?: string;
+						network?: string;
+						memory?: string;
+						socket_activated?: boolean;
+						overwrite?: boolean;
+					},
+					ctx,
+				);
+			},
 		}),
-		async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
-			return handleScaffold(
-				params as {
-					name: string;
-					description: string;
-					image: string;
-					version?: string;
-					category?: string;
-					optional?: boolean;
-					port?: number;
-					container_port?: number;
-					web_service?: boolean;
-					title?: string;
-					icon_text?: string;
-					path_hint?: string;
-					access_path?: string;
-					network?: string;
-					memory?: string;
-					socket_activated?: boolean;
-					overwrite?: boolean;
-				},
-				ctx,
-			);
-		},
-	}),
-	defineTool({
-		name: "service_install",
-		label: "Install Service Package",
-		description: "Install a service package from a bundled local package to Quadlet + Bloom skill paths.",
-		parameters: Type.Object({
-			name: Type.String({ description: "Service name (e.g. llm)" }),
-			version: Type.Optional(Type.String({ description: "Version tag for manifest", default: "latest" })),
-			start: Type.Optional(Type.Boolean({ description: "Enable/start service after install", default: true })),
-			update_manifest: Type.Optional(
-				Type.Boolean({ description: "Update manifest.yaml with installed version", default: true }),
-			),
+		defineTool({
+			name: "service_install",
+			label: "Install Service Package",
+			description: "Install a service package from a bundled local package to Quadlet + Bloom skill paths.",
+			parameters: Type.Object({
+				name: Type.String({ description: "Service name (e.g. llm)" }),
+				version: Type.Optional(Type.String({ description: "Version tag for manifest", default: "latest" })),
+				start: Type.Optional(Type.Boolean({ description: "Enable/start service after install", default: true })),
+				update_manifest: Type.Optional(
+					Type.Boolean({ description: "Update manifest.yaml with installed version", default: true }),
+				),
+			}),
+			async execute(_toolCallId, params, signal) {
+				return handleInstall(
+					params as { name: string; version?: string; start?: boolean; update_manifest?: boolean },
+					bloomDir,
+					manifestPath,
+					repoDir,
+					signal,
+				);
+			},
 		}),
-		async execute(_toolCallId, params, signal) {
-			return handleInstall(
-				params as { name: string; version?: string; start?: boolean; update_manifest?: boolean },
-				bloomDir,
-				manifestPath,
-				repoDir,
-				signal,
-			);
-		},
-	}),
-	defineTool({
-		name: "service_test",
-		label: "Test Service",
-		description: "Smoke-test installed service unit: reload, start, wait, inspect status/logs, optional cleanup.",
-		parameters: Type.Object({
-			name: Type.String({ description: "Installed service name (e.g. llm)" }),
-			start_timeout_sec: Type.Optional(Type.Number({ description: "Timeout waiting for active state", default: 120 })),
-			cleanup: Type.Optional(Type.Boolean({ description: "Stop unit(s) after test", default: false })),
+		defineTool({
+			name: "service_test",
+			label: "Test Service",
+			description: "Smoke-test installed service unit: reload, start, wait, inspect status/logs, optional cleanup.",
+			parameters: Type.Object({
+				name: Type.String({ description: "Installed service name (e.g. llm)" }),
+				start_timeout_sec: Type.Optional(
+					Type.Number({ description: "Timeout waiting for active state", default: 120 }),
+				),
+				cleanup: Type.Optional(Type.Boolean({ description: "Stop unit(s) after test", default: false })),
+			}),
+			async execute(_toolCallId, params, signal) {
+				return handleTest(params as { name: string; start_timeout_sec?: number; cleanup?: boolean }, signal);
+			},
 		}),
-		async execute(_toolCallId, params, signal) {
-			return handleTest(params as { name: string; start_timeout_sec?: number; cleanup?: boolean }, signal);
-		},
-	}),
 
-	// -----------------------------------------------------------------------
-	// Manifest tools
-	// -----------------------------------------------------------------------
+		// -----------------------------------------------------------------------
+		// Manifest tools
+		// -----------------------------------------------------------------------
 
-	defineTool({
-		name: "manifest_show",
-		label: "Show Manifest",
-		description: "Display the declarative service manifest from ~/Bloom/manifest.yaml",
-		parameters: Type.Object({}),
-		async execute() {
-			return handleManifestShow(manifestPath);
-		},
-	}),
-	defineTool({
-		name: "manifest_sync",
-		label: "Sync Manifest",
-		description:
-			"Reconcile the manifest with actual running containers. Detects drift and can update the manifest or report differences.",
-		parameters: Type.Object({
-			mode: Type.Optional(
-				StringEnum(["detect", "update"] as const, {
-					description: "detect (report drift) or update (write manifest from running state)",
-					default: "detect",
-				}),
-			),
+		defineTool({
+			name: "manifest_show",
+			label: "Show Manifest",
+			description: "Display the declarative service manifest from ~/Bloom/manifest.yaml",
+			parameters: Type.Object({}),
+			async execute() {
+				return handleManifestShow(manifestPath);
+			},
 		}),
-		async execute(_toolCallId, params, signal) {
-			return handleManifestSync(params as { mode?: "detect" | "update" }, manifestPath, repoDir, signal);
-		},
-	}),
-	defineTool({
-		name: "manifest_set_service",
-		label: "Set Manifest Service",
-		description: "Add or update a service entry in the manifest.",
-		parameters: Type.Object({
-			name: Type.String({ description: "Service name (e.g. dufs, llm)" }),
-			image: Type.String({ description: "Container image reference" }),
-			version: Type.Optional(Type.String({ description: "Semver version tag" })),
-			enabled: Type.Optional(Type.Boolean({ description: "Whether service should be running (default: true)" })),
+		defineTool({
+			name: "manifest_sync",
+			label: "Sync Manifest",
+			description:
+				"Reconcile the manifest with actual running containers. Detects drift and can update the manifest or report differences.",
+			parameters: Type.Object({
+				mode: Type.Optional(
+					StringEnum(["detect", "update"] as const, {
+						description: "detect (report drift) or update (write manifest from running state)",
+						default: "detect",
+					}),
+				),
+			}),
+			async execute(_toolCallId, params, signal) {
+				return handleManifestSync(params as { mode?: "detect" | "update" }, manifestPath, repoDir, signal);
+			},
 		}),
-		async execute(_toolCallId, params) {
-			return handleManifestSetService(
-				params as { name: string; image: string; version?: string; enabled?: boolean },
-				manifestPath,
-				repoDir,
-			);
-		},
-	}),
-	defineTool({
-		name: "manifest_apply",
-		label: "Apply Manifest",
-		description:
-			"Apply desired service state from manifest: install/start enabled services and stop disabled services.",
-		parameters: Type.Object({
-			install_missing: Type.Optional(
-				Type.Boolean({
-					description: "Install missing services from bundled local packages before applying state",
-					default: true,
-				}),
-			),
-			dry_run: Type.Optional(Type.Boolean({ description: "Preview actions without mutating system", default: false })),
+		defineTool({
+			name: "manifest_set_service",
+			label: "Set Manifest Service",
+			description: "Add or update a service entry in the manifest.",
+			parameters: Type.Object({
+				name: Type.String({ description: "Service name (e.g. dufs, llm)" }),
+				image: Type.String({ description: "Container image reference" }),
+				version: Type.Optional(Type.String({ description: "Semver version tag" })),
+				enabled: Type.Optional(Type.Boolean({ description: "Whether service should be running (default: true)" })),
+			}),
+			async execute(_toolCallId, params) {
+				return handleManifestSetService(
+					params as { name: string; image: string; version?: string; enabled?: boolean },
+					manifestPath,
+					repoDir,
+				);
+			},
 		}),
-		async execute(_toolCallId, params, signal, _onUpdate, ctx) {
-			return handleManifestApply(
-				params as { install_missing?: boolean; dry_run?: boolean },
-				bloomDir,
-				manifestPath,
-				repoDir,
-				signal,
-				ctx,
-			);
-		},
-	}),
+		defineTool({
+			name: "manifest_apply",
+			label: "Apply Manifest",
+			description:
+				"Apply desired service state from manifest: install/start enabled services and stop disabled services.",
+			parameters: Type.Object({
+				install_missing: Type.Optional(
+					Type.Boolean({
+						description: "Install missing services from bundled local packages before applying state",
+						default: true,
+					}),
+				),
+				dry_run: Type.Optional(
+					Type.Boolean({ description: "Preview actions without mutating system", default: false }),
+				),
+			}),
+			async execute(_toolCallId, params, signal, _onUpdate, ctx) {
+				return handleManifestApply(
+					params as { install_missing?: boolean; dry_run?: boolean },
+					bloomDir,
+					manifestPath,
+					repoDir,
+					signal,
+					ctx,
+				);
+			},
+		}),
 
-	// -----------------------------------------------------------------------
-	// Bridge tools
-	// -----------------------------------------------------------------------
+		// -----------------------------------------------------------------------
+		// Bridge tools
+		// -----------------------------------------------------------------------
 
-	defineTool({
-		name: "bridge_create",
-		label: "Create Matrix Bridge",
-		description:
-			"Pull a Matrix bridge image, generate a Quadlet container unit, write a starter config pointing to Continuwuity on host.containers.internal:6167, and start the bridge service.",
-		parameters: Type.Object({
-			name: Type.String({ description: "Bridge name: whatsapp, telegram, or signal" }),
+		defineTool({
+			name: "bridge_create",
+			label: "Create Matrix Bridge",
+			description:
+				"Pull a Matrix bridge image, generate a Quadlet container unit, write a starter config pointing to Continuwuity on host.containers.internal:6167, and start the bridge service.",
+			parameters: Type.Object({
+				name: Type.String({ description: "Bridge name: whatsapp, telegram, or signal" }),
+			}),
+			async execute(_toolCallId, params, signal) {
+				return handleBridgeCreate(params as { name: string }, repoDir, signal);
+			},
 		}),
-		async execute(_toolCallId, params, signal) {
-			return handleBridgeCreate(params as { name: string }, repoDir, signal);
-		},
-	}),
-	defineTool({
-		name: "bridge_remove",
-		label: "Remove Matrix Bridge",
-		description: "Stop a running Matrix bridge service, remove its Quadlet unit, and reload systemd.",
-		parameters: Type.Object({
-			name: Type.String({ description: "Bridge name to remove (e.g. whatsapp)" }),
+		defineTool({
+			name: "bridge_remove",
+			label: "Remove Matrix Bridge",
+			description: "Stop a running Matrix bridge service, remove its Quadlet unit, and reload systemd.",
+			parameters: Type.Object({
+				name: Type.String({ description: "Bridge name to remove (e.g. whatsapp)" }),
+			}),
+			async execute(_toolCallId, params, signal) {
+				return handleBridgeRemove(params as { name: string }, signal);
+			},
 		}),
-		async execute(_toolCallId, params, signal) {
-			return handleBridgeRemove(params as { name: string }, signal);
-		},
-	}),
-	defineTool({
-		name: "bridge_status",
-		label: "Matrix Bridge Status",
-		description: "List all running bloom-bridge-* containers and their current status.",
-		parameters: Type.Object({}),
-		async execute(_toolCallId, _params, signal) {
-			return handleBridgeStatus(signal);
-		},
-	}),
+		defineTool({
+			name: "bridge_status",
+			label: "Matrix Bridge Status",
+			description: "List all running bloom-bridge-* containers and their current status.",
+			parameters: Type.Object({}),
+			async execute(_toolCallId, _params, signal) {
+				return handleBridgeStatus(signal);
+			},
+		}),
 	];
 	registerTools(pi, tools);
 

@@ -10,7 +10,7 @@ import { join } from "node:path";
 import { StringEnum } from "@mariozechner/pi-ai";
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import { Type } from "@sinclair/typebox";
-import { defineTool, registerTools, type RegisteredExtensionTool } from "../../lib/extension-tools.js";
+import { type RegisteredExtensionTool, defineTool, registerTools } from "../../lib/extension-tools.js";
 import { STEP_ORDER } from "../../lib/setup.js";
 import {
 	getSetupSystemPrompt,
@@ -23,48 +23,50 @@ import {
 export default function (pi: ExtensionAPI) {
 	const tools: RegisteredExtensionTool[] = [
 		defineTool({
-		name: "setup_status",
-		label: "Setup Status",
-		description:
-			"Show current first-boot setup progress: which steps are complete, skipped, or pending, and guidance for the next step.",
-		parameters: Type.Object({}),
-		async execute() {
-			return handleSetupStatus();
-		},
-	}),
-	defineTool({
-		name: "setup_advance",
-		label: "Advance Setup Step",
-		description: "Mark a setup step as completed or skipped, persist state, and return guidance for the next step.",
-		parameters: Type.Object({
-			step: StringEnum([...STEP_ORDER], {
-				description: "The setup step to advance",
-			}),
-			result: StringEnum(["completed", "skipped"] as const, {
-				description: "Whether the step was completed or skipped",
-			}),
-			reason: Type.Optional(Type.String({ description: "Reason for skipping (required when result is 'skipped')" })),
+			name: "setup_status",
+			label: "Setup Status",
+			description:
+				"Show current first-boot setup progress: which steps are complete, skipped, or pending, and guidance for the next step.",
+			parameters: Type.Object({}),
+			async execute() {
+				return handleSetupStatus();
+			},
 		}),
-		async execute(_toolCallId, params) {
-			return await handleSetupAdvance(params as { step: (typeof STEP_ORDER)[number]; result: "completed" | "skipped"; reason?: string });
-		},
-	}),
-	defineTool({
-		name: "setup_reset",
-		label: "Reset Setup Step",
-		description:
-			"Reset a specific setup step to pending, or reset the entire setup. Useful if the user wants to redo a step.",
-		parameters: Type.Object({
-			step: Type.Optional(
-				StringEnum([...STEP_ORDER], {
-					description: "Step to reset (omit for full reset)",
+		defineTool({
+			name: "setup_advance",
+			label: "Advance Setup Step",
+			description: "Mark a setup step as completed or skipped, persist state, and return guidance for the next step.",
+			parameters: Type.Object({
+				step: StringEnum([...STEP_ORDER], {
+					description: "The setup step to advance",
 				}),
-			),
+				result: StringEnum(["completed", "skipped"] as const, {
+					description: "Whether the step was completed or skipped",
+				}),
+				reason: Type.Optional(Type.String({ description: "Reason for skipping (required when result is 'skipped')" })),
+			}),
+			async execute(_toolCallId, params) {
+				return await handleSetupAdvance(
+					params as { step: (typeof STEP_ORDER)[number]; result: "completed" | "skipped"; reason?: string },
+				);
+			},
 		}),
-		async execute(_toolCallId, params) {
-			return handleSetupReset(params as { step?: (typeof STEP_ORDER)[number] });
-		},
-	}),
+		defineTool({
+			name: "setup_reset",
+			label: "Reset Setup Step",
+			description:
+				"Reset a specific setup step to pending, or reset the entire setup. Useful if the user wants to redo a step.",
+			parameters: Type.Object({
+				step: Type.Optional(
+					StringEnum([...STEP_ORDER], {
+						description: "Step to reset (omit for full reset)",
+					}),
+				),
+			}),
+			async execute(_toolCallId, params) {
+				return handleSetupReset(params as { step?: (typeof STEP_ORDER)[number] });
+			},
+		}),
 	];
 	registerTools(pi, tools);
 

@@ -9,7 +9,7 @@ import { join } from "node:path";
 import { StringEnum } from "@mariozechner/pi-ai";
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import { Type } from "@sinclair/typebox";
-import { defineTool, registerTools, type RegisteredExtensionTool } from "../../lib/extension-tools.js";
+import { type RegisteredExtensionTool, defineTool, registerTools } from "../../lib/extension-tools.js";
 import { errorResult } from "../../lib/shared.js";
 import { handleDevBuild, handleDevLoop, handleDevRollback, handleDevSwitch } from "./actions-build.js";
 import {
@@ -45,198 +45,200 @@ export default function (pi: ExtensionAPI) {
 
 	const tools: RegisteredExtensionTool[] = [
 		defineTool({
-		name: "dev_enable",
-		label: "Enable Dev Mode",
-		description: "Enable on-device development mode by writing the dev sentinel file.",
-		parameters: Type.Object({}),
-		async execute() {
-			return handleDevEnable(bloomRuntime);
-		},
-	}),
-	defineTool({
-		name: "dev_disable",
-		label: "Disable Dev Mode",
-		description: "Disable on-device development mode by removing the dev sentinel file.",
-		parameters: Type.Object({}),
-		async execute() {
-			return handleDevDisable(bloomRuntime);
-		},
-	}),
-	defineTool({
-		name: "dev_status",
-		label: "Dev Status",
-		description: "Check the current development environment status: dev mode, repo, code-server, local build.",
-		parameters: Type.Object({}),
-		async execute(_toolCallId, _params, signal) {
-			return handleDevStatus(bloomRuntime, signal);
-		},
-	}),
+			name: "dev_enable",
+			label: "Enable Dev Mode",
+			description: "Enable on-device development mode by writing the dev sentinel file.",
+			parameters: Type.Object({}),
+			async execute() {
+				return handleDevEnable(bloomRuntime);
+			},
+		}),
+		defineTool({
+			name: "dev_disable",
+			label: "Disable Dev Mode",
+			description: "Disable on-device development mode by removing the dev sentinel file.",
+			parameters: Type.Object({}),
+			async execute() {
+				return handleDevDisable(bloomRuntime);
+			},
+		}),
+		defineTool({
+			name: "dev_status",
+			label: "Dev Status",
+			description: "Check the current development environment status: dev mode, repo, code-server, local build.",
+			parameters: Type.Object({}),
+			async execute(_toolCallId, _params, signal) {
+				return handleDevStatus(bloomRuntime, signal);
+			},
+		}),
 
-	// --- Dev-mode gated tools ---
+		// --- Dev-mode gated tools ---
 
-	defineTool({
-		name: "dev_code_server",
-		label: "Code Server",
-		description: "Start or stop the code-server development environment.",
-		parameters: Type.Object({
-			action: StringEnum(["start", "stop", "restart", "status"] as const, {
-				description:
-					"start: launch code-server. stop: shut it down. restart: reload and restart. status: check if running.",
-			}),
-		}),
-		async execute(_toolCallId, params, signal) {
-			const typedParams = params as { action: "start" | "stop" | "restart" | "status" };
-			const gate = devGate();
-			if (gate) return gate;
-			return handleDevCodeServer(typedParams.action, signal);
-		},
-	}),
-	defineTool({
-		name: "dev_build",
-		label: "Dev Build",
-		description: "Build a local container image from the Bloom repo.",
-		parameters: Type.Object({
-			tag: Type.Optional(Type.String({ description: "Image tag (default: localhost/bloom:dev)" })),
-		}),
-		async execute(_toolCallId, params, signal) {
-			const typedParams = params as { tag?: string };
-			const gate = devGate();
-			if (gate) return gate;
-			return handleDevBuild(repoDir, signal, typedParams.tag);
-		},
-	}),
-	defineTool({
-		name: "dev_switch",
-		label: "Dev Switch",
-		description: "Switch the running OS to a local or remote container image.",
-		parameters: Type.Object({
-			image_ref: Type.String({ description: "Image reference to switch to (e.g. localhost/bloom:dev)" }),
-		}),
-		async execute(_toolCallId, params, signal, _onUpdate, ctx) {
-			const typedParams = params as { image_ref: string };
-			const gate = devGate();
-			if (gate) return gate;
-			return handleDevSwitch(typedParams.image_ref, signal, ctx);
-		},
-	}),
-	defineTool({
-		name: "dev_rollback",
-		label: "Dev Rollback",
-		description: "Rollback to the previous OS deployment.",
-		parameters: Type.Object({}),
-		async execute(_toolCallId, _params, signal, _onUpdate, ctx) {
-			const gate = devGate();
-			if (gate) return gate;
-			return handleDevRollback(signal, ctx);
-		},
-	}),
-	defineTool({
-		name: "dev_loop",
-		label: "Dev Loop",
-		description: "Run the edit-build-switch development loop: build local image, switch to it, reboot.",
-		parameters: Type.Object({
-			tag: Type.Optional(Type.String({ description: "Image tag (default: localhost/bloom:dev)" })),
-			skip_reboot: Type.Optional(Type.Boolean({ description: "If true, stage the switch but skip automatic reboot" })),
-		}),
-		async execute(_toolCallId, params, signal, _onUpdate, ctx) {
-			const typedParams = params as { tag?: string; skip_reboot?: boolean };
-			const gate = devGate();
-			if (gate) return gate;
-			return handleDevLoop(typedParams, signal, ctx, repoDir);
-		},
-	}),
-	defineTool({
-		name: "dev_test",
-		label: "Dev Test",
-		description: "Run tests and linting against the local Bloom repo.",
-		parameters: Type.Object({}),
-		async execute(_toolCallId, _params, signal) {
-			const gate = devGate();
-			if (gate) return gate;
-			return handleDevTest(repoDir, signal);
-		},
-	}),
-	defineTool({
-		name: "dev_submit_pr",
-		label: "Dev Submit PR",
-		description: "Submit a pull request from local repo changes to upstream.",
-		parameters: Type.Object({
-			title: Type.String({ description: "Pull request title" }),
-			body: Type.Optional(Type.String({ description: "Pull request body markdown" })),
-			branch: Type.Optional(Type.String({ description: "Branch name (auto-generated from title if omitted)" })),
-		}),
-		async execute(_toolCallId, params, signal, _onUpdate, ctx) {
-			const typedParams = params as { title: string; body?: string; branch?: string };
-			const gate = devGate();
-			if (gate) return gate;
-			return handleDevSubmitPr(typedParams, repoDir, signal, ctx);
-		},
-	}),
-	defineTool({
-		name: "dev_push_skill",
-		label: "Push Skill",
-		description: "Push a skill from ~/Bloom/Skills/ into the repo and open a PR.",
-		parameters: Type.Object({
-			skill_name: Type.String({ description: "Name of the skill to push" }),
-			title: Type.Optional(Type.String({ description: "PR title (auto-generated if omitted)" })),
-		}),
-		async execute(_toolCallId, params, signal, _onUpdate, ctx) {
-			const typedParams = params as { skill_name: string; title?: string };
-			const gate = devGate();
-			if (gate) return gate;
-			return handleDevPushSkill(typedParams, repoDir, signal, ctx);
-		},
-	}),
-	defineTool({
-		name: "dev_push_service",
-		label: "Push Service",
-		description: "Push a service into the repo and open a PR.",
-		parameters: Type.Object({
-			service_name: Type.String({ description: "Name of the service to push" }),
-			title: Type.Optional(Type.String({ description: "PR title (auto-generated if omitted)" })),
-		}),
-		async execute(_toolCallId, params, signal, _onUpdate, ctx) {
-			const typedParams = params as { service_name: string; title?: string };
-			const gate = devGate();
-			if (gate) return gate;
-			return handleDevPushService(typedParams, repoDir, signal, ctx);
-		},
-	}),
-	defineTool({
-		name: "dev_push_extension",
-		label: "Push Extension",
-		description: "Push an extension into the repo and open a PR.",
-		parameters: Type.Object({
-			extension_name: Type.String({ description: "Name of the extension to push" }),
-			source_path: Type.Optional(
-				Type.String({
+		defineTool({
+			name: "dev_code_server",
+			label: "Code Server",
+			description: "Start or stop the code-server development environment.",
+			parameters: Type.Object({
+				action: StringEnum(["start", "stop", "restart", "status"] as const, {
 					description:
-						"Optional extension path inside ~/Bloom/core/pi-extensions/ (absolute paths must still resolve under that root)",
+						"start: launch code-server. stop: shut it down. restart: reload and restart. status: check if running.",
 				}),
-			),
-			title: Type.Optional(Type.String({ description: "PR title (auto-generated if omitted)" })),
+			}),
+			async execute(_toolCallId, params, signal) {
+				const typedParams = params as { action: "start" | "stop" | "restart" | "status" };
+				const gate = devGate();
+				if (gate) return gate;
+				return handleDevCodeServer(typedParams.action, signal);
+			},
 		}),
-		async execute(_toolCallId, params, signal, _onUpdate, ctx) {
-			const typedParams = params as { extension_name: string; source_path?: string; title?: string };
-			const gate = devGate();
-			if (gate) return gate;
-			return handleDevPushExtension(typedParams, repoDir, signal, ctx);
-		},
-	}),
-	defineTool({
-		name: "dev_install_package",
-		label: "Install Package",
-		description: "Install a Pi package from a local path or URL (falls back to local scope on immutable systems).",
-		parameters: Type.Object({
-			source: Type.String({ description: "Local path to the Pi package directory or URL" }),
+		defineTool({
+			name: "dev_build",
+			label: "Dev Build",
+			description: "Build a local container image from the Bloom repo.",
+			parameters: Type.Object({
+				tag: Type.Optional(Type.String({ description: "Image tag (default: localhost/bloom:dev)" })),
+			}),
+			async execute(_toolCallId, params, signal) {
+				const typedParams = params as { tag?: string };
+				const gate = devGate();
+				if (gate) return gate;
+				return handleDevBuild(repoDir, signal, typedParams.tag);
+			},
 		}),
-		async execute(_toolCallId, params, signal) {
-			const typedParams = params as { source: string };
-			const gate = devGate();
-			if (gate) return gate;
-			return handleDevInstallPackage(typedParams, signal);
-		},
-	}),
+		defineTool({
+			name: "dev_switch",
+			label: "Dev Switch",
+			description: "Switch the running OS to a local or remote container image.",
+			parameters: Type.Object({
+				image_ref: Type.String({ description: "Image reference to switch to (e.g. localhost/bloom:dev)" }),
+			}),
+			async execute(_toolCallId, params, signal, _onUpdate, ctx) {
+				const typedParams = params as { image_ref: string };
+				const gate = devGate();
+				if (gate) return gate;
+				return handleDevSwitch(typedParams.image_ref, signal, ctx);
+			},
+		}),
+		defineTool({
+			name: "dev_rollback",
+			label: "Dev Rollback",
+			description: "Rollback to the previous OS deployment.",
+			parameters: Type.Object({}),
+			async execute(_toolCallId, _params, signal, _onUpdate, ctx) {
+				const gate = devGate();
+				if (gate) return gate;
+				return handleDevRollback(signal, ctx);
+			},
+		}),
+		defineTool({
+			name: "dev_loop",
+			label: "Dev Loop",
+			description: "Run the edit-build-switch development loop: build local image, switch to it, reboot.",
+			parameters: Type.Object({
+				tag: Type.Optional(Type.String({ description: "Image tag (default: localhost/bloom:dev)" })),
+				skip_reboot: Type.Optional(
+					Type.Boolean({ description: "If true, stage the switch but skip automatic reboot" }),
+				),
+			}),
+			async execute(_toolCallId, params, signal, _onUpdate, ctx) {
+				const typedParams = params as { tag?: string; skip_reboot?: boolean };
+				const gate = devGate();
+				if (gate) return gate;
+				return handleDevLoop(typedParams, signal, ctx, repoDir);
+			},
+		}),
+		defineTool({
+			name: "dev_test",
+			label: "Dev Test",
+			description: "Run tests and linting against the local Bloom repo.",
+			parameters: Type.Object({}),
+			async execute(_toolCallId, _params, signal) {
+				const gate = devGate();
+				if (gate) return gate;
+				return handleDevTest(repoDir, signal);
+			},
+		}),
+		defineTool({
+			name: "dev_submit_pr",
+			label: "Dev Submit PR",
+			description: "Submit a pull request from local repo changes to upstream.",
+			parameters: Type.Object({
+				title: Type.String({ description: "Pull request title" }),
+				body: Type.Optional(Type.String({ description: "Pull request body markdown" })),
+				branch: Type.Optional(Type.String({ description: "Branch name (auto-generated from title if omitted)" })),
+			}),
+			async execute(_toolCallId, params, signal, _onUpdate, ctx) {
+				const typedParams = params as { title: string; body?: string; branch?: string };
+				const gate = devGate();
+				if (gate) return gate;
+				return handleDevSubmitPr(typedParams, repoDir, signal, ctx);
+			},
+		}),
+		defineTool({
+			name: "dev_push_skill",
+			label: "Push Skill",
+			description: "Push a skill from ~/Bloom/Skills/ into the repo and open a PR.",
+			parameters: Type.Object({
+				skill_name: Type.String({ description: "Name of the skill to push" }),
+				title: Type.Optional(Type.String({ description: "PR title (auto-generated if omitted)" })),
+			}),
+			async execute(_toolCallId, params, signal, _onUpdate, ctx) {
+				const typedParams = params as { skill_name: string; title?: string };
+				const gate = devGate();
+				if (gate) return gate;
+				return handleDevPushSkill(typedParams, repoDir, signal, ctx);
+			},
+		}),
+		defineTool({
+			name: "dev_push_service",
+			label: "Push Service",
+			description: "Push a service into the repo and open a PR.",
+			parameters: Type.Object({
+				service_name: Type.String({ description: "Name of the service to push" }),
+				title: Type.Optional(Type.String({ description: "PR title (auto-generated if omitted)" })),
+			}),
+			async execute(_toolCallId, params, signal, _onUpdate, ctx) {
+				const typedParams = params as { service_name: string; title?: string };
+				const gate = devGate();
+				if (gate) return gate;
+				return handleDevPushService(typedParams, repoDir, signal, ctx);
+			},
+		}),
+		defineTool({
+			name: "dev_push_extension",
+			label: "Push Extension",
+			description: "Push an extension into the repo and open a PR.",
+			parameters: Type.Object({
+				extension_name: Type.String({ description: "Name of the extension to push" }),
+				source_path: Type.Optional(
+					Type.String({
+						description:
+							"Optional extension path inside ~/Bloom/core/pi-extensions/ (absolute paths must still resolve under that root)",
+					}),
+				),
+				title: Type.Optional(Type.String({ description: "PR title (auto-generated if omitted)" })),
+			}),
+			async execute(_toolCallId, params, signal, _onUpdate, ctx) {
+				const typedParams = params as { extension_name: string; source_path?: string; title?: string };
+				const gate = devGate();
+				if (gate) return gate;
+				return handleDevPushExtension(typedParams, repoDir, signal, ctx);
+			},
+		}),
+		defineTool({
+			name: "dev_install_package",
+			label: "Install Package",
+			description: "Install a Pi package from a local path or URL (falls back to local scope on immutable systems).",
+			parameters: Type.Object({
+				source: Type.String({ description: "Local path to the Pi package directory or URL" }),
+			}),
+			async execute(_toolCallId, params, signal) {
+				const typedParams = params as { source: string };
+				const gate = devGate();
+				if (gate) return gate;
+				return handleDevInstallPackage(typedParams, signal);
+			},
+		}),
 	];
 	registerTools(pi, tools);
 }

@@ -180,18 +180,18 @@ describe("MatrixJsSdkBridge", () => {
 			const client = new MockClient();
 			Object.defineProperty(client, "startClient", {
 				value: vi.fn(async () => {
-				client.emit("sync", "PREPARED", null, undefined);
-				client.emit(
-					"event",
-					new MockMatrixEvent({
-						type: "m.room.message",
-						roomId: "!room:bloom",
-						sender: "@alex:bloom",
-						eventId: "$evt-race",
-						timestamp: 1_000,
-						content: { msgtype: "m.text", body: "hello during startup" },
-					}),
-				);
+					client.emit("sync", "PREPARED", null, undefined);
+					client.emit(
+						"event",
+						new MockMatrixEvent({
+							type: "m.room.message",
+							roomId: "!room:bloom",
+							sender: "@alex:bloom",
+							eventId: "$evt-race",
+							timestamp: 1_000,
+							content: { msgtype: "m.text", body: "hello during startup" },
+						}),
+					);
 				}),
 			});
 			mockClients.push(client);

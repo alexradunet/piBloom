@@ -37,7 +37,7 @@ Current platform capabilities:
 - service scaffolding, installation, smoke testing, manifest management, and bridge lifecycle tools
 - markdown-native durable memory in `~/Bloom/Objects/`
 - append-only episodic memory in `~/Bloom/Episodes/`
-- a Matrix room daemon with single-agent fallback and optional multi-agent routing
+- a unified Matrix room daemon with synthesized host-agent fallback and optional multi-agent overlays
 - proactive daemon jobs for heartbeat and simple cron-style scheduled turns
 - a first-boot flow split between a bash wizard and a Pi-guided persona step
 

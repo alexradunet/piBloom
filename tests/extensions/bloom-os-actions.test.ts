@@ -67,14 +67,24 @@ describe("handleContainerDeploy", () => {
 		expect(pendingStore.records[0]?.kind).toBe("confirm");
 		expect(pendingStore.records[0]?.status).toBe("pending");
 
-		pendingStore.records[0]!.status = "resolved";
-		pendingStore.records[0]!.resolution = "approved";
+		const [pendingRecord] = pendingStore.records;
+		expect(pendingRecord).toBeDefined();
+		if (!pendingRecord) {
+			throw new Error("expected pending confirmation record");
+		}
+		pendingRecord.status = "resolved";
+		pendingRecord.resolution = "approved";
 		writeFileSync(`${sessionFile}.bloom-interactions.json`, JSON.stringify(pendingStore));
 
 		const second = await handleContainerDeploy("bloom-code-server", undefined, ctx as never);
 
 		expect(second.isError).toBe(false);
 		expect(runMock).toHaveBeenNthCalledWith(1, "systemctl", ["--user", "daemon-reload"], undefined);
-		expect(runMock).toHaveBeenNthCalledWith(2, "systemctl", ["--user", "start", "bloom-code-server.service"], undefined);
+		expect(runMock).toHaveBeenNthCalledWith(
+			2,
+			"systemctl",
+			["--user", "start", "bloom-code-server.service"],
+			undefined,
+		);
 	});
 });
