@@ -1,7 +1,7 @@
 import path from "node:path";
 import { getBloomDir } from "../../lib/filesystem.js";
-import { readMemoryRecord } from "./memory.js";
 import { walkMdFiles } from "./actions.js";
+import { readMemoryRecord } from "./memory.js";
 
 interface DigestItem {
 	ref: string;
@@ -80,7 +80,12 @@ function renderSection(title: string, items: DigestItem[]): string[] {
 }
 
 function inferScopePreferences(cwd?: string): ScopePreference[] {
-	const preferences: ScopePreference[] = [{ scope: "room" }, { scope: "project" }, { scope: "host" }, { scope: "global" }];
+	const preferences: ScopePreference[] = [
+		{ scope: "room" },
+		{ scope: "project" },
+		{ scope: "host" },
+		{ scope: "global" },
+	];
 	if (!cwd) return preferences;
 	const project = path.basename(cwd);
 	if (project) {

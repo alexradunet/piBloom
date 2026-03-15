@@ -179,9 +179,17 @@ function inferTargetFromEpisode(episode: EpisodeRecord): PromotionTarget | null 
 	let type: string | null = null;
 	if (tags.includes("preference") || /\bprefer(s|red)?\b/.test(haystack)) {
 		type = "preference";
-	} else if (kind === "resolution" || tags.includes("procedure") || /\brestart\b|\bsteps?\b|\bverify\b/.test(haystack)) {
+	} else if (
+		kind === "resolution" ||
+		tags.includes("procedure") ||
+		/\brestart\b|\bsteps?\b|\bverify\b/.test(haystack)
+	) {
 		type = "procedure";
-	} else if (kind === "decision-point" || tags.includes("decision") || /\bdecided\b|\bdecision\b|\bchose\b/.test(haystack)) {
+	} else if (
+		kind === "decision-point" ||
+		tags.includes("decision") ||
+		/\bdecided\b|\bdecision\b|\bchose\b/.test(haystack)
+	) {
 		type = "decision";
 	} else if (tags.includes("fact") || /\bhost\b|\bservice\b|\buser\b|\bidentity\b/.test(haystack)) {
 		type = "fact";

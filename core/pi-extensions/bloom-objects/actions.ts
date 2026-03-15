@@ -115,7 +115,9 @@ export function upsertObject(params: {
 	const bloomDir = getBloomDir();
 	let filepath: string;
 	try {
-		filepath = params.path ? safePath(os.homedir(), params.path) : safePath(path.join(bloomDir, "Objects"), `${params.slug}.md`);
+		filepath = params.path
+			? safePath(os.homedir(), params.path)
+			: safePath(path.join(bloomDir, "Objects"), `${params.slug}.md`);
 	} catch {
 		return errorResult("Path traversal blocked: invalid path");
 	}

@@ -33,6 +33,7 @@
 		"vitest": "^4.0.18"
 	},
 	"scripts": {
+		"docs:check": "node scripts/check-docs-links.mjs",
 		"test": "vitest run",
 		"test:watch": "vitest",
 		"test:coverage": "vitest run --coverage",

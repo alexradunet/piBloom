@@ -1,3 +1,4 @@
+import path from "node:path";
 /**
  * bloom-episodes — Append-only episodic memory in ~/Bloom/Episodes/.
  *
@@ -5,7 +6,6 @@
  * @see {@link ../../AGENTS.md#bloom-episodes} Extension reference
  */
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
-import path from "node:path";
 import { Type } from "@sinclair/typebox";
 import { truncate } from "../../lib/shared.js";
 import { consolidateEpisodes, createEpisode, listEpisodes, promoteEpisode } from "./actions.js";
@@ -29,7 +29,9 @@ export default function (pi: ExtensionAPI) {
 			agent: Type.Optional(Type.String({ description: "Optional agent identifier" })),
 			importance: Type.Optional(Type.String({ description: "Importance hint: low, medium, high" })),
 			tags: Type.Optional(Type.Array(Type.String({ description: "Episode tags" }))),
-			derived_objects: Type.Optional(Type.Array(Type.String({ description: "Related durable refs like preference/foo" }))),
+			derived_objects: Type.Optional(
+				Type.Array(Type.String({ description: "Related durable refs like preference/foo" })),
+			),
 			promote_to: Type.Optional(
 				Type.Object({
 					type: Type.String({ description: "Durable target type: fact, preference, decision, procedure, project" }),

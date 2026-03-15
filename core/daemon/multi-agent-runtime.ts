@@ -5,8 +5,8 @@ import { AgentSupervisor, type AgentSupervisorOptions } from "./agent-supervisor
 import type { MatrixBridge, MatrixIdentity } from "./contracts/matrix.js";
 import { collectScheduledJobs } from "./proactive.js";
 import { classifySender, extractMentions } from "./router.js";
-import { Scheduler, type SchedulerJobState } from "./scheduler.js";
 import { MatrixJsSdkBridge } from "./runtime/matrix-js-sdk-bridge.js";
+import { Scheduler, type SchedulerJobState } from "./scheduler.js";
 
 type SchedulerLike = Pick<Scheduler, "start" | "stop">;
 
@@ -26,7 +26,9 @@ export interface MultiAgentRuntimeOptions {
 	saveSchedulerState: (state: Record<string, SchedulerJobState>) => void;
 	onSchedulerError: (job: { jobId: string; agentId: string; roomId: string; kind: string }, error: unknown) => void;
 	createBridge?: (identities: MatrixIdentity[]) => MatrixBridge;
-	createSupervisor?: (options: AgentSupervisorOptions) => Pick<AgentSupervisor, "handleEnvelope" | "dispatchProactiveJob" | "shutdown">;
+	createSupervisor?: (
+		options: AgentSupervisorOptions,
+	) => Pick<AgentSupervisor, "handleEnvelope" | "dispatchProactiveJob" | "shutdown">;
 	createScheduler?: (options: ConstructorParameters<typeof Scheduler>[0]) => SchedulerLike;
 }
 

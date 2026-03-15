@@ -100,9 +100,13 @@ describe("bloom-persona session_start", () => {
 			),
 		);
 
-		const result = (await api.fireEvent("before_agent_start", {
-			systemPrompt: "BASE",
-		}, createMockExtensionContext({ cwd: "/tmp/pi-bloom" }))) as { systemPrompt: string };
+		const result = (await api.fireEvent(
+			"before_agent_start",
+			{
+				systemPrompt: "BASE",
+			},
+			createMockExtensionContext({ cwd: "/tmp/pi-bloom" }),
+		)) as { systemPrompt: string };
 
 		expect(result.systemPrompt).toContain("[BLOOM MEMORY DIGEST]");
 		expect(result.systemPrompt).toContain("preference/ts-style");

@@ -92,7 +92,12 @@ export class Scheduler {
 		const now = this.now();
 		for (const job of this.jobs) {
 			const stateKey = this.stateKey(job);
-			const nextRunAt = computeNextRunAt(job, now, this.state[stateKey]?.lastRunAt, this.state[stateKey]?.lastFailureAt);
+			const nextRunAt = computeNextRunAt(
+				job,
+				now,
+				this.state[stateKey]?.lastRunAt,
+				this.state[stateKey]?.lastFailureAt,
+			);
 			if (nextRunAt > now) continue;
 
 			const triggeredJob: TriggeredJob = {
@@ -119,12 +124,7 @@ export class Scheduler {
 	}
 }
 
-export function computeNextRunAt(
-	job: ScheduledJob,
-	now: number,
-	lastRunAt?: number,
-	lastFailureAt?: number,
-): number {
+export function computeNextRunAt(job: ScheduledJob, now: number, lastRunAt?: number, lastFailureAt?: number): number {
 	if (job.kind === "heartbeat") {
 		const intervalMs = (job.intervalMinutes ?? 0) * 60 * 1000;
 		if (lastRunAt === undefined && lastFailureAt === undefined) return now;

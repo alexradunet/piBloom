@@ -31,9 +31,7 @@ export function normalizeScalar(value: unknown): string | number | boolean | nul
 
 function normalizeArray(value: unknown): string[] {
 	if (Array.isArray(value)) {
-		return value
-			.map((item) => String(item).trim())
-			.filter(Boolean);
+		return value.map((item) => String(item).trim()).filter(Boolean);
 	}
 	if (typeof value === "string") {
 		return value

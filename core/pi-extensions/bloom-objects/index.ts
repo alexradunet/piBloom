@@ -101,7 +101,9 @@ export default function (pi: ExtensionAPI) {
 			type: Type.Optional(Type.String({ description: "Object type filter" })),
 			tags: Type.Optional(Type.Array(Type.String({ description: "Tag filter" }))),
 			scope: Type.Optional(Type.String({ description: "Scope filter: global, host, project, room, agent" })),
-			scope_value: Type.Optional(Type.String({ description: "Optional concrete scope value, e.g. project name or room id" })),
+			scope_value: Type.Optional(
+				Type.String({ description: "Optional concrete scope value, e.g. project name or room id" }),
+			),
 			status: Type.Optional(Type.String({ description: "Status filter: active, stale, superseded, archived" })),
 			link_to: Type.Optional(Type.String({ description: "Return only objects linked to this ref" })),
 			preferred_scopes: Type.Optional(

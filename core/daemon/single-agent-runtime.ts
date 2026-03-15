@@ -1,11 +1,11 @@
 import { join } from "node:path";
-import { sanitizeRoomAlias } from "../lib/room-alias.js";
 import type { MatrixCredentials } from "../lib/matrix.js";
+import { sanitizeRoomAlias } from "../lib/room-alias.js";
 import type { MatrixBridge, MatrixTextEvent } from "./contracts/matrix.js";
 import type { BloomSessionLike, SessionEvent } from "./contracts/session.js";
-import { startWithRetry, type RetryOptions } from "./lifecycle.js";
-import type { RoomFailureState } from "./room-failures.js";
+import { type RetryOptions, startWithRetry } from "./lifecycle.js";
 import { handleRoomProcessError } from "./room-failures.js";
+import type { RoomFailureState } from "./room-failures.js";
 import { MatrixJsSdkBridge } from "./runtime/matrix-js-sdk-bridge.js";
 import { PiRoomSession, type PiRoomSessionOptions } from "./runtime/pi-room-session.js";
 
@@ -162,9 +162,13 @@ export function createSingleAgentRuntime(options: SingleAgentRuntimeOptions): Si
 
 	return {
 		async start() {
-			await startWithRetry(async () => {
-				await bridge.start();
-			}, undefined, options.retryOptions);
+			await startWithRetry(
+				async () => {
+					await bridge.start();
+				},
+				undefined,
+				options.retryOptions,
+			);
 		},
 		async stop() {
 			for (const roomId of [...typingIntervals.keys()]) {

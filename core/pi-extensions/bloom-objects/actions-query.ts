@@ -7,8 +7,8 @@ import path from "node:path";
 import { getBloomDir, safePath } from "../../lib/filesystem.js";
 import { parseFrontmatter } from "../../lib/frontmatter.js";
 import { errorResult, truncate } from "../../lib/shared.js";
-import { readMemoryRecord, scoreRecord, type ScopePreference } from "./memory.js";
 import { walkMdFiles } from "./actions.js";
+import { type ScopePreference, readMemoryRecord, scoreRecord } from "./memory.js";
 
 /** List objects, optionally filtered by type or frontmatter fields. */
 export function listObjects(

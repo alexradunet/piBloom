@@ -4,11 +4,7 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 
 import type { AgentDefinition } from "../../core/daemon/agent-registry.js";
-import {
-	collectScheduledJobs,
-	loadSchedulerState,
-	saveSchedulerState,
-} from "../../core/daemon/proactive.js";
+import { collectScheduledJobs, loadSchedulerState, saveSchedulerState } from "../../core/daemon/proactive.js";
 
 function makeAgent(id: string): AgentDefinition {
 	return {

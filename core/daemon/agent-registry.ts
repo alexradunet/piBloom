@@ -231,7 +231,10 @@ function normalizeStringArray(value: unknown, field: string, instructionsPath: s
 	return value;
 }
 
-function normalizeProactive(value: AgentFrontmatter["proactive"], instructionsPath: string): AgentDefinition["proactive"] {
+function normalizeProactive(
+	value: AgentFrontmatter["proactive"],
+	instructionsPath: string,
+): AgentDefinition["proactive"] {
 	const proactive = toRecord(value);
 	if (!proactive) return undefined;
 
@@ -241,7 +244,9 @@ function normalizeProactive(value: AgentFrontmatter["proactive"], instructionsPa
 		throw new Error(`${instructionsPath}: invalid proactive.jobs`);
 	}
 
-	const jobs = rawJobs.map((rawJob, index) => normalizeProactiveJob(rawJob, `${instructionsPath}: proactive.jobs[${index}]`));
+	const jobs = rawJobs.map((rawJob, index) =>
+		normalizeProactiveJob(rawJob, `${instructionsPath}: proactive.jobs[${index}]`),
+	);
 	const seen = new Set<string>();
 	for (const job of jobs) {
 		const key = `${job.room}::${job.id}`;
@@ -260,40 +265,65 @@ function normalizeProactiveJob(value: unknown, source: string): ProactiveJobDefi
 	const id = requireString(job.id, "id", source);
 	const room = requireString(job.room, "room", source);
 	const prompt = requireString(job.prompt, "prompt", source);
-	const kind = job.kind;
+	const kind = normalizeProactiveJobKind(job.kind, source);
+
+	const common = {
+		id,
+		kind,
+		room,
+		prompt,
+		...getNoOpBehavior(job),
+	};
+
+	return kind === "heartbeat" ? normalizeHeartbeatJob(job, source, common) : normalizeCronJob(job, source, common);
+}
+
+function normalizeProactiveJobKind(value: unknown, source: string): "heartbeat" | "cron" {
+	const kind = value;
 	if (kind !== "heartbeat" && kind !== "cron") {
 		throw new Error(`${source}: invalid kind '${String(kind)}'`);
 	}
+	return kind;
+}
 
-	if (kind === "heartbeat") {
-		if (typeof job.interval_minutes !== "number" || !Number.isFinite(job.interval_minutes) || job.interval_minutes <= 0) {
-			throw new Error(`${source}: invalid interval_minutes`);
-		}
-		return {
-			id,
-			kind,
-			room,
-			prompt,
-			intervalMinutes: job.interval_minutes,
-			...(typeof job.quiet_if_noop === "boolean" ? { quietIfNoop: job.quiet_if_noop } : {}),
-			...(typeof job.no_op_token === "string" ? { noOpToken: job.no_op_token } : {}),
-		};
+function getNoOpBehavior(
+	job: Record<string, unknown>,
+): Partial<Pick<ProactiveJobDefinition, "quietIfNoop" | "noOpToken">> {
+	return {
+		...(typeof job.quiet_if_noop === "boolean" ? { quietIfNoop: job.quiet_if_noop } : {}),
+		...(typeof job.no_op_token === "string" ? { noOpToken: job.no_op_token } : {}),
+	};
+}
+
+function normalizeHeartbeatJob(
+	job: Record<string, unknown>,
+	source: string,
+	common: Pick<ProactiveJobDefinition, "id" | "kind" | "room" | "prompt"> &
+		Partial<Pick<ProactiveJobDefinition, "quietIfNoop" | "noOpToken">>,
+): ProactiveJobDefinition {
+	if (typeof job.interval_minutes !== "number" || !Number.isFinite(job.interval_minutes) || job.interval_minutes <= 0) {
+		throw new Error(`${source}: invalid interval_minutes`);
 	}
+	return {
+		...common,
+		intervalMinutes: job.interval_minutes,
+	};
+}
 
+function normalizeCronJob(
+	job: Record<string, unknown>,
+	source: string,
+	common: Pick<ProactiveJobDefinition, "id" | "kind" | "room" | "prompt"> &
+		Partial<Pick<ProactiveJobDefinition, "quietIfNoop" | "noOpToken">>,
+): ProactiveJobDefinition {
 	if (typeof job.cron !== "string" || !job.cron.trim()) {
 		throw new Error(`${source}: invalid cron`);
 	}
 	if (!isSupportedCronExpression(job.cron)) {
 		throw new Error(`${source}: unsupported cron`);
 	}
-
 	return {
-		id,
-		kind,
-		room,
-		prompt,
+		...common,
 		cron: job.cron,
-		...(typeof job.quiet_if_noop === "boolean" ? { quietIfNoop: job.quiet_if_noop } : {}),
-		...(typeof job.no_op_token === "string" ? { noOpToken: job.no_op_token } : {}),
 	};
 }

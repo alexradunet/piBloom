@@ -37,6 +37,11 @@ export interface RouteOptions {
 	totalReplyBudget?: number;
 }
 
+interface InitialTargetDecision {
+	targets: AgentDefinition[];
+	reason: RouteDecision["reason"];
+}
+
 export function extractMentions(body: string, agents: readonly AgentDefinition[]): string[] {
 	return agents
 		.map((agent) => ({ userId: agent.matrix.userId, index: body.indexOf(agent.matrix.userId) }))
@@ -63,48 +68,15 @@ export function routeRoomEnvelope(
 	state: RoomState,
 	options: RouteOptions = {},
 ): RouteDecision {
-	if (envelope.senderKind === "self") {
-		return { targets: [], reason: "ignored-self" };
-	}
-
-	if (hasProcessedEvent(state, envelope.eventId, envelope.timestamp)) {
-		return { targets: [], reason: "ignored-duplicate" };
-	}
-	markEventProcessed(state, envelope.eventId, envelope.timestamp);
+	const ignoredReason = getIgnoredReason(envelope, state);
+	if (ignoredReason) return { targets: [], reason: ignoredReason };
 
 	const rootEventId = options.rootEventId ?? envelope.eventId;
 	const totalReplyBudget = options.totalReplyBudget ?? 4;
-	const hostAgent = agents.find((agent) => agent.respond.mode === "host");
-	const hadExplicitMention = envelope.mentions.length > 0;
-	const mentionedAgents = envelope.mentions.flatMap((userId) => {
-		const agent = agents.find((candidate) => candidate.matrix.userId === userId);
-		if (!agent || agent.respond.mode === "silent") return [];
-		return [agent];
-	});
+	const initialDecision = getInitialTargetDecision(envelope, agents);
+	if (initialDecision.targets.length === 0) return { targets: [], reason: "ignored-policy" };
 
-	let initialTargets: AgentDefinition[] = [];
-	let successReason: RouteDecision["reason"] = "ignored-policy";
-
-	if (envelope.senderKind === "human") {
-		if (hadExplicitMention) {
-			initialTargets = mentionedAgents;
-			if (initialTargets.length > 0) successReason = "explicit-mention";
-		} else if (hostAgent) {
-			initialTargets = [hostAgent];
-			successReason = "host-default";
-		}
-	} else if (envelope.senderKind === "agent") {
-		initialTargets = mentionedAgents.filter(
-			(agent) => agent.id !== envelope.senderAgentId && agent.respond.allowAgentMentions,
-		);
-		if (initialTargets.length > 0) successReason = "agent-mention";
-	}
-
-	if (initialTargets.length === 0) {
-		return { targets: [], reason: "ignored-policy" };
-	}
-
-	const budgetEligible = initialTargets.filter((agent) =>
+	const budgetEligible = initialDecision.targets.filter((agent) =>
 		canReplyForRoot(
 			state,
 			envelope.roomId,
@@ -132,6 +104,58 @@ export function routeRoomEnvelope(
 
 	return {
 		targets: cooldownEligible.map((agent) => agent.id),
-		reason: successReason,
+		reason: initialDecision.reason,
 	};
+}
+
+function getIgnoredReason(
+	envelope: RoomEnvelope,
+	state: RoomState,
+): Extract<RouteDecision["reason"], "ignored-self" | "ignored-duplicate"> | undefined {
+	if (envelope.senderKind === "self") return "ignored-self";
+	if (hasProcessedEvent(state, envelope.eventId, envelope.timestamp)) return "ignored-duplicate";
+	markEventProcessed(state, envelope.eventId, envelope.timestamp);
+	return undefined;
+}
+
+function getInitialTargetDecision(envelope: RoomEnvelope, agents: readonly AgentDefinition[]): InitialTargetDecision {
+	const mentionedAgents = getMentionedAgents(envelope.mentions, agents);
+	if (envelope.senderKind === "human") {
+		return getHumanTargetDecision(envelope.mentions.length > 0, mentionedAgents, agents);
+	}
+	if (envelope.senderKind === "agent") {
+		return getAgentTargetDecision(envelope.senderAgentId, mentionedAgents);
+	}
+	return { targets: [], reason: "ignored-policy" };
+}
+
+function getMentionedAgents(mentions: readonly string[], agents: readonly AgentDefinition[]): AgentDefinition[] {
+	return mentions.flatMap((userId) => {
+		const agent = agents.find((candidate) => candidate.matrix.userId === userId);
+		if (!agent || agent.respond.mode === "silent") return [];
+		return [agent];
+	});
+}
+
+function getHumanTargetDecision(
+	hadExplicitMention: boolean,
+	mentionedAgents: readonly AgentDefinition[],
+	agents: readonly AgentDefinition[],
+): InitialTargetDecision {
+	if (hadExplicitMention && mentionedAgents.length > 0) {
+		return { targets: [...mentionedAgents], reason: "explicit-mention" };
+	}
+
+	const hostAgent = agents.find((agent) => agent.respond.mode === "host");
+	if (hadExplicitMention || !hostAgent) return { targets: [], reason: "ignored-policy" };
+	return { targets: [hostAgent], reason: "host-default" };
+}
+
+function getAgentTargetDecision(
+	senderAgentId: string | undefined,
+	mentionedAgents: readonly AgentDefinition[],
+): InitialTargetDecision {
+	const targets = mentionedAgents.filter((agent) => agent.id !== senderAgentId && agent.respond.allowAgentMentions);
+	if (targets.length === 0) return { targets: [], reason: "ignored-policy" };
+	return { targets, reason: "agent-mention" };
 }

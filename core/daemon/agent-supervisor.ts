@@ -1,11 +1,10 @@
 import { createLogger } from "../lib/shared.js";
 import type { AgentDefinition } from "./agent-registry.js";
-import type { TriggeredJob } from "./scheduler.js";
-import type { SessionEvent } from "./contracts/session.js";
-import type { BloomSessionLike } from "./contracts/session.js";
+import type { BloomSessionLike, SessionEvent } from "./contracts/session.js";
 import { createRoomState } from "./room-state.js";
 import { type RoomEnvelope, routeRoomEnvelope } from "./router.js";
 import { AgentSession, type AgentSessionOptions } from "./runtime/agent-session.js";
+import type { TriggeredJob } from "./scheduler.js";
 
 const log = createLogger("agent-supervisor");
 const TYPING_TIMEOUT_MS = 30_000;

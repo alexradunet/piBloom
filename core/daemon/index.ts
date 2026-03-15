@@ -14,21 +14,12 @@ import {
 	matrixAgentCredentialsPath,
 	matrixCredentialsPath,
 } from "../lib/matrix.js";
-import { sanitizeRoomAlias } from "../lib/room-alias.js";
 import { createLogger } from "../lib/shared.js";
 import { type AgentDefinition, loadAgentDefinitionsResult } from "./agent-registry.js";
-import { AgentSupervisor } from "./agent-supervisor.js";
 import { startWithRetry } from "./lifecycle.js";
 import { createMultiAgentRuntime } from "./multi-agent-runtime.js";
-import { handleRoomProcessError, type RoomFailureState } from "./room-failures.js";
-import { createSingleAgentRuntime } from "./single-agent-runtime.js";
-import type { MatrixBridge } from "./contracts/matrix.js";
-import type { MatrixTextEvent } from "./contracts/matrix.js";
-import type { SessionEvent } from "./contracts/session.js";
-import type { BloomSessionLike } from "./contracts/session.js";
-import { MatrixJsSdkBridge } from "./runtime/matrix-js-sdk-bridge.js";
-import { PiRoomSession, type PiRoomSessionOptions } from "./runtime/pi-room-session.js";
 import { loadSchedulerState, saveSchedulerState } from "./proactive.js";
+import { createSingleAgentRuntime } from "./single-agent-runtime.js";
 
 const log = createLogger("pi-daemon");
 
@@ -37,9 +28,6 @@ const SESSION_BASE = join(os.homedir(), ".pi", "agent", "sessions", "bloom-rooms
 const STORAGE_PATH = join(os.homedir(), ".pi", "pi-daemon", "matrix-state.json");
 const SCHEDULER_STATE_PATH = join(os.homedir(), ".pi", "pi-daemon", "scheduler-state.json");
 const MATRIX_AGENT_STORAGE_DIR = join(os.homedir(), ".pi", "pi-daemon", "matrix-agents");
-const DEFAULT_MATRIX_IDENTITY = "default";
-const TYPING_TIMEOUT_MS = 30_000;
-const TYPING_REFRESH_MS = 20_000;
 
 const ROOM_FAILURE_WINDOW_MS = 60_000;
 const ROOM_FAILURE_THRESHOLD = 3;

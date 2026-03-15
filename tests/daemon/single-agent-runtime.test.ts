@@ -130,10 +130,7 @@ describe("createSingleAgentRuntime", () => {
 	it("retries startup until the bridge connects", async () => {
 		const bridge = {
 			onTextEvent: vi.fn(),
-			start: vi
-				.fn<() => Promise<void>>()
-				.mockRejectedValueOnce(new Error("first"))
-				.mockResolvedValue(undefined),
+			start: vi.fn<() => Promise<void>>().mockRejectedValueOnce(new Error("first")).mockResolvedValue(undefined),
 			stop: vi.fn(),
 			sendText: vi.fn(async () => undefined),
 			setTyping: vi.fn(async () => undefined),

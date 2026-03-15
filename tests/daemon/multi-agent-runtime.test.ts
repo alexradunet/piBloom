@@ -188,7 +188,10 @@ describe("createMultiAgentRuntime", () => {
 
 	it("routes bridge text events into supervisor envelopes", async () => {
 		let textHandler:
-			| ((identityId: string, event: { roomId: string; eventId: string; senderUserId: string; body: string; timestamp: number }) => void)
+			| ((
+					identityId: string,
+					event: { roomId: string; eventId: string; senderUserId: string; body: string; timestamp: number },
+			  ) => void)
 			| undefined;
 		const bridge = {
 			onTextEvent: vi.fn((handler) => {
