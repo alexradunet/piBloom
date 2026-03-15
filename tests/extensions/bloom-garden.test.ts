@@ -125,6 +125,77 @@ describe("bloom-garden extension", () => {
 			expect.objectContaining({ id: "finance" }),
 		);
 	});
+
+	it("applies tokenless deny to the most recent pending confirmation", async () => {
+		vi.resetModules();
+		const api = createMockExtensionAPI();
+		const mod = await import("../../core/pi-extensions/bloom-garden/index.js");
+		mod.default(api as never);
+
+		const ctx = createMockExtensionContext({ hasUI: false });
+		const sessionFile = path.join(bloomDir, "session.jsonl");
+		ctx.sessionManager.getSessionFile.mockReturnValue(sessionFile);
+		ctx.sessionManager.getSessionDir.mockReturnValue(bloomDir);
+		ctx.sessionManager.getSessionId.mockReturnValue("session");
+
+		const tool = api._registeredTools.find((entry) => entry.name === "agent_create") as {
+			execute: (
+				toolCallId: string,
+				params: { id: string; name: string; description: string; role_prompt: string },
+				signal: AbortSignal | undefined,
+				onUpdate: undefined,
+				ctx: ReturnType<typeof createMockExtensionContext>,
+			) => Promise<{ content: Array<{ text: string }> }>;
+		};
+
+		await tool.execute(
+			"tool-call-1",
+			{
+				id: "finance",
+				name: "Finance",
+				description: "Expert in personal finance",
+				role_prompt: "Help with budgeting.",
+			},
+			undefined,
+			undefined,
+			ctx,
+		);
+		await tool.execute(
+			"tool-call-2",
+			{
+				id: "ops",
+				name: "Ops",
+				description: "Expert in operations",
+				role_prompt: "Help with ops.",
+			},
+			undefined,
+			undefined,
+			ctx,
+		);
+
+		const pendingReply = await api.fireEvent("input", { source: "user", text: "deny" }, ctx);
+
+		expect(pendingReply).toEqual({ action: "handled" });
+		expect(api._sentMessages.at(-1)).toEqual({
+			message: expect.stringContaining('most recent pending confirmation for "Create Matrix agent ops"'),
+			options: undefined,
+		});
+
+		const deniedRetry = await tool.execute(
+			"tool-call-2-retry",
+			{
+				id: "ops",
+				name: "Ops",
+				description: "Expert in operations",
+				role_prompt: "Help with ops.",
+			},
+			undefined,
+			undefined,
+			ctx,
+		);
+
+		expect(deniedRetry.content[0]?.text).toBe("User declined: Create Matrix agent ops");
+	});
 });
 
 // ---------------------------------------------------------------------------

@@ -308,6 +308,30 @@ describe("requireConfirmation", () => {
 		expect(result).toBeNull();
 	});
 
+	it("reuses the same pending token for repeated no-UI requests", async () => {
+		const dir = fs.mkdtempSync(path.join(os.tmpdir(), "shared-confirm-"));
+		const sessionFile = path.join(dir, "session.jsonl");
+		const ctx = {
+			hasUI: false,
+			sessionManager: {
+				getSessionFile: () => sessionFile,
+				getSessionDir: () => dir,
+				getSessionId: () => "session",
+			},
+		} as never;
+
+		const first = await requireConfirmation(ctx, "delete file");
+		const second = await requireConfirmation(ctx, "delete file");
+
+		expect(first).toBe(second);
+		const saved = JSON.parse(fs.readFileSync(`${sessionFile}.bloom-confirmations.json`, "utf-8")) as {
+			records: Array<{ token: string; status: string }>;
+		};
+		expect(saved.records).toHaveLength(1);
+		expect(saved.records[0]?.status).toBe("pending");
+		fs.rmSync(dir, { recursive: true, force: true });
+	});
+
 	it("returns null when user confirms", async () => {
 		const ctx = { hasUI: true, ui: { confirm: async () => true } } as never;
 		const result = await requireConfirmation(ctx, "delete file");
@@ -354,6 +378,42 @@ describe("requireConfirmation", () => {
 			records: Array<{ token: string; status: string }>;
 		};
 		expect(saved.records[0]?.token).toBe(token);
+		expect(saved.records[0]?.status).toBe("consumed");
+		fs.rmSync(dir, { recursive: true, force: true });
+	});
+
+	it("returns a decline after Matrix denial and consumes it", async () => {
+		const dir = fs.mkdtempSync(path.join(os.tmpdir(), "shared-confirm-"));
+		const sessionFile = path.join(dir, "session.jsonl");
+		fs.writeFileSync(
+			`${sessionFile}.bloom-confirmations.json`,
+			JSON.stringify({
+				records: [
+					{
+						token: "abc123",
+						action: "delete file",
+						status: "denied",
+						createdAt: "2026-03-15T00:00:00Z",
+						updatedAt: "2026-03-15T00:00:00Z",
+					},
+				],
+			}),
+		);
+		const ctx = {
+			hasUI: false,
+			sessionManager: {
+				getSessionFile: () => sessionFile,
+				getSessionDir: () => dir,
+				getSessionId: () => "session",
+			},
+		} as never;
+
+		const result = await requireConfirmation(ctx, "delete file");
+
+		expect(result).toBe("User declined: delete file");
+		const saved = JSON.parse(fs.readFileSync(`${sessionFile}.bloom-confirmations.json`, "utf-8")) as {
+			records: Array<{ status: string }>;
+		};
 		expect(saved.records[0]?.status).toBe("consumed");
 		fs.rmSync(dir, { recursive: true, force: true });
 	});

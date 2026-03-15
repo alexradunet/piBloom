@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -44,5 +44,35 @@ describe("handleContainerDeploy", () => {
 		expect(runMock).toHaveBeenNthCalledWith(1, "systemctl", ["--user", "daemon-reload"], undefined);
 		expect(runMock).toHaveBeenNthCalledWith(2, "systemctl", ["--user", "start", "bloom-code-server.socket"], undefined);
 		expect(result.content[0].text).toContain("Started bloom-code-server.socket successfully.");
+	});
+
+	it("requires and then consumes Matrix confirmation before deploy", async () => {
+		const { handleContainerDeploy } = await import("../../core/pi-extensions/bloom-os/actions.js");
+		const ctx = createMockExtensionContext({ hasUI: false });
+		const sessionFile = join(tempHome, "session.jsonl");
+		ctx.sessionManager.getSessionFile.mockReturnValue(sessionFile);
+		ctx.sessionManager.getSessionDir.mockReturnValue(tempHome);
+		ctx.sessionManager.getSessionId.mockReturnValue("session");
+
+		const first = await handleContainerDeploy("bloom-code-server", undefined, ctx as never);
+
+		expect(first.isError).toBe(true);
+		expect(first.content[0]?.text).toContain('Confirmation required for "Deploy container bloom-code-server.service"');
+		expect(runMock).not.toHaveBeenCalled();
+
+		const pendingStore = JSON.parse(readFileSync(`${sessionFile}.bloom-confirmations.json`, "utf-8")) as {
+			records: Array<{ token: string; action: string; status: string }>;
+		};
+		expect(pendingStore.records).toHaveLength(1);
+		expect(pendingStore.records[0]?.status).toBe("pending");
+
+		pendingStore.records[0]!.status = "approved";
+		writeFileSync(`${sessionFile}.bloom-confirmations.json`, JSON.stringify(pendingStore));
+
+		const second = await handleContainerDeploy("bloom-code-server", undefined, ctx as never);
+
+		expect(second.isError).toBe(false);
+		expect(runMock).toHaveBeenNthCalledWith(1, "systemctl", ["--user", "daemon-reload"], undefined);
+		expect(runMock).toHaveBeenNthCalledWith(2, "systemctl", ["--user", "start", "bloom-code-server.service"], undefined);
 	});
 });
