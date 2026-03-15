@@ -109,6 +109,10 @@ describe("AgentSupervisor", () => {
 		expect(createdSessions).toHaveLength(1);
 		expect(createdSessions[0]?.opts.agent.id).toBe("host");
 		expect(createdSessions[0]?.sentMessages[0]).toContain('You are the Bloom agent "Host".');
+		expect(createdSessions[0]?.sentMessages[0]).toContain("Matrix messages must be plain text.");
+		expect(createdSessions[0]?.sentMessages[0]).toContain(
+			"Avoid Markdown, headings, tables, bold, italics, blockquotes, and fenced code blocks.",
+		);
 		expect(createdSessions[0]?.sentMessages[0]).toContain("# host");
 		expect(createdSessions[0]?.sentMessages[0]).toContain("[matrix: @alex:bloom] hello there");
 		expect(createdSessions[0]?.sentMessages[1]).toBe("[matrix: @alex:bloom] hello again");

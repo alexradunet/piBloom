@@ -59,7 +59,7 @@ export class MatrixJsSdkBridge implements MatrixBridge {
 
 	async sendText(identityId: string, roomId: string, text: string): Promise<void> {
 		const entry = this.requireClient(identityId);
-		await entry.client.sendTextMessage(roomId, text);
+		await entry.client.sendHtmlMessage(roomId, text, renderMatrixHtml(text));
 	}
 
 	async setTyping(identityId: string, roomId: string, typing: boolean, timeoutMs = 30_000): Promise<void> {
@@ -171,4 +171,136 @@ export class MatrixJsSdkBridge implements MatrixBridge {
 		pruneExpiredEntries(this.seenEventIds, now, (timestamp) => timestamp, SEEN_EVENT_TTL_MS);
 		enforceMapLimit(this.seenEventIds, MAX_SEEN_EVENT_IDS - 1);
 	}
+}
+
+function renderMatrixHtml(text: string): string {
+	const normalized = text.replace(/\r\n/g, "\n").trim();
+	if (!normalized) return "<p></p>";
+
+	const lines = normalized.split("\n");
+	const parts: string[] = [];
+	let index = 0;
+
+	while (index < lines.length) {
+		const line = lines[index] ?? "";
+		if (!line.trim()) {
+			index += 1;
+			continue;
+		}
+
+		if (line.startsWith("```")) {
+			const fence = line.slice(3).trim();
+			const codeLines: string[] = [];
+			index += 1;
+			while (index < lines.length && !(lines[index] ?? "").startsWith("```")) {
+				codeLines.push(lines[index] ?? "");
+				index += 1;
+			}
+			if (index < lines.length) index += 1;
+			const classAttr = fence ? ` class="language-${escapeHtmlAttribute(fence)}"` : "";
+			parts.push(`<pre><code${classAttr}>${escapeHtml(codeLines.join("\n"))}</code></pre>`);
+			continue;
+		}
+
+		const headingMatch = line.match(/^(#{1,6})\s+(.+)$/);
+		if (headingMatch) {
+			const level = headingMatch[1]?.length ?? 1;
+			const content = headingMatch[2] ?? "";
+			parts.push(`<h${level}>${renderInlineMarkdown(content)}</h${level}>`);
+			index += 1;
+			continue;
+		}
+
+		if (line.startsWith(">")) {
+			const quoteLines: string[] = [];
+			while (index < lines.length) {
+				const current = lines[index] ?? "";
+				if (!current.trim()) {
+					index += 1;
+					break;
+				}
+				if (!current.startsWith(">")) break;
+				quoteLines.push(current.replace(/^>\s?/, ""));
+				index += 1;
+			}
+			parts.push(`<blockquote>${quoteLines.map((entry) => `<p>${renderInlineMarkdown(entry)}</p>`).join("")}</blockquote>`);
+			continue;
+		}
+
+		const unorderedMatch = line.match(/^(\s*)[-*+]\s+(.+)$/);
+		if (unorderedMatch) {
+			const items: string[] = [];
+			while (index < lines.length) {
+				const current = lines[index] ?? "";
+				const match = current.match(/^(\s*)[-*+]\s+(.+)$/);
+				if (!match) break;
+				items.push(`<li>${renderInlineMarkdown(match[2] ?? "")}</li>`);
+				index += 1;
+			}
+			parts.push(`<ul>${items.join("")}</ul>`);
+			continue;
+		}
+
+		const orderedMatch = line.match(/^\s*\d+[.)]\s+(.+)$/);
+		if (orderedMatch) {
+			const items: string[] = [];
+			while (index < lines.length) {
+				const current = lines[index] ?? "";
+				const match = current.match(/^\s*\d+[.)]\s+(.+)$/);
+				if (!match) break;
+				items.push(`<li>${renderInlineMarkdown(match[1] ?? "")}</li>`);
+				index += 1;
+			}
+			parts.push(`<ol>${items.join("")}</ol>`);
+			continue;
+		}
+
+		const paragraphLines: string[] = [];
+		while (index < lines.length) {
+			const current = lines[index] ?? "";
+			if (!current.trim()) {
+				index += 1;
+				break;
+			}
+			if (
+				current.startsWith("```") ||
+				current.startsWith(">") ||
+				/^#{1,6}\s+/.test(current) ||
+				/^(\s*)[-*+]\s+/.test(current) ||
+				/^\s*\d+[.)]\s+/.test(current)
+			) {
+				break;
+			}
+			paragraphLines.push(current);
+			index += 1;
+		}
+		parts.push(`<p>${renderInlineMarkdown(paragraphLines.join("\n"))}</p>`);
+	}
+
+	return parts.join("");
+}
+
+function renderInlineMarkdown(text: string): string {
+	let html = escapeHtml(text);
+
+	html = html.replace(/`([^`]+)`/g, "<code>$1</code>");
+	html = html.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+	html = html.replace(/__([^_]+)__/g, "<strong>$1</strong>");
+	html = html.replace(/(^|[\s(])\*([^*\n]+)\*(?=[\s).,!?:;]|$)/g, "$1<em>$2</em>");
+	html = html.replace(/(^|[\s(])_([^_\n]+)_(?=[\s).,!?:;]|$)/g, "$1<em>$2</em>");
+	html = html.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2">$1</a>');
+	html = html.replace(/\n/g, "<br>");
+
+	return html;
+}
+
+function escapeHtml(value: string): string {
+	return value
+		.replaceAll("&", "&amp;")
+		.replaceAll("<", "&lt;")
+		.replaceAll(">", "&gt;");
+}
+
+function escapeHtmlAttribute(value: string): string {
+	return escapeHtml(value).replaceAll('"', "&quot;");
 }

@@ -225,6 +225,10 @@ export class AgentSupervisor {
 			"Respond only as yourself.",
 			"Do not continue agent-to-agent back-and-forth unless explicitly addressed.",
 			"Prioritize being helpful to the human.",
+			"Matrix messages must be plain text.",
+			"Avoid Markdown, headings, tables, bold, italics, blockquotes, and fenced code blocks.",
+			"Use short paragraphs or simple numbered lines when structure helps.",
+			"Emoticons are allowed when they add tone, but keep formatting minimal.",
 			"",
 			agent.instructionsBody,
 		].join("\n");

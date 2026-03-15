@@ -75,6 +75,7 @@ class MockClient {
 	});
 	public readonly stopClient = vi.fn();
 	public readonly sendTextMessage = vi.fn().mockResolvedValue({ event_id: "$sent" });
+	public readonly sendHtmlMessage = vi.fn().mockResolvedValue({ event_id: "$sent" });
 	public readonly sendTyping = vi.fn().mockResolvedValue({});
 	public readonly joinRoom = vi.fn().mockResolvedValue({});
 	public readonly getLocalAliases = vi.fn().mockResolvedValue({ aliases: [] as string[] });
@@ -307,11 +308,15 @@ describe("MatrixJsSdkBridge", () => {
 		await bridge.start();
 		mockClients[1]?.getRoom.mockReturnValue(new MockRoom("#general:bloom"));
 
-		await bridge.sendText("planner", "!room:bloom", "hello");
+		await bridge.sendText("planner", "!room:bloom", "# Hello\n\nThis is **bold** and `code`.");
 		await bridge.setTyping("host", "!room:bloom", true, 15_000);
 		const alias = await bridge.getRoomAlias("planner", "!room:bloom");
 
-		expect(mockClients[1]?.sendTextMessage).toHaveBeenCalledWith("!room:bloom", "hello");
+		expect(mockClients[1]?.sendHtmlMessage).toHaveBeenCalledWith(
+			"!room:bloom",
+			"# Hello\n\nThis is **bold** and `code`.",
+			"<h1>Hello</h1><p>This is <strong>bold</strong> and <code>code</code>.</p>",
+		);
 		expect(mockClients[0]?.sendTyping).toHaveBeenCalledWith("!room:bloom", true, 15_000);
 		expect(alias).toBe("#general:bloom");
 	});
