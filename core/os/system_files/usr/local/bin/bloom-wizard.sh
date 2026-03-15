@@ -972,6 +972,59 @@ step_services() {
 	mark_done_with services "${installed:-none}"
 }
 
+step_bootc_switch() {
+	echo ""
+	echo "--- System Updates ---"
+
+	# Check if bootc is available
+	if ! command -v bootc &>/dev/null; then
+		echo "bootc not available — skipping update configuration."
+		mark_done bootc_switch
+		return
+	fi
+
+	# Get current image info
+	local current_image
+	current_image=$(sudo bootc status --json 2>/dev/null | sed -n 's/.*"image"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -1 || true)
+
+	# Check if already using registry image
+	if [[ "$current_image" == *"ghcr.io/alexradunet/bloom-os"* ]]; then
+		echo "Already configured for registry updates."
+		mark_done bootc_switch
+		return
+	fi
+
+	echo "Your system was installed from an offline ISO (embedded container)."
+	echo "To receive over-the-air (OTA) updates from the registry, you can"
+	echo "switch to the registry image now."
+	echo ""
+	echo "Current image: ${current_image:-local/embedded}"
+	echo "Registry image: ghcr.io/alexradunet/bloom-os:latest"
+	echo ""
+
+	local answer
+	read -rp "Switch to registry image for OTA updates? [y/N]: " answer
+	if [[ "${answer,,}" != "y" ]]; then
+		echo "Skipped. You can switch later with:"
+		echo "  sudo bootc switch --transport registry ghcr.io/alexradunet/bloom-os:latest"
+		mark_done_with bootc_switch "skipped"
+		return
+	fi
+
+	echo "Switching to registry image..."
+	if sudo bootc switch --transport registry ghcr.io/alexradunet/bloom-os:latest; then
+		echo ""
+		echo "Switched successfully! The next reboot will use the registry image."
+		echo "OTA updates are now available via: sudo bootc update"
+		mark_done_with bootc_switch "registry"
+	else
+		echo ""
+		echo "Switch failed. You can retry later with:"
+		echo "  sudo bootc switch --transport registry ghcr.io/alexradunet/bloom-os:latest"
+		mark_done_with bootc_switch "failed"
+	fi
+}
+
 # --- Finalization ---
 
 finalize() {
@@ -1037,6 +1090,7 @@ main() {
 	step_done git      || step_git
 	step_done ai       || step_ai
 	step_done services || step_services
+	step_done bootc_switch || step_bootc_switch
 
 	finalize
 }

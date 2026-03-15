@@ -29,6 +29,7 @@ Current responsibilities:
 3. primary Matrix account bootstrap
 4. AI provider defaults for Pi
 5. optional bundled service choices
+6. optional switch to registry image for OTA updates
 
 Optional service prompts offered by the wizard:
 

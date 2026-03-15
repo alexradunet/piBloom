@@ -68,12 +68,22 @@ Important note:
 
 ### ISO Build
 
+**Offline ISO** (embedded container, no network needed during install):
 ```bash
 just iso
+```
+
+**Production ISO** (downloads from registry during install, requires ethernet):
+```bash
 just iso-production
 ```
 
 Both write outputs under `core/os/output/`.
+
+**After installing from offline ISO:** The setup wizard will ask if you want to switch to the registry image for OTA updates. You can also switch manually later:
+```bash
+sudo bootc switch --transport registry ghcr.io/alexradunet/bloom-os:latest
+```
 
 ### Direct bootc Install
 
