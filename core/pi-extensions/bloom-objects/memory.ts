@@ -96,7 +96,7 @@ function scopePreferenceBonus(
 	preferences?: ScopePreference[],
 ): { bonus: number; matched?: string } {
 	if (!preferences || preferences.length === 0) return { bonus: 0 };
-	let best = { bonus: 0, matched: undefined as string | undefined };
+	let best: { bonus: number; matched?: string } = { bonus: 0 };
 	for (const preference of preferences) {
 		const candidate = preferenceBonus(preference, recordScope, recordScopeValue);
 		if (candidate && candidate.bonus > best.bonus) best = candidate;

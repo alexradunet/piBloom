@@ -163,7 +163,7 @@ async function reconcileServiceStates(params: {
 		const socketDef = join(params.userSystemdDir, `${unit}.socket`);
 		const startTarget = existsSync(socketDef) ? `${unit}.socket` : `${unit}.service`;
 		if (svc.enabled) {
-			await startManifestService({ ...params, name, unit, containerDef, startTarget });
+			await startManifestService({ ...params, name, containerDef, startTarget });
 			continue;
 		}
 		await stopManifestService({ ...params, unit });

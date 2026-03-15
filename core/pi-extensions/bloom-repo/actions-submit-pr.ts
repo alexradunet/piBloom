@@ -9,6 +9,23 @@ import { getRemoteUrl } from "../../lib/repo.js";
 import { errorResult, requireConfirmation } from "../../lib/shared.js";
 import { getRepoDir } from "./actions.js";
 
+type ToolResult = ReturnType<typeof errorResult>;
+type RemoteState = {
+	upstreamUrl: string;
+	originUrl: string;
+	upstreamSlug: string;
+	originSlug: string | null;
+};
+type PreparedPrSubmission =
+	| { error: ToolResult }
+	| {
+			base: string;
+			remotes: RemoteState;
+			targetBranch: string;
+			staged: Awaited<ReturnType<typeof run>>;
+	  };
+type RemoteStateResult = { error: ToolResult } | RemoteState;
+
 async function ensureRepoReady(repoDir: string, signal: AbortSignal | undefined) {
 	const check = await run("git", ["-C", repoDir, "rev-parse", "--git-dir"], signal);
 	return check.exitCode === 0
@@ -23,7 +40,7 @@ async function ensureGithubAuth(signal: AbortSignal | undefined) {
 		: errorResult(`GitHub auth is not ready. Run gh auth login first.\n${ghAuth.stderr || ghAuth.stdout}`);
 }
 
-async function resolveRemoteState(repoDir: string, signal: AbortSignal | undefined) {
+async function resolveRemoteState(repoDir: string, signal: AbortSignal | undefined): Promise<RemoteStateResult> {
 	const upstreamUrl = await getRemoteUrl(repoDir, "upstream", signal);
 	const originUrl = await getRemoteUrl(repoDir, "origin", signal);
 	if (!upstreamUrl) return { error: errorResult("Missing upstream remote. Run bloom_repo action=configure first.") };
@@ -158,7 +175,7 @@ async function preparePrSubmission(
 		add_all?: boolean;
 	},
 	signal: AbortSignal | undefined,
-) {
+): Promise<PreparedPrSubmission> {
 	const repoError = await ensureRepoReady(repoDir, signal);
 	if (repoError) return { error: repoError };
 	const authError = await ensureGithubAuth(signal);

@@ -13,12 +13,13 @@ import { createLogger, errorResult, truncate } from "../../lib/shared.js";
 import { detectRunningServices } from "./service-io.js";
 
 const log = createLogger("bloom-services");
+type ToolResult = ReturnType<typeof errorResult>;
 
 function sleep(ms: number): Promise<void> {
 	return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-async function ensureInstalledService(name: string) {
+async function ensureInstalledService(name: string): Promise<{ containerDef: string } | { error: ToolResult }> {
 	const containerDef = join(getQuadletDir(), `bloom-${name}.container`);
 	return existsSync(containerDef)
 		? { containerDef }
