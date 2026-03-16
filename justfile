@@ -27,8 +27,8 @@ qcow2: build _require-bib-config
 		--type qcow2 --local {{ image }}
 	sudo chown -R $(id -u):$(id -g) {{ output }} || true
 
-# Generate installer ISO via bootc-image-builder (uses bootc native installer)
-iso: build _require-bib-config
+# Generate installer ISO via bootc-image-builder (uses bootc native installer, pulls from registry)
+iso: _require-bib-config
 	mkdir -p {{ output }}
 	{{ podman }} run --rm -it --privileged --pull=newer \
 		--security-opt label=type:unconfined_t \
@@ -36,7 +36,7 @@ iso: build _require-bib-config
 		-v ./{{ output }}:/output \
 		-v {{ storage }}:/var/lib/containers/storage \
 		{{ bib }} \
-		--type iso --local {{ image }}
+		--type bootc-installer --installer-payload-ref {{ remote_image }}
 	sudo chown -R $(id -u):$(id -g) {{ output }} || true
 
 # Generate production ISO from registry image
@@ -48,7 +48,7 @@ iso-production: build _require-bib-config
 		-v ./{{ output }}:/output \
 		-v {{ storage }}:/var/lib/containers/storage \
 		{{ bib }} \
-		--type iso {{ image }}
+		--type bootc-installer {{ image }}
 	sudo chown -R $(id -u):$(id -g) {{ output }} || true
 
 # Test ISO installation in QEMU (creates a temporary disk, boots ISO installer)
