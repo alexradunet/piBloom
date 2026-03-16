@@ -21,46 +21,92 @@
       piAgent = llm-agents-nix.packages.${system}.pi;
       bloomApp = pkgs.callPackage ./core/os/pkgs/bloom-app { inherit piAgent; };
 
-      # Image configuration using NixOS built-in disk-image module
-      mkImageSystem = format: nixpkgs.lib.nixosSystem {
-        inherit system;
-        modules = [
-          ./core/os/hosts/x86_64.nix
-          # Import the disk-image module from nixpkgs and set format options
-          ({ config, pkgs, ... }: {
-            imports = [ "${nixpkgs}/nixos/modules/virtualisation/disk-image.nix" ];
-            image.format = format;
-            image.efiSupport = true;
-          })
-        ];
-        specialArgs = { inherit piAgent bloomApp; };
-      };
+      specialArgs = { inherit piAgent bloomApp; };
     in {
       packages.${system} = {
         bloom-app = bloomApp;
 
-        qcow2 = (mkImageSystem "qcow2").config.system.build.image;
+        # QCOW2 disk image with EFI support
+        qcow2 = (nixpkgs.lib.nixosSystem {
+          inherit system specialArgs;
+          modules = [
+            ./core/os/hosts/x86_64.nix
+            ({ config, pkgs, lib, ... }: {
+              imports = [ "${nixpkgs}/nixos/modules/virtualisation/disk-image.nix" ];
+              
+              # Image configuration
+              image.format = "qcow2";
+              image.efiSupport = true;
+              
+              # Ensure boot loader is installed
+              boot.loader.systemd-boot.enable = true;
+              boot.loader.efi.canTouchEfiVariables = true;
+              
+              # File system configuration for the image
+              fileSystems."/" = {
+                device = "/dev/disk/by-label/nixos";
+                fsType = "ext4";
+                autoResize = true;
+              };
+              
+              fileSystems."/boot" = {
+                device = "/dev/disk/by-label/ESP";
+                fsType = "vfat";
+              };
+              
+              # Enable growpart for auto-resize on first boot
+              boot.growPartition = true;
+            })
+          ];
+        }).config.system.build.image;
 
-        raw = (mkImageSystem "raw").config.system.build.image;
+        # Raw disk image
+        raw = (nixpkgs.lib.nixosSystem {
+          inherit system specialArgs;
+          modules = [
+            ./core/os/hosts/x86_64.nix
+            ({ config, pkgs, lib, ... }: {
+              imports = [ "${nixpkgs}/nixos/modules/virtualisation/disk-image.nix" ];
+              image.format = "raw";
+              image.efiSupport = true;
+              
+              boot.loader.systemd-boot.enable = true;
+              boot.loader.efi.canTouchEfiVariables = true;
+              
+              fileSystems."/" = {
+                device = "/dev/disk/by-label/nixos";
+                fsType = "ext4";
+                autoResize = true;
+              };
+              
+              fileSystems."/boot" = {
+                device = "/dev/disk/by-label/ESP";
+                fsType = "vfat";
+              };
+              
+              boot.growPartition = true;
+            })
+          ];
+        }).config.system.build.image;
 
+        # Installer ISO
         iso = (nixpkgs.lib.nixosSystem {
-          inherit system;
+          inherit system specialArgs;
           modules = [
             ./core/os/hosts/x86_64.nix
             "${nixpkgs}/nixos/modules/installer/cd-dvd/installation-cd-minimal.nix"
           ];
-          specialArgs = { inherit piAgent bloomApp; };
         }).config.system.build.isoImage;
       };
 
+      # NixOS configuration for bare-metal install
       nixosConfigurations.bloom-x86_64 = nixpkgs.lib.nixosSystem {
-        inherit system;
+        inherit system specialArgs;
         modules = [
-          disko.nixosModules.disko
           ./core/os/hosts/x86_64.nix
+          disko.nixosModules.disko
           ./core/os/hosts/x86_64-disk.nix
         ];
-        specialArgs = { inherit piAgent bloomApp; };
       };
     };
 }
