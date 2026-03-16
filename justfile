@@ -50,7 +50,7 @@ vm:
         -smp 2 \
         -drive if=pflash,format=raw,readonly=on,file={{ ovmf }} \
         -drive if=pflash,format=raw,file="$vars" \
-        -drive file={{ output }}/disk.qcow2,format=qcow2,if=virtio \
+        -drive file={{ output }}/nixos.qcow2,format=qcow2,if=virtio \
         -netdev user,id=net0,hostfwd=tcp::2222-:22,hostfwd=tcp::5000-:5000,hostfwd=tcp::8080-:8080,hostfwd=tcp::8081-:8081,hostfwd=tcp::8888-:80 \
         -device virtio-net-pci,netdev=net0 \
         -nographic \
@@ -70,7 +70,7 @@ vm-gui:
         -smp 2 \
         -drive if=pflash,format=raw,readonly=on,file={{ ovmf }} \
         -drive if=pflash,format=raw,file="$vars" \
-        -drive file={{ output }}/disk.qcow2,format=qcow2,if=virtio \
+        -drive file={{ output }}/nixos.qcow2,format=qcow2,if=virtio \
         -netdev user,id=net0,hostfwd=tcp::2222-:22,hostfwd=tcp::5000-:5000,hostfwd=tcp::8080-:8080,hostfwd=tcp::8081-:8081,hostfwd=tcp::8888-:80 \
         -device virtio-net-pci,netdev=net0 \
         -device virtio-vga-gl \
@@ -112,7 +112,7 @@ vm-ssh:
 
 # Kill the running QEMU VM
 vm-kill:
-    pkill -f "[q]emu-system-x86_64.*disk.qcow2" || true
+    pkill -f "[q]emu-system-x86_64.*nixos.qcow2" || true
 
 # Remove build results
 clean:
