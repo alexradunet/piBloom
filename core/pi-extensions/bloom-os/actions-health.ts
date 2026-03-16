@@ -56,7 +56,7 @@ function systemSection(
 }
 
 export async function handleSystemHealth(signal: AbortSignal | undefined) {
-	const [bootc, ps, df, loadavg, meminfo, uptime] = await Promise.all([
+	const [nixos, ps, df, loadavg, meminfo, uptime] = await Promise.all([
 		run("nixos-rebuild", ["list-generations"], signal),
 		run("podman", ["ps", "--format", "json", "--filter", "name=bloom-"], signal),
 		run("df", ["-h", "/", "/var", "/home"], signal),
@@ -66,7 +66,7 @@ export async function handleSystemHealth(signal: AbortSignal | undefined) {
 	]);
 
 	const sections: string[] = [];
-	sections.push(nixosSection(bootc));
+	sections.push(nixosSection(nixos));
 	const containers = containersSection(ps);
 	if (containers) sections.push(containers);
 	const disk = diskSection(df);
