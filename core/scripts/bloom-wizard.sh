@@ -1016,10 +1016,10 @@ step_git() {
 step_ai() {
 	echo ""
 	echo "--- AI Provider ---"
-	echo "Skipping API-key setup in the wizard."
-	echo "After setup, run /login in Pi to authenticate,"
-	echo "then /model to select your preferred AI model."
-	mark_done_with ai "skipped"
+	echo "Configuring Pi to use local AI (llama-server on port 11435)..."
+	write_pi_settings_defaults "localai" "omnicoder-9b-q4_k_m"
+	echo "  Local AI configured. Pi will use OmniCoder 9B by default."
+	mark_done_with ai "localai"
 }
 
 step_services() {
