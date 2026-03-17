@@ -836,6 +836,17 @@ step_matrix() {
 		echo "Creating or resuming Pi bot account..."
 		bot_result=$(matrix_login "pi" "$bot_password" 2>/dev/null || true)
 		if [[ -z "$bot_result" ]]; then
+			# On a fresh database, continuwuity generates a one-time first-user token and
+			# blocks the configured registration_token until the first account is created.
+			# Extract that token from the journal and use it for the first registration.
+			local first_boot_token
+			first_boot_token=$(sudo journalctl -u bloom-matrix --no-pager 2>/dev/null | \
+				sed -n 's/.*registration token \([A-Za-z0-9]*\) .*/\1/p' | head -1 || true)
+			if [[ -n "$first_boot_token" ]]; then
+				bot_result=$(matrix_register "pi" "$bot_password" "$first_boot_token" 2>/dev/null || true)
+			fi
+		fi
+		if [[ -z "$bot_result" ]]; then
 			bot_result=$(matrix_register "pi" "$bot_password" "$reg_token") || {
 				echo "ERROR: Failed to register or recover @pi:bloom bot account." >&2
 				return 1
