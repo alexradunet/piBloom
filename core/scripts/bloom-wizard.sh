@@ -1038,27 +1038,45 @@ step_services() {
 		echo "  Bloom Home setup failed."
 	fi
 
-	read -rp "Install Bloom Web Chat? (FluffyChat web client for Matrix over NetBird) [y/N]: " fluffychat_answer
-	if [[ "${fluffychat_answer,,}" == "y" ]]; then
-		echo "  Installing FluffyChat..."
-		if install_service fluffychat; then
-			echo "  FluffyChat installed."
-			installed="${installed} fluffychat"
-			write_service_home_runtime "$installed" "$mesh_ip" "$mesh_fqdn"
-		else
-			echo "  FluffyChat installation failed."
+	if [[ -n "${PREFILL_SERVICES:-}" ]]; then
+		# Non-interactive path: iterate comma-separated list from prefill.env
+		IFS=',' read -ra _svc_list <<< "$PREFILL_SERVICES"
+		for _svc in "${_svc_list[@]}"; do
+			_svc="$(echo "$_svc" | xargs)"
+			[[ -z "$_svc" ]] && continue
+			echo "  Installing ${_svc}..."
+			if install_service "$_svc"; then
+				echo "  ${_svc} installed."
+				installed="${installed} ${_svc}"
+				write_service_home_runtime "$installed" "$mesh_ip" "$mesh_fqdn"
+			else
+				echo "  ${_svc} installation failed."
+			fi
+		done
+	else
+		# Interactive path: ask for each optional service
+		read -rp "Install Bloom Web Chat? (FluffyChat web client for Matrix over NetBird) [y/N]: " fluffychat_answer
+		if [[ "${fluffychat_answer,,}" == "y" ]]; then
+			echo "  Installing FluffyChat..."
+			if install_service fluffychat; then
+				echo "  FluffyChat installed."
+				installed="${installed} fluffychat"
+				write_service_home_runtime "$installed" "$mesh_ip" "$mesh_fqdn"
+			else
+				echo "  FluffyChat installation failed."
+			fi
 		fi
-	fi
 
-	read -rp "Install dufs file server? (access files from any device via WebDAV) [y/N]: " dufs_answer
-	if [[ "${dufs_answer,,}" == "y" ]]; then
-		echo "  Installing dufs..."
-		if install_service dufs; then
-			echo "  dufs installed."
-			installed="${installed} dufs"
-			write_service_home_runtime "$installed" "$mesh_ip" "$mesh_fqdn"
-		else
-			echo "  dufs installation failed."
+		read -rp "Install dufs file server? (access files from any device via WebDAV) [y/N]: " dufs_answer
+		if [[ "${dufs_answer,,}" == "y" ]]; then
+			echo "  Installing dufs..."
+			if install_service dufs; then
+				echo "  dufs installed."
+				installed="${installed} dufs"
+				write_service_home_runtime "$installed" "$mesh_ip" "$mesh_fqdn"
+			else
+				echo "  dufs installation failed."
+			fi
 		fi
 	fi
 
