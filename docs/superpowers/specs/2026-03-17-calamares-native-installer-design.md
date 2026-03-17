@@ -110,7 +110,7 @@ The `packagechooser` page (desktop environment selection) is removed. Bloom alwa
 1. `partition` — formats and creates partitions per user selection
 2. `mount` — mounts target at `/mnt`
 3. `bloom-nixos` — custom module: generates local flake + `host-config.nix` + `hardware-configuration.nix`, runs `nixos-install`
-4. `users` — sets `pi` password hash on the installed system (Calamares chpasswds the user it created; `users.conf` locks the username to `pi`)
+4. `users` — sets `pi` password hash on the installed system via `chpasswd` into the chroot. **`users.conf` must set `dont_create_user: true`** to prevent Calamares from calling `useradd` — `pi` already exists in `/mnt/etc/shadow` after `nixos-install` activated `bloom-shell.nix`. Without this flag the `users` exec module will attempt `useradd pi` and fail with "user already exists".
 5. `bloom-prefill` — Python module: reads globalstorage, writes `prefill.env` + `.gitconfig`, copies NM WiFi connections
 6. `umount` — unmounts target
 
@@ -123,6 +123,8 @@ The `packagechooser` page (desktop environment selection) is removed. Bloom alwa
 The custom Python module replaces `calamares-nixos-extensions/modules/nixos/main.py`. It reads from Calamares `globalstorage` (same API as the standard module) and produces a working Bloom installation.
 
 ### Step 1 — Hardware detection
+
+Precondition: called after the exec-phase `mount` job has mounted the target filesystem at `root_mount_point`. This ordering is guaranteed by the exec sequence (partition → mount → bloom-nixos).
 
 ```python
 subprocess.check_output(["pkexec", "nixos-generate-config", "--root", root_mount_point])
@@ -224,6 +226,8 @@ File written with `chmod 600`, owned by UID/GID 1000 (hardcoded — NixOS determ
   "defaultThinkingLevel": "medium"
 }
 ```
+`defaultThinkingLevel` is included to match the output of `write_pi_settings_defaults` in `bloom-wizard.sh` (which always writes this key). Ensures `pi-daemon.service` starts with a complete config on first boot and that the wizard recovery path's `jq` merge produces an identical result.
+
 Written at install time with `chmod 600`. This replaces `step_ai` from `bloom-wizard.sh`; `pi-daemon.service` has its required `settings.json` on first boot without any first-boot step. Parent directory `~pi/.pi/agent/` created if absent.
 
 **`/mnt/home/pi/.gitconfig`**
