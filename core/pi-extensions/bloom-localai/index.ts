@@ -11,6 +11,7 @@ import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 export default function (pi: ExtensionAPI) {
 	pi.registerProvider("localai", {
 		baseUrl: "http://localhost:11435/v1",
+		apiKey: "local",
 		api: "openai-completions",
 		models: [
 			{
