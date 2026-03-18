@@ -101,6 +101,23 @@
     "browser.startup.homepage" = "https://github.com/alexradunet/piBloom";
   };
 
+  # Explicitly load WiFi drivers — udev auto-load is unreliable on live ISOs.
+  # Covers the most common x86 mini-PC and laptop WiFi chips:
+  #   rtw89_*   — Realtek RTL8852BE/RTL8851BE (Beelink EQ14, etc.)
+  #   rtw88_*   — Realtek RTL8822BE/RTL8822CE (older Realtek PCIe)
+  #   iwlwifi   — Intel WiFi (AX200/AX201/AX210/AX211, etc.)
+  #   mt7921e   — MediaTek MT7921 PCIe (common in recent AMD/Intel laptops)
+  #   ath11k_pci — Qualcomm Wi-Fi 6 (QCA6390, WCN6855, etc.)
+  #   brcmfmac  — Broadcom FullMAC (some OEM laptops)
+  boot.kernelModules = [
+    "rtw89_8852be" "rtw89_pci"
+    "rtw88_8822be" "rtw88_8822ce" "rtw88_pci"
+    "iwlwifi"
+    "mt7921e"
+    "ath11k_pci"
+    "brcmfmac"
+  ];
+
   networking.hostName          = lib.mkDefault "bloom-installer";
   networking.networkmanager.enable = true;
   networking.wireless.enable   = lib.mkForce false;
