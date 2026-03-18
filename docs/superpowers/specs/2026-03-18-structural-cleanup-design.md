@@ -47,7 +47,7 @@ mkDiskImage = format: (nixpkgs.lib.nixosSystem {
   inherit system specialArgs;
   modules = [
     ./core/os/hosts/x86_64.nix
-    ({ ... }: {
+    ({ config, pkgs, lib, ... }: {
       imports = [ "${nixpkgs}/nixos/modules/virtualisation/disk-image.nix" ];
       image.format       = format;
       image.efiSupport   = true;
@@ -93,11 +93,13 @@ The three recipes diverge only in how QEMU is launched (headless / GUI / daemon)
 
 A dev-only helper script (not installed on the NixOS system). Accepts a `--mode` flag:
 
-| Mode | QEMU launch style |
-|---|---|
-| `headless` | `-nographic -serial mon:stdio` |
-| `gui` | `-vga virtio -display gtk` |
-| `daemon` | `nohup` background, waits up to 30s for SSH on port 2222 |
+| Mode | QEMU launch style | Notes |
+|---|---|---|
+| `headless` | `-nographic -serial mon:stdio` | Port forwards include `8888→80` |
+| `gui` | `-vga virtio -display gtk` | Port forwards include `8888→80` (aligned with `headless`/`daemon`) |
+| `daemon` | `nohup` background, `-serial file:/tmp/bloom-vm.log`, waits up to 30s for SSH on port 2222 | Serial redirected to log file so `just vm-logs` works |
+
+**Note on `vm-gui` port forward alignment:** The current `vm-gui` recipe omits `hostfwd=tcp::8888-:80` while `vm`, `vm-daemon`, and `vm-run` all include it. The unified `run-qemu.sh` will add it to `gui` mode as well — a minor intentional behaviour improvement, not a regression.
 
 Also accepts `--skip-setup` to skip the disk copy/resize/prefill steps (used by `vm-run` which boots an already-prepared disk).
 
@@ -140,7 +142,7 @@ Contains all functions used by both `bloom-wizard.sh` and `bloom-firstboot.sh`:
 - Utilities: `json_field`, `generate_password`
 - Matrix API + state: `matrix_register`, `matrix_login`, `matrix_state_get`, `matrix_state_set`, `matrix_state_clear`, `load_existing_matrix_credentials`
 - Service management: `install_service`, `install_home_infrastructure`, `write_service_home_runtime`
-- NetBird utilities: `netbird_fqdn`
+- NetBird utilities: `netbird_status_json`, `netbird_fqdn` (`netbird_fqdn` calls `netbird_status_json` internally — both must move together)
 - `step_matrix` — works non-interactively when `PREFILL_USERNAME` is set; called directly by `firstboot_matrix` in `bloom-firstboot.sh`
 
 **`bloom-wizard.sh`:**
@@ -149,16 +151,24 @@ Contains all functions used by both `bloom-wizard.sh` and `bloom-firstboot.sh`:
 - Retains `main()` orchestrator.
 
 **`bloom-firstboot.sh`:**
-- Sources `bloom-lib.sh` directly (same `dirname "$0"` → fallback pattern, but targeting `bloom-lib.sh`).
+- Sources `bloom-lib.sh` using the same two-step fallback pattern it currently uses for `bloom-wizard.sh`: try `$(dirname "$0")/bloom-lib.sh` first, then fall back to `/run/current-system/sw/bin/bloom-lib.sh`.
 - No longer sources `bloom-wizard.sh`.
 - `BLOOM_FIRSTBOOT_SOURCING` guard and `unset` removed entirely.
 
 **`core/os/pkgs/bloom-app/default.nix`:**
-- Add `bloom-lib.sh` to the install phase alongside `bloom-wizard.sh` and `bloom-firstboot.sh`.
+- Add `bloom-lib.sh` to the install phase using the Nix store-path interpolation form, matching how `bloom-wizard.sh` and `bloom-greeting.sh` are currently installed:
+  ```nix
+  install -m 755 ${../../../scripts/bloom-lib.sh} $out/bin/bloom-lib.sh
+  ```
+  Do **not** use a plain `cp core/scripts/bloom-lib.sh` — the `cleanSourceWith` filter in `default.nix` may exclude it. Store-path interpolation bypasses the filter and is the established pattern.
 
 ### Runtime path
 
-All three scripts are installed to the same directory (`$out/bin/`). The `dirname "$0"` lookup finds `bloom-lib.sh` next to the calling script in the Nix store, so no additional fallback path logic is needed beyond what already exists.
+Two scripts, two different resolution paths:
+
+**`bloom-wizard.sh`** is installed into `bloom-app`'s `$out/bin/`. When it runs, `$(dirname "$0")` resolves to that same `$out/bin/` directory. A sibling `bloom-lib.sh` installed there will be found on the first probe. Primary working path: `$(dirname "$0")/bloom-lib.sh`.
+
+**`bloom-firstboot.sh`** is **not** installed via `bloom-app`. It is referenced directly from the Nix source tree by `bloom-firstboot.nix` (`ExecStart = "${pkgs.bash}/bin/bash ${../../scripts/bloom-firstboot.sh}"`). Its `$0` resolves to a raw source store path, not `bloom-app`'s `$out/bin/`. The `$(dirname "$0")/bloom-lib.sh` probe will always fail — it is structurally dead code, included only for pattern consistency. The reliable path is the fallback: `/run/current-system/sw/bin/bloom-lib.sh`. This mirrors exactly how `bloom-firstboot.sh` currently finds `bloom-wizard.sh`.
 
 ---
 
