@@ -20,6 +20,18 @@
   # non-free) to support the widest range of WiFi cards and hardware.
   hardware.enableAllFirmware = true;
 
+  # Graphics drivers for Calamares GUI - needed for offline operation
+  # Include all common GPU drivers so the installer works on Intel, AMD, and basic VMs
+  hardware.graphics = {
+    enable = true;
+    enable32Bit = true;
+  };
+  # Software rendering fallback for problematic hardware
+  environment.variables.LIBGL_ALWAYS_SOFTWARE = "0";  # Use hardware accel when available
+  # Qt platform plugin for Calamares - ensure xcb is available
+  environment.variables.QT_QPA_PLATFORM = "xcb";
+  environment.variables.QT_QPA_PLATFORMTHEME = "gtk2";
+
   # Replace upstream calamares-nixos-extensions with our custom Bloom version.
   # Use prev.callPackage so package.nix receives the pre-overlay pkgs and the
   # pre-overlay calamares-nixos-extensions — prevents infinite recursion.
@@ -50,6 +62,9 @@
     iw            # wireless tools - iw dev, iw list
     wirelesstools # wireless-tools - iwconfig, iwpriv
     hdparm        # disk diagnostics
+    # Graphics debugging tools for offline installer issues
+    mesa-demos    # glxinfo, etc.
+    libGL         # Explicitly include libGL
   ];
 
   # Offline installation: embed flake input source trees in the squashfs.
