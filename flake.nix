@@ -128,7 +128,13 @@
             ./core/os/modules/bloom-shell.nix
             ./core/os/modules/bloom-update.nix
           ];
-          nixpkgs.config.allowUnfree = true;
+          # allowUnfree is intentionally NOT set here.
+          # nixpkgs.config cannot be set in a module that is used inside
+          # pkgs.testers.nixosTest (the test framework injects an externally
+          # created pkgs, making the NixOS module system reject nixpkgs.config
+          # overrides).  Consuming configurations set allowUnfree themselves
+          # (x86_64.nix, bloom-installed-test, and the installer-generated
+          # host-config.nix all set nixpkgs.config.allowUnfree = true).
         };
 
         # First-boot service module (included separately, not part of portable bloom module).
@@ -155,6 +161,7 @@
           self.nixosModules.bloom-firstboot
           {
             # Minimal host-config.nix equivalent (what Calamares would generate)
+            nixpkgs.config.allowUnfree = true;
             boot.loader.systemd-boot.enable = true;
             boot.loader.efi.canTouchEfiVariables = true;
             networking.hostName = "bloom";
