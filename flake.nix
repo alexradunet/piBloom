@@ -194,7 +194,28 @@
               bloom.succeed("systemctl is-active NetworkManager")
             '';
           };
-        } 
+        }
         // nixosTests;  # Merge in the new test suite
+
+      devShells.${system}.default = pkgs.mkShell {
+        packages = with pkgs; [
+          # JavaScript / TypeScript
+          nodejs
+          typescript
+          biome
+
+          # Linting & utilities
+          shellcheck
+          jq
+          curl
+          git
+          just
+        ];
+
+        shellHook = ''
+          echo "Bloom OS dev shell — run 'npm install' to set up JS dependencies"
+          echo "Tools: node $(node --version), tsc $(tsc --version), just $(just --version | head -1)"
+        '';
+      };
     };
 }
