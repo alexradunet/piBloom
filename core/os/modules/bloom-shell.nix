@@ -30,13 +30,15 @@ let
   '';
 in
 {
+  imports = [ ./bloom-options.nix ];
+
   users.users.${u} = {
     isNormalUser = true;
     group        = u;
     extraGroups  = [ "wheel" "networkmanager" ];
     home         = "/home/${u}";
     shell        = pkgs.bash;
-    # No initial password — set by the Calamares bloom_prefill module via chpasswd.
+    # No initial password — set by the Calamares installer via chpasswd.
   };
   users.groups.${u} = {};
 
