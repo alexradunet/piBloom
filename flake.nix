@@ -27,80 +27,39 @@
       bloomApp = pkgs.callPackage ./core/os/pkgs/bloom-app { inherit piAgent; };
 
       specialArgs = { inherit piAgent bloomApp; };
+
+      mkDiskImage = format: (nixpkgs.lib.nixosSystem {
+        inherit system specialArgs;
+        modules = [
+          ./core/os/hosts/x86_64.nix
+          ({ config, pkgs, lib, ... }: {
+            imports = [ "${nixpkgs}/nixos/modules/virtualisation/disk-image.nix" ];
+            image.format = format;
+            image.efiSupport = true;
+            boot.loader.systemd-boot.enable = true;
+            boot.loader.efi.canTouchEfiVariables = true;
+            fileSystems."/" = {
+              device = "/dev/disk/by-label/nixos";
+              fsType = "ext4";
+              autoResize = true;
+            };
+            fileSystems."/boot" = {
+              device = "/dev/disk/by-label/ESP";
+              fsType = "vfat";
+            };
+            boot.growPartition = true;
+            boot.initrd.availableKernelModules = [ "virtio_net" "virtio_pci" "virtio_blk" "virtio_scsi" "9p" "9pnet_virtio" ];
+            boot.kernelModules = [ "kvm-intel" "kvm-amd" ];
+          })
+        ];
+      }).config.system.build.image;
     in {
       packages.${system} = {
         bloom-app = bloomApp;
 
-        # QCOW2 disk image with EFI support
-        qcow2 = (nixpkgs.lib.nixosSystem {
-          inherit system specialArgs;
-          modules = [
-            ./core/os/hosts/x86_64.nix
-            ({ config, pkgs, lib, ... }: {
-              imports = [ "${nixpkgs}/nixos/modules/virtualisation/disk-image.nix" ];
-              
-              # Image configuration
-              image.format = "qcow2";
-              image.efiSupport = true;
-              
-              # Ensure boot loader is installed
-              boot.loader.systemd-boot.enable = true;
-              boot.loader.efi.canTouchEfiVariables = true;
-              
-              # File system configuration for the image
-              fileSystems."/" = {
-                device = "/dev/disk/by-label/nixos";
-                fsType = "ext4";
-                autoResize = true;
-              };
-              
-              fileSystems."/boot" = {
-                device = "/dev/disk/by-label/ESP";
-                fsType = "vfat";
-              };
-              
-              # Enable growpart for auto-resize on first boot
-              boot.growPartition = true;
-              
-              # Add virtio drivers for VM disk/network
-              boot.initrd.availableKernelModules = [ "virtio_net" "virtio_pci" "virtio_blk" "virtio_scsi" "9p" "9pnet_virtio" ];
-              boot.kernelModules = [ "kvm-intel" "kvm-amd" ];
-            })
-          ];
-        }).config.system.build.image;
-
-        # Raw disk image
-        raw = (nixpkgs.lib.nixosSystem {
-          inherit system specialArgs;
-          modules = [
-            ./core/os/hosts/x86_64.nix
-            ({ config, pkgs, lib, ... }: {
-              imports = [ "${nixpkgs}/nixos/modules/virtualisation/disk-image.nix" ];
-              image.format = "raw";
-              image.efiSupport = true;
-              
-              boot.loader.systemd-boot.enable = true;
-              boot.loader.efi.canTouchEfiVariables = true;
-              
-              fileSystems."/" = {
-                device = "/dev/disk/by-label/nixos";
-                fsType = "ext4";
-                autoResize = true;
-              };
-              
-              fileSystems."/boot" = {
-                device = "/dev/disk/by-label/ESP";
-                fsType = "vfat";
-              };
-              
-              boot.growPartition = true;
-              
-              # Add virtio drivers for VM disk/network
-              boot.initrd.availableKernelModules = [ "virtio_net" "virtio_pci" "virtio_blk" "virtio_scsi" "9p" "9pnet_virtio" ];
-              boot.kernelModules = [ "kvm-intel" "kvm-amd" ];
-            })
-          ];
-        }).config.system.build.image;
+        # Disk images
+        qcow2 = mkDiskImage "qcow2";
+        raw   = mkDiskImage "raw";
 
         # Graphical installer ISO (Calamares + GNOME)
         iso = (nixpkgs.lib.nixosSystem {
