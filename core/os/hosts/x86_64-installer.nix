@@ -2,7 +2,7 @@
 # Graphical installer ISO configuration for Bloom OS.
 # Uses Calamares GUI installer with GNOME desktop (auto-starts Calamares via GDM).
 # Custom calamares-nixos-extensions override provides Bloom-specific wizard pages.
-{ lib, pkgs, modulesPath, bloomApp, piAgent, ... }:
+{ lib, pkgs, modulesPath, bloomApp, piAgent, nixpkgsSrc, bloomSrc, llmAgentsSrc, ... }:
 
 {
   imports = [
@@ -37,12 +37,24 @@
     piAgent
   ];
 
+  # Offline installation: embed flake input source trees in the squashfs.
+  # During installation, `nix build --no-update-lock-file` resolves inputs via
+  # the bundled flake.lock.  Nix looks up each narHash → store path; if the
+  # path exists (because it's in the squashfs), the download is skipped.
+  # This makes installation work with no internet connection.
+  environment.etc."bloom/offline/nixpkgs".source      = nixpkgsSrc;
+  environment.etc."bloom/offline/bloom".source         = bloomSrc;
+  environment.etc."bloom/offline/llm-agents-nix".source = llmAgentsSrc;
+
   # ISO-specific settings
   isoImage.volumeID  = lib.mkDefault "BLOOM_INSTALLER";
   image.fileName     = lib.mkDefault "bloom-os-installer.iso";
 
   boot.kernelParams = [
-    "copytoram"
+    # copytoram omitted: loading the full squashfs (which now includes
+    # nixpkgs/bloom/piAgent sources for offline installation) into RAM
+    # would exhaust memory on low-RAM machines and is unnecessary for an
+    # installer that reads from USB only during initial boot.
     "quiet"
     "splash"
   ];

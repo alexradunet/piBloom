@@ -114,7 +114,17 @@
         # Graphical installer ISO (Calamares + LXQt desktop)
         # Provides GUI installation with point-and-click disk partitioning
         iso-gui = (nixpkgs.lib.nixosSystem {
-          inherit system specialArgs;
+          inherit system;
+          # specialArgs includes bloomApp and piAgent (for system packages) plus
+          # the raw flake inputs so x86_64-installer.nix can embed their source
+          # trees in the squashfs.  With those sources present in the ISO store,
+          # nix build during installation finds them by narHash and skips all
+          # GitHub downloads → fully offline installation.
+          specialArgs = specialArgs // {
+            nixpkgsSrc     = nixpkgs;
+            bloomSrc       = self;
+            llmAgentsSrc   = llm-agents-nix;
+          };
           modules = [
             ./core/os/hosts/x86_64-installer.nix
           ];
