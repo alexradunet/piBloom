@@ -14,6 +14,7 @@ This directory contains NixOS integration tests for the Bloom OS platform. These
 | `bloom-network` | Network connectivity and SSH between nodes | ~5 min | 2 |
 | `bloom-daemon` | Pi daemon Matrix agent connection | ~5 min | 2 |
 | `bloom-e2e` | Full end-to-end integration test | ~10 min | 2 |
+| `bloom-home` | Bloom Home landing page and user service | ~5 min | 1 |
 
 ## Running Tests
 
@@ -46,6 +47,7 @@ tests/nixos/
 ├── bloom-network.nix    # Network/mesh test
 ├── bloom-daemon.nix     # Pi daemon test
 ├── bloom-e2e.nix        # End-to-end integration test
+├── bloom-home.nix       # Bloom Home landing page test
 └── README.md            # This file
 ```
 

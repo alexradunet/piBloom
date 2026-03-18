@@ -22,11 +22,11 @@ describe("bloom-localai registration", () => {
 		);
 	});
 
-	it("registers omnicoder-9b-q4_k_m model", () => {
+	it("registers the seeded Qwen model", () => {
 		const [, config] = (api.registerProvider as ReturnType<typeof import("vitest").vi.fn>).mock.calls[0];
 		const model = config.models[0];
-		expect(model.id).toBe("omnicoder-9b-q4_k_m");
-		expect(model.name).toBe("OmniCoder 9B");
+		expect(model.id).toBe("Qwen3.5-4B-Q4_K_M");
+		expect(model.name).toBe("Qwen 3.5 4B");
 		expect(model.reasoning).toBe(false);
 		expect(model.input).toEqual(["text"]);
 		expect(model.cost).toEqual({ input: 0, output: 0, cacheRead: 0, cacheWrite: 0 });

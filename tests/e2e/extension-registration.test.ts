@@ -25,21 +25,6 @@ function eventNames(api: MockExtensionAPI): string[] {
 }
 
 // ---------------------------------------------------------------------------
-// bloom-audit
-// ---------------------------------------------------------------------------
-describe("bloom-audit registration", () => {
-	it("registers expected tools and events", async () => {
-		const mod = await import("../../core/pi-extensions/bloom-audit/index.js");
-		const api = createMockExtensionAPI();
-		mod.default(api as never);
-
-		expect(toolNames(api)).toEqual(["audit_review"]);
-		expect(commandNames(api)).toEqual([]);
-		expect(eventNames(api)).toEqual(expect.arrayContaining(["session_start", "tool_call", "tool_result"]));
-	});
-});
-
-// ---------------------------------------------------------------------------
 // bloom-garden
 // ---------------------------------------------------------------------------
 describe("bloom-garden registration", () => {

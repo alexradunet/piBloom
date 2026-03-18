@@ -7,8 +7,6 @@ description: Troubleshooting and recovery procedures for common Bloom system iss
 
 Use these procedures when diagnosing and recovering from common system issues. Always start with `system_health` for an overview before diving into specific playbooks.
 
-Use `audit_review` to inspect recent tool actions when you need to reconstruct what changed before an incident.
-
 ## Matrix Homeserver Issues
 
 **Symptoms**: Messages not delivered, Pi not responding in Matrix rooms.

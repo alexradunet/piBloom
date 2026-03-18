@@ -16,25 +16,16 @@ import type { BloomSessionLike } from "../contracts/session.js";
 const log = createLogger("pi-room-session");
 const BLOOM_REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 
-let sharedResourceLoaderPromise: Promise<{
-	resourceLoader: DefaultResourceLoader;
-}> | null = null;
-
 async function getSharedResources(): Promise<{
 	resourceLoader: DefaultResourceLoader;
 }> {
-	if (!sharedResourceLoaderPromise) {
-		sharedResourceLoaderPromise = (async () => {
-			const settingsManager = SettingsManager.create(BLOOM_REPO_ROOT);
-			const resourceLoader = new DefaultResourceLoader({
-				cwd: BLOOM_REPO_ROOT,
-				settingsManager,
-			});
-			await resourceLoader.reload();
-			return { resourceLoader };
-		})();
-	}
-	return sharedResourceLoaderPromise;
+	const settingsManager = SettingsManager.create(BLOOM_REPO_ROOT);
+	const resourceLoader = new DefaultResourceLoader({
+		cwd: BLOOM_REPO_ROOT,
+		settingsManager,
+	});
+	await resourceLoader.reload();
+	return { resourceLoader };
 }
 
 export interface PiRoomSessionOptions {

@@ -37,7 +37,6 @@ Default Bloom home is `~/Bloom/` unless `BLOOM_DIR` is set.
 | `~/Bloom/Objects/` | flat-file object store |
 | `~/Bloom/Episodes/` | append-only episodic memory |
 | `~/Bloom/Agents/` | multi-agent overlays (`AGENTS.md`) |
-| `~/Bloom/audit/` | audit JSONL files |
 | `~/Bloom/manifest.yaml` | declarative service manifest |
 | `~/Bloom/guardrails.yaml` | command-block policy override |
 | `~/Bloom/blueprint-versions.json` | blueprint seeding state |
@@ -77,23 +76,6 @@ Notes:
 
 - guardrails are a safety net for obvious dangerous shell patterns, not a security boundary
 - invalid regex entries in guardrail config are skipped with an error log
-
-### `bloom-audit`
-
-Purpose:
-
-- append audit events to daily JSONL logs in `~/Bloom/audit/`
-- rotate logs older than 30 days
-
-Tools:
-
-- `audit_review`
-
-Hooks:
-
-- `session_start`
-- `tool_call`
-- `tool_result`
 
 ### `bloom-localai`
 

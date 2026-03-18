@@ -50,7 +50,6 @@ Current extension families:
 | Extension | Main responsibility |
 |-----------|---------------------|
 | `bloom-persona` | persona injection, guardrails, compacted context |
-| `bloom-audit` | audit logging and review |
 | `bloom-os` | NixOS updates, container, systemd, and health workflows |
 | `bloom-repo` | repo bootstrap, sync, and PR creation |
 | `bloom-services` | service and bridge lifecycle |

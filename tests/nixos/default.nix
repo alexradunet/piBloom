@@ -8,6 +8,7 @@
 #   nix build .#checks.x86_64-linux.bloom-network
 #   nix build .#checks.x86_64-linux.bloom-daemon
 #   nix build .#checks.x86_64-linux.bloom-e2e
+#   nix build .#checks.x86_64-linux.bloom-home
 #
 # Or run all: nix flake check
 
@@ -42,4 +43,7 @@ in
   
   # End-to-end integration test
   bloom-e2e = mkTest ./bloom-e2e.nix;
+
+  # Bloom Home landing page and user service test
+  bloom-home = mkTest ./bloom-home.nix;
 }

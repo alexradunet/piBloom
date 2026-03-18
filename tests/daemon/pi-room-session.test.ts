@@ -132,4 +132,21 @@ describe("PiRoomSession", () => {
 		expect(mockDispose).toHaveBeenCalled();
 		expect(session.alive).toBe(false);
 	});
+
+	it("reloads resources for each spawned room session", async () => {
+		const { PiRoomSession } = await import("../../core/daemon/runtime/pi-room-session.js");
+		const sessionA = new PiRoomSession(options);
+		const sessionB = new PiRoomSession({
+			...options,
+			roomId: "!room-2:bloom",
+			roomAlias: "#other:bloom",
+			sanitizedAlias: "other_bloom",
+			sessionDir: mkdtempSync(join(tmpdir(), "pi-room-session-")),
+		});
+
+		await sessionA.spawn();
+		await sessionB.spawn();
+
+		expect(mockLoaderReload).toHaveBeenCalledTimes(2);
+	});
 });

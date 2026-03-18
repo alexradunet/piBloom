@@ -72,7 +72,8 @@
       "Bash(bash -n core/scripts/bloom-wizard.sh)",
       "Bash(echo \"exit: $?\")",
       "Bash(nix log:*)",
-      "Bash(wc:*)"
+      "Bash(wc:*)",
+      "Bash(nix develop:*)"
     ]
   }
 }
