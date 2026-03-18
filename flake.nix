@@ -215,9 +215,8 @@
         # Note: vitest is not in nixpkgs-unstable — use 'npm install' then 'npx vitest'
 
         shellHook = ''
-          echo "Bloom OS dev shell — run 'npm install' to set up JS dependencies"
-          echo "Tools: node $(node --version), tsc $(tsc --version), just $(just --version | head -1)"
-          echo "Testing: npm install && npx vitest"
+          echo "Bloom OS dev shell"
+          echo "Run 'npm install' to set up JS dependencies (includes vitest)"
         '';
       };
     };
