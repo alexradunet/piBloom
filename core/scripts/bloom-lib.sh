@@ -429,7 +429,7 @@ write_service_home_runtime() {
 }
 
 nginx_prefix() {
-	dirname "$(dirname "$(readlink -f "$(which nginx)")")"
+	dirname "$(dirname "$(readlink -f "$(command -v nginx)")")"
 }
 
 install_home_infrastructure() {
