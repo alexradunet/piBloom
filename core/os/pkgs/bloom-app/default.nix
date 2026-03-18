@@ -38,6 +38,7 @@ buildNpmPackage {
     cp -r services        $out/share/bloom/services
 
     mkdir -p $out/bin
+    install -m 755 ${../../../scripts/bloom-lib.sh} $out/bin/bloom-lib.sh
     install -m 755 ${../../../scripts/bloom-wizard.sh} $out/bin/bloom-wizard.sh
     install -m 755 ${../../../scripts/bloom-greeting.sh} $out/bin/bloom-greeting.sh
 
