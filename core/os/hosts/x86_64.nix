@@ -1,5 +1,5 @@
 # core/os/hosts/x86_64.nix
-{ ... }:
+{ lib, ... }:
 
 {
   imports = [
@@ -32,4 +32,10 @@
 
   time.timeZone   = "UTC";
   i18n.defaultLocale = "en_US.UTF-8";
+
+  virtualisation.vmVariant = {
+    nixpi.primaryUser = lib.mkDefault "pi";
+    nixpi.install.mode = lib.mkDefault "managed-user";
+    nixpi.createPrimaryUser = lib.mkDefault true;
+  };
 }

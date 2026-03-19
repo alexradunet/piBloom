@@ -24,8 +24,10 @@ in
   # model is present.  The model is NOT part of the NixOS closure.
   systemd.services.localai-download = {
     description = "Download nixPI AI Model";
+    wantedBy = [ "multi-user.target" ];
     after  = [ "network-online.target" ];
     wants  = [ "network-online.target" ];
+    unitConfig.OnSuccess = "localai.service";
     serviceConfig = {
       Type            = "oneshot";
       RemainAfterExit = true;
@@ -52,10 +54,10 @@ in
   # does not block multi-user.target or getty.
   systemd.services.localai = {
     description = "nixPI Local AI Inference (llama-server)";
+    wantedBy = [ "multi-user.target" ];
     after    = [ "network.target" "localai-download.service" ];
     wants    = [ "network.target" ];
-    requires = [ "localai-download.service" ];
-    wantedBy = [ "multi-user.target" ];
+    unitConfig.ConditionPathExists = "/var/lib/localai/models/${modelFileName}";
 
     serviceConfig = {
       Type             = "simple";

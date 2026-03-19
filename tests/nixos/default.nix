@@ -12,7 +12,7 @@
 #
 # Or run all: nix flake check
 
-{ pkgs, lib, piAgent, appPackage }:
+{ pkgs, lib, piAgent, appPackage, self }:
 
 let
   # Import shared helpers
@@ -22,7 +22,7 @@ let
   
   # Test function with common dependencies
   mkTest = testFile: import testFile {
-    inherit pkgs lib nixpiModules nixpiModulesNoShell piAgent appPackage mkNixpiNode mkTestFilesystems;
+    inherit pkgs lib nixpiModules nixpiModulesNoShell piAgent appPackage mkNixpiNode mkTestFilesystems self;
   };
 in
 {
@@ -49,4 +49,7 @@ in
 
   # Firewall and service exposure policy test
   nixpi-security = mkTest ./nixpi-security.nix;
+
+  # Existing-user install flow test
+  nixpi-install-flow = mkTest ./nixpi-install-flow.nix;
 }

@@ -163,6 +163,54 @@ describe("AgentSupervisor", () => {
 		await supervisor.shutdown();
 	});
 
+	it("sends an AI-generated host reply back through Pi to Matrix", async () => {
+		const host = makeAgent("host", "@pi:nixpi", "host");
+		const createdSessions: FakeSession[] = [];
+		const matrixBridge = {
+			getRoomAlias: vi.fn().mockResolvedValue("#general:nixpi"),
+			sendText: vi.fn().mockResolvedValue(undefined),
+			setTyping: vi.fn().mockResolvedValue(undefined),
+			stop: vi.fn(),
+		};
+		const supervisor = new AgentSupervisor({
+			agents: [host],
+			matrixBridge,
+			sessionBaseDir: "/tmp/sessions",
+			idleTimeoutMs: 60_000,
+			createSession: (opts) => {
+				const session = new FakeSession(opts);
+				createdSessions.push(session);
+				return session;
+			},
+		});
+
+		await supervisor.handleEnvelope({
+			roomId: "!room:nixpi",
+			eventId: "$evt-ai",
+			senderUserId: "@alex:nixpi",
+			body: "What can you do for me?",
+			senderKind: "human",
+			mentions: [],
+			timestamp: 1_000,
+		});
+
+		expect(createdSessions).toHaveLength(1);
+		expect(createdSessions[0]?.opts.agent.id).toBe("host");
+		expect(createdSessions[0]?.sentMessages[0]).toContain("[matrix: @alex:nixpi] What can you do for me?");
+
+		// Simulate the Pi session finishing with a provider-backed completion.
+		createdSessions[0]?.triggerAgentEnd("I can help manage this machine and answer your questions.");
+		await flushAsyncWork();
+
+		expect(matrixBridge.sendText).toHaveBeenCalledWith(
+			"host",
+			"!room:nixpi",
+			"I can help manage this machine and answer your questions.",
+		);
+
+		await supervisor.shutdown();
+	});
+
 	it("uses the first mention when multiple agents are mentioned", async () => {
 		const critic = makeAgent("critic", "@critic:nixpi", "mentioned");
 		const planner = makeAgent("planner", "@planner:nixpi", "mentioned");

@@ -23,6 +23,9 @@ MATRIX_HOMESERVER="http://localhost:6167"
 MATRIX_STATE_DIR="$WIZARD_STATE/matrix-state"
 
 PREFILL_FILE="$HOME/.nixpi/prefill.env"
+if [[ ! -f "$PREFILL_FILE" && -f "/mnt/host-nixpi/prefill.env" ]]; then
+    PREFILL_FILE="/mnt/host-nixpi/prefill.env"
+fi
 if [[ -f "$PREFILL_FILE" ]]; then
     # shellcheck source=/dev/null
     source "$PREFILL_FILE"

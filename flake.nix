@@ -61,6 +61,37 @@
         ];
       };
 
+      nixosConfigurations.desktop-install-test = nixpkgs.lib.nixosSystem {
+        inherit system specialArgs;
+        modules = [
+          ./core/os/hosts/x86_64.nix
+          {
+            nixpi.primaryUser = "alex";
+            nixpi.install.mode = "existing-user";
+            nixpi.createPrimaryUser = false;
+
+            users.users.alex = {
+              isNormalUser = true;
+              group = "alex";
+              extraGroups = [ "wheel" "networkmanager" ];
+              home = "/home/alex";
+              shell = pkgs.bash;
+            };
+            users.groups.alex = {};
+
+            fileSystems."/" = { device = "/dev/vda"; fsType = "ext4"; };
+            fileSystems."/boot" = { device = "/dev/vda1"; fsType = "vfat"; };
+          }
+        ];
+      };
+
+      nixosConfigurations.installer-vm = nixpkgs.lib.nixosSystem {
+        inherit system specialArgs;
+        modules = [
+          ./core/os/hosts/installer-vm.nix
+        ];
+      };
+
       # NixOS configuration that mirrors a default nixPI install
       # (nixpi + firstboot + the standard machine defaults).
       # Used by checks.config and checks.boot below.
@@ -95,9 +126,9 @@
         let
           # Import the NixOS integration test suite
           # Using pkgsUnfree so tests can use packages that require allowUnfree
-          nixosTests = import ./tests/nixos { 
+          nixosTests = import ./tests/nixos {
             pkgs = pkgsUnfree;
-            inherit lib piAgent appPackage; 
+            inherit lib piAgent appPackage self;
           };
         in
         {
@@ -105,6 +136,10 @@
           # errors, module conflicts, bad package references, and NixOS
           # evaluation failures without touching QEMU.
           config = self.nixosConfigurations.installed-test.config.system.build.toplevel;
+
+          # Regression guard for the local desktop VM path used by `just qcow2`.
+          desktop-vm = self.nixosConfigurations.desktop.config.system.build.vm;
+          installer-vm = self.nixosConfigurations.installer-vm.config.system.build.vm;
 
           # Thorough: boot the installed system in a NixOS test VM and verify
           # that critical services come up.

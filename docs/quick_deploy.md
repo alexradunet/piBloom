@@ -56,6 +56,12 @@ just vm         # Build and run VM (headless, serial console)
 just vm-gui     # Run VM with GUI display
 just vm-ssh     # SSH into running VM
 just vm-stop    # Stop the VM
+
+just vm-install         # Boot plain NixOS for install simulation
+just vm-install-gui     # Same, with GUI display
+just vm-install-daemon  # Background installer VM
+just vm-install-ssh     # SSH into installer VM as alex
+just vm-install-stop    # Stop installer VM
 ```
 
 Default forwarded ports in `just vm`:
@@ -75,6 +81,47 @@ NIXPI_VM_MEMORY_MB=8192 NIXPI_VM_CPUS=2 just vm-daemon
 ```
 
 Default operator user: your existing NixOS account. The `agent` system user owns the always-on runtime.
+
+### Full Install Simulation
+
+To simulate the real MiniPC flow in a VM, boot the plain NixOS installer simulation:
+
+```bash
+just vm-install-daemon
+just vm-install-ssh
+```
+
+Login:
+
+- user: `alex`
+- password: `cico`
+
+Inside the guest, install nixPI onto that existing user:
+
+```bash
+sudo NIXPI_PRIMARY_USER=alex nixos-rebuild switch --impure --flake /mnt/host-repo#desktop
+```
+
+That path uses the current checkout mounted read-only into the VM and exercises the real existing-user install flow.
+
+### Live NetBird E2E
+
+For a one-shot live install test that also brings the guest onto NetBird, export a setup key at runtime:
+
+```bash
+export NIXPI_TEST_NETBIRD_SETUP_KEY='...'
+just live-install-e2e
+```
+
+This flow:
+
+- boots the plain installer VM
+- installs nixPI onto the existing `alex` user
+- injects a temporary prefill file from `/tmp`
+- waits for firstboot to complete
+- verifies `agent`, broker, daemon, Matrix, and NetBird are active
+
+The key is consumed at runtime only. It is not committed to the repo and should not be hardcoded into Nix derivations.
 
 ## 🔄 OTA Updates
 

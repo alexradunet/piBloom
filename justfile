@@ -3,7 +3,9 @@
 system    := "x86_64-linux"
 flake     := "."
 host      := "desktop"
+installer_host := "installer-vm"
 output    := "result"
+installer_output := "result-installer"
 ovmf      := "/usr/share/edk2/ovmf/OVMF_CODE.fd"
 ovmf_vars := "/usr/share/edk2/ovmf/OVMF_VARS.fd"
 
@@ -54,6 +56,57 @@ vm-ssh:
     fi
     echo "Connecting to VM..."
     ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -p 2222 pi@localhost
+
+# Build a plain NixOS VM to simulate installing nixPI onto an existing machine.
+installer-qcow2:
+    nix build {{ flake }}#nixosConfigurations.{{ installer_host }}.config.system.build.vm -o {{ installer_output }}
+
+# Run the installer simulation VM (fresh build from current codebase)
+vm-install: installer-qcow2
+    NIXPI_VM_OUTPUT={{ installer_output }} NIXPI_VM_DISK_PATH=/tmp/nixpi-installer-vm-disk.qcow2 NIXPI_VM_LOG_PATH=/tmp/nixpi-installer-vm.log core/scripts/run-qemu.sh --mode headless
+
+# Run the installer simulation VM with GUI display
+vm-install-gui: installer-qcow2
+    NIXPI_VM_OUTPUT={{ installer_output }} NIXPI_VM_DISK_PATH=/tmp/nixpi-installer-vm-disk.qcow2 NIXPI_VM_LOG_PATH=/tmp/nixpi-installer-vm.log core/scripts/run-qemu.sh --mode gui
+
+# Run the installer simulation VM in background daemon mode
+vm-install-daemon: installer-qcow2
+    NIXPI_VM_OUTPUT={{ installer_output }} NIXPI_VM_DISK_PATH=/tmp/nixpi-installer-vm-disk.qcow2 NIXPI_VM_LOG_PATH=/tmp/nixpi-installer-vm.log core/scripts/run-qemu.sh --mode daemon
+
+# SSH into the installer simulation VM
+vm-install-ssh:
+    #!/usr/bin/env bash
+    if ! pgrep -f "[q]emu-system-x86_64.*nixpi-installer-vm-disk" > /dev/null; then
+        echo "No installer VM running. Start with: just vm-install-daemon"
+        exit 1
+    fi
+    echo "Connecting to installer VM..."
+    ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -p 2222 alex@localhost
+
+# Show installer VM log
+vm-install-logs:
+    tail -f /tmp/nixpi-installer-vm.log
+
+# Stop the installer simulation VM
+vm-install-stop:
+    #!/usr/bin/env bash
+    pid=$(pgrep -f "[q]emu-system-x86_64.*nixpi-installer-vm-disk" || true)
+    if [ -z "$pid" ]; then
+        echo "No installer VM running"
+        exit 0
+    fi
+    echo "Stopping installer VM (PID: $pid)..."
+    kill "$pid" 2>/dev/null || true
+    sleep 2
+    if kill -0 "$pid" 2>/dev/null; then
+        echo "Force killing installer VM..."
+        kill -9 "$pid" 2>/dev/null || true
+    fi
+    echo "Installer VM stopped"
+
+# One-shot live installer test with a real NetBird setup key supplied at runtime.
+live-install-e2e:
+    core/scripts/run-install-vm-e2e.sh
 
 # Show VM log (for vm-daemon)
 vm-logs:

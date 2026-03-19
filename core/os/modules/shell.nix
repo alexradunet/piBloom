@@ -38,7 +38,7 @@ in
   assertions = [
     {
       assertion = primaryUser != "";
-      message = "nixpi.primaryUser must resolve to a real human user. Set `NIXPI_PRIMARY_USER`, set `nixpi.primaryUser`, or define exactly one normal `/home/*` user.";
+      message = "nixpi.primaryUser must resolve to a real human user. Set `NIXPI_PRIMARY_USER` through nixpi-install.sh or set `nixpi.primaryUser` explicitly.";
     }
     {
       assertion = primaryHome != "";
@@ -67,7 +67,7 @@ in
       createHome = true;
       shell = pkgs.bash;
     })
-    (lib.mkIf (!(config.nixpi.createPrimaryUser || config.nixpi.install.mode == "managed-user") && builtins.hasAttr primaryUser config.users.users) {
+    (lib.mkIf (!(config.nixpi.createPrimaryUser || config.nixpi.install.mode == "managed-user")) {
       extraGroups = lib.mkAfter [ serviceUser ];
     })
   ];

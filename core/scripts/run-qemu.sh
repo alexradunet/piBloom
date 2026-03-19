@@ -6,14 +6,17 @@
 #   run-qemu.sh --mode headless|gui|daemon [--skip-setup]
 set -euo pipefail
 
-DISK="/tmp/nixpi-vm-disk.qcow2"
-OUTPUT="result"
+DISK="${NIXPI_VM_DISK_PATH:-/tmp/nixpi-vm-disk.qcow2}"
+OUTPUT="${NIXPI_VM_OUTPUT:-result}"
 RUNNER="${OUTPUT}/bin/run-nixos-vm"
-LOG_FILE="/tmp/nixpi-vm.log"
+LOG_FILE="${NIXPI_VM_LOG_PATH:-/tmp/nixpi-vm.log}"
 DISK_SIZE="${NIXPI_VM_DISK_SIZE:-24G}"
 MEMORY_MB="${NIXPI_VM_MEMORY_MB:-16384}"
 VM_CPUS="${NIXPI_VM_CPUS:-4}"
 MIN_DISK_BYTES=$((8 * 1024 * 1024 * 1024))
+HOST_REPO_PATH="${NIXPI_VM_HOST_REPO_PATH:-$PWD}"
+HOST_NIXPI_PATH="${NIXPI_VM_HOST_STATE_PATH:-$HOME/.nixpi}"
+PREFILL_SOURCE="${NIXPI_VM_PREFILL_SOURCE:-core/scripts/prefill.env}"
 
 mode=""
 
@@ -73,14 +76,15 @@ fi
 
 ensure_vm_disk
 
-if [[ -f "core/scripts/prefill.env" ]]; then
-    mkdir -p "$HOME/.nixpi"
-    cp "core/scripts/prefill.env" "$HOME/.nixpi/prefill.env"
-    echo "Staged core/scripts/prefill.env -> ~/.nixpi/prefill.env"
+if [[ -f "$PREFILL_SOURCE" ]]; then
+    mkdir -p "$HOST_NIXPI_PATH"
+    cp "$PREFILL_SOURCE" "$HOST_NIXPI_PATH/prefill.env"
+    echo "Staged ${PREFILL_SOURCE} -> ${HOST_NIXPI_PATH}/prefill.env"
 fi
 
 export NIX_DISK_IMAGE="$DISK"
-export QEMU_OPTS="-m ${MEMORY_MB} -smp ${VM_CPUS}"
+mkdir -p "$HOST_NIXPI_PATH"
+export QEMU_OPTS="-m ${MEMORY_MB} -smp ${VM_CPUS} -virtfs local,path=${HOST_REPO_PATH},security_model=none,readonly=on,mount_tag=host-repo -virtfs local,path=${HOST_NIXPI_PATH},security_model=none,readonly=on,mount_tag=host-nixpi"
 
 forward_specs=(
     "2222:22:required"

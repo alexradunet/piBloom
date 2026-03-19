@@ -51,8 +51,10 @@ in
         type = lib.types.bool;
         default = true;
         description = ''
-          Whether nixPI should auto-detect the primary operator account when
-          `nixpi.primaryUser` is empty.
+          Whether the installer should attempt to resolve `nixpi.primaryUser`
+          from the invoking human account when `nixpi.primaryUser` is empty.
+          The declarative module graph itself does not inspect `users.users`
+          for this, because that causes evaluation recursion in VM builds.
         '';
       };
     };
