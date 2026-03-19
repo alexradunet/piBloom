@@ -10,12 +10,45 @@ DISK="/tmp/nixpi-vm-disk.qcow2"
 OUTPUT="result"
 RUNNER="${OUTPUT}/bin/run-nixos-vm"
 LOG_FILE="/tmp/nixpi-vm.log"
+DISK_SIZE="${NIXPI_VM_DISK_SIZE:-24G}"
+MIN_DISK_BYTES=$((8 * 1024 * 1024 * 1024))
 
 mode=""
 
 host_port_busy() {
     local port="$1"
     ss -ltn "( sport = :${port} )" 2>/dev/null | tail -n +2 | grep -q .
+}
+
+create_empty_filesystem_image() {
+    local name="$1"
+    local size="$2"
+    local temp
+    temp="$(mktemp)"
+    qemu-img create -f raw "$temp" "$size" >/dev/null
+    mkfs.ext4 -L nixos "$temp" >/dev/null
+    qemu-img convert -f raw -O qcow2 "$temp" "$name"
+    rm -f "$temp"
+}
+
+ensure_vm_disk() {
+    local recreate=0
+    if [[ ! -f "$DISK" ]]; then
+        recreate=1
+    else
+        local virtual_size
+        virtual_size="$(qemu-img info --output=json "$DISK" 2>/dev/null | sed -n 's/.*"virtual-size":[[:space:]]*\([0-9][0-9]*\).*/\1/p' | head -n1)"
+        if [[ -z "$virtual_size" || "$virtual_size" -lt "$MIN_DISK_BYTES" ]]; then
+            echo "Recreating stale VM disk at ${DISK} (detected size below 8 GiB)..."
+            rm -f "$DISK"
+            recreate=1
+        fi
+    fi
+
+    if [[ "$recreate" -eq 1 ]]; then
+        echo "Creating VM disk image at ${DISK} (${DISK_SIZE})..."
+        create_empty_filesystem_image "$DISK" "$DISK_SIZE"
+    fi
 }
 
 while [[ $# -gt 0 ]]; do
@@ -35,6 +68,8 @@ if [[ ! -x "$RUNNER" ]]; then
     echo "Error: ${RUNNER} not found. Run 'just qcow2' first." >&2
     exit 1
 fi
+
+ensure_vm_disk
 
 if [[ -f "core/scripts/prefill.env" ]]; then
     mkdir -p "$HOME/.nixpi"
