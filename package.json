@@ -45,7 +45,6 @@
 		"vitest": "^4.0.18"
 	},
 	"scripts": {
-		"docs:check": "node scripts/check-docs-links.mjs",
 		"test": "vitest run",
 		"test:unit": "vitest run tests/lib tests/extensions tests/daemon",
 		"test:integration": "vitest run tests/integration",
