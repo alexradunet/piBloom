@@ -4,13 +4,9 @@
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-    disko = {
-      url = "github:nix-community/disko";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
   };
 
-  outputs = { self, nixpkgs, disko, ... }:
+  outputs = { self, nixpkgs, ... }:
     let
       system = "x86_64-linux";
       pkgs = nixpkgs.legacyPackages.${system};
@@ -24,61 +20,14 @@
       bloomApp = pkgs.callPackage ./core/os/pkgs/bloom-app { inherit piAgent; };
 
       specialArgs = { inherit piAgent bloomApp; };
-
-      mkDiskImage = format: (nixpkgs.lib.nixosSystem {
-        inherit system specialArgs;
-        modules = [
-          ./core/os/hosts/x86_64.nix
-          ({ config, pkgs, lib, ... }: {
-            imports = [ "${nixpkgs}/nixos/modules/virtualisation/disk-image.nix" ];
-            image.format = format;
-            image.efiSupport = true;
-            boot.loader.systemd-boot.enable = true;
-            boot.loader.efi.canTouchEfiVariables = true;
-            fileSystems."/" = {
-              device = "/dev/disk/by-label/nixos";
-              fsType = "ext4";
-              autoResize = true;
-            };
-            fileSystems."/boot" = {
-              device = "/dev/disk/by-label/ESP";
-              fsType = "vfat";
-            };
-            boot.growPartition = true;
-            boot.initrd.availableKernelModules = [ "virtio_net" "virtio_pci" "virtio_blk" "virtio_scsi" "9p" "9pnet_virtio" ];
-            boot.kernelModules = [ "kvm-intel" "kvm-amd" ];
-          })
-        ];
-      }).config.system.build.image;
     in {
       packages.${system} = {
         pi        = piAgent;
         bloom-app = bloomApp;
-
-        # Disk images
-        qcow2 = mkDiskImage "qcow2";
-        raw   = mkDiskImage "raw";
-
-        # Minimal USB installer ISO (offline sources + bloom-install)
-        iso = (nixpkgs.lib.nixosSystem {
-          inherit system;
-          # specialArgs includes bloomApp and piAgent (for system packages) plus
-          # the raw flake inputs so x86_64-installer.nix can embed their source
-          # trees in the squashfs. The bloom-install script then uses those
-          # local sources to drive disko-install fully offline from the USB ISO.
-          specialArgs = specialArgs // {
-            nixpkgsSrc = nixpkgs;
-            bloomSrc   = self;
-            diskoSrc   = disko;
-          };
-          modules = [
-            ./core/os/hosts/x86_64-installer.nix
-          ];
-        }).config.system.build.isoImage;
       };
 
       nixosModules = {
-        # Single composable module exporting all six Bloom feature modules.
+        # Single composable module exporting all Bloom feature modules.
         # Consuming flake.nix must provide piAgent and bloomApp in specialArgs.
         bloom = { piAgent, bloomApp, ... }: {
           imports = [
@@ -94,21 +43,20 @@
           # nixpkgs.config cannot be set in a module that is used inside
           # pkgs.testers.nixosTest (the test framework injects an externally
           # created pkgs, making the NixOS module system reject nixpkgs.config
-          # overrides).  Consuming configurations set allowUnfree themselves
-          # (x86_64.nix and bloom-installed-test set nixpkgs.config.allowUnfree = true).
+          # overrides).  Consuming configurations set allowUnfree themselves.
         };
 
         # First-boot service module (included separately, not part of portable bloom module).
         bloom-firstboot = import ./core/os/modules/bloom-firstboot.nix;
       };
 
-      # NixOS configuration for bare-metal install
-      nixosConfigurations.bloom-x86_64 = nixpkgs.lib.nixosSystem {
+      # NixOS configuration for Bloom desktop/workstation install.
+      # Use this after installing standard NixOS:
+      #   sudo nixos-rebuild switch --flake github:alexradunet/piBloom#bloom-desktop
+      nixosConfigurations.bloom-desktop = nixpkgs.lib.nixosSystem {
         inherit system specialArgs;
         modules = [
           ./core/os/hosts/x86_64.nix
-          disko.nixosModules.disko
-          ./core/os/hosts/x86_64-disk.nix
         ];
       };
 
@@ -121,8 +69,7 @@
           self.nixosModules.bloom
           self.nixosModules.bloom-firstboot
           {
-            # Default machine settings used by the USB installer when the user
-            # accepts the standard prompts.
+            # Default machine settings used by bloom-desktop.
             nixpkgs.config.allowUnfree = true;
             boot.loader.systemd-boot.enable = true;
             boot.loader.efi.canTouchEfiVariables = true;

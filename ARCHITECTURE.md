@@ -34,9 +34,10 @@ OS-level infrastructure is separate from service packages and part of the image:
 Repository structure:
 
 ```text
-core/                 Bloom core: OS image, daemon, persona, skills, built-in extensions, runtime helpers
+core/                 Bloom core: NixOS modules, daemon, persona, skills, built-in extensions, runtime helpers
+core/os/              NixOS modules and host configurations
+core/daemon/          Matrix room daemon and multi-agent runtime
 core/pi-extensions/   Pi-facing Bloom extensions
-services/             bundled service packages and template
 tests/                unit, integration, daemon, and extension tests
 docs/                 live documentation
 ```

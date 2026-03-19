@@ -35,13 +35,28 @@ Current platform capabilities:
 - proactive daemon jobs for heartbeat and simple cron-style scheduled turns
 - a first-boot flow split between a bash wizard and a Pi-guided persona step
 
+## 🚀 Quick Start
+
+Install Bloom on a standard NixOS system:
+
+```bash
+# 1. Install NixOS from the official ISO: https://nixos.org/download.html
+# 2. After first boot, switch to the Bloom flake:
+sudo nixos-rebuild switch --flake github:alexradunet/piBloom#bloom-desktop
+
+# 3. Complete the first-boot wizard (runs automatically on login)
+```
+
+See [docs/quick_deploy.md](docs/quick_deploy.md) for detailed instructions.
+
 ## 🧭 Start Here
 
 Choose the entry point that matches your job:
 
-- Maintainers: [ARCHITECTURE.md](ARCHITECTURE.md), [AGENTS.md](AGENTS.md), and [docs/README.md](docs/README.md)
-- Operators: [docs/pibloom-setup.md](docs/pibloom-setup.md), [docs/quick_deploy.md](docs/quick_deploy.md), and [docs/live-testing-checklist.md](docs/live-testing-checklist.md)
-- Built-in service behavior: [docs/service-architecture.md](docs/service-architecture.md)
+- **Installing Bloom**: [docs/quick_deploy.md](docs/quick_deploy.md), [docs/pibloom-setup.md](docs/pibloom-setup.md)
+- **Maintainers**: [ARCHITECTURE.md](ARCHITECTURE.md), [AGENTS.md](AGENTS.md), and [docs/README.md](docs/README.md)
+- **Operators**: [docs/pibloom-setup.md](docs/pibloom-setup.md), [docs/quick_deploy.md](docs/quick_deploy.md), and [docs/live-testing-checklist.md](docs/live-testing-checklist.md)
+- **Built-in service behavior**: [docs/service-architecture.md](docs/service-architecture.md)
 
 ## 💻 Default Install
 
@@ -60,7 +75,9 @@ Installed by default:
 
 | Path | Purpose |
 |------|---------|
-| `core/` | Bloom core: OS image, daemon, persona, skills, built-in extensions, and shared runtime code |
+| `core/` | Bloom core: NixOS modules, daemon, persona, skills, built-in extensions, and shared runtime code |
+| `core/os/` | NixOS modules and host configurations |
+| `core/daemon/` | Matrix room daemon and multi-agent runtime |
 | `core/pi-extensions/` | Pi-facing Bloom extensions shipped in the default runtime |
 | `tests/` | unit, integration, daemon, and extension tests |
 | `docs/` | live project documentation |

@@ -1,47 +1,113 @@
 # core/os/modules/bloom-matrix.nix
 { pkgs, lib, ... }:
 
-{
-  environment.etc."bloom/matrix.toml".text = ''
-    [global]
-    server_name = "bloom"
-    database_path = "/var/lib/continuwuity"
-    port = [6167]
-    address = "0.0.0.0"
-    allow_federation = false
-    allow_registration = true
-    # registration_token is injected at startup via -O flag (see ExecStart)
-    max_request_size = 20000000
-    allow_check_for_updates = false
+let
+  # Generate a registration shared secret on first run
+  synapseBootstrap = pkgs.writeShellScript "bloom-synapse-bootstrap" ''
+    set -eu
+    TOKEN_FILE=/var/lib/matrix-synapse/registration_shared_secret
+    if [ ! -f "$TOKEN_FILE" ]; then
+      mkdir -p /var/lib/matrix-synapse
+      openssl rand -hex 32 > "$TOKEN_FILE"
+      chmod 640 "$TOKEN_FILE"
+      chown matrix-synapse:matrix-synapse "$TOKEN_FILE"
+    fi
   '';
+in
 
-  systemd.services.bloom-matrix = {
-    description = "Bloom Matrix Homeserver (Continuwuity)";
-    after    = [ "network-online.target" ];
-    wants    = [ "network-online.target" ];
-    wantedBy = [ "multi-user.target" ];
+{
+  services.matrix-synapse = {
+    enable = true;
+    
+    settings = {
+      server_name = "bloom";
+      public_baseurl = "http://localhost:6167";
+      
+      listeners = [
+        {
+          port = 6167;
+          bind_addresses = [ "0.0.0.0" ];
+          type = "http";
+          tls = false;
+          x_forwarded = false;
+          resources = [
+            {
+              names = [ "client" "federation" ];
+              compress = true;
+            }
+          ];
+        }
+      ];
+      
+      # Use SQLite for simplicity (suitable for single-user/embedded use)
+      database.name = "sqlite3";
+      database.args = {
+        database = "/var/lib/matrix-synapse/homeserver.db";
+      };
+      
+      # Registration settings
+      enable_registration = true;
+      
+      # Don't require email verification
+      registrations_require_3pid = [];
+      
+      # Disable federation (private homeserver)
+      federation_domain_whitelist = [];
+      
+      # Limit request size for file uploads
+      max_upload_size = "20M";
+      
+      # Disable presence (reduces resource usage)
+      use_presence = false;
+      
+      # URL preview settings
+      url_preview_enabled = false;
+    };
+    
+    # Extra configuration lines for registration shared secret
+    extraConfigFiles = [];
+  };
 
-    path = [ pkgs.openssl pkgs.bash ];
-
+  # Override the systemd service to add bootstrap script and ensure proper ordering
+  systemd.services.matrix-synapse = {
     serviceConfig = {
-      Type        = "simple";
-      ExecStart   = pkgs.writeShellScript "bloom-matrix-start" ''
-        TOKEN_FILE=/var/lib/continuwuity/registration_token
-        if [ ! -f "$TOKEN_FILE" ]; then
-          openssl rand -hex 32 > "$TOKEN_FILE"
-          chmod 640 "$TOKEN_FILE"
-        fi
-        TOKEN=$(cat "$TOKEN_FILE")
-        exec ${pkgs.matrix-continuwuity}/bin/conduwuit \
-          -c /etc/bloom/matrix.toml \
-          -O "registration_token=\"''${TOKEN}\""
-      '';
-      Environment = "CONTINUWUITY_CONFIG=/etc/bloom/matrix.toml";
-      Restart     = "on-failure";
-      RestartSec  = 5;
-      DynamicUser = true;
-      StateDirectory   = "continuwuity";
-      RuntimeDirectory = "continuwuity";
+      # Ensure data directory exists with proper permissions
+      StateDirectory = "matrix-synapse";
+      StateDirectoryMode = "0750";
+    };
+    preStart = ''
+      # Bootstrap registration shared secret if not exists
+      TOKEN_FILE=/var/lib/matrix-synapse/registration_shared_secret
+      if [ ! -f "$TOKEN_FILE" ]; then
+        mkdir -p /var/lib/matrix-synapse
+        ${pkgs.openssl}/bin/openssl rand -hex 32 > "$TOKEN_FILE"
+        chmod 640 "$TOKEN_FILE"
+        chown matrix-synapse:matrix-synapse "$TOKEN_FILE" 2>/dev/null || true
+      fi
+      
+      # Append the registration_shared_secret to the config
+      if [ -f "$TOKEN_FILE" ]; then
+        SECRET=$(cat "$TOKEN_FILE")
+        echo "registration_shared_secret: \"$SECRET\"" > /var/lib/matrix-synapse/extra.yaml
+        chmod 640 /var/lib/matrix-synapse/extra.yaml
+        chown matrix-synapse:matrix-synapse /var/lib/matrix-synapse/extra.yaml 2>/dev/null || true
+      fi
+    '';
+  };
+
+  # Create an alias service for backward compatibility
+  systemd.services.bloom-matrix = {
+    description = "Bloom Matrix Homeserver (Synapse) - alias for matrix-synapse";
+    after = [ "matrix-synapse.service" ];
+    bindsTo = [ "matrix-synapse.service" ];
+    wantedBy = [ "multi-user.target" ];
+    serviceConfig = {
+      Type = "oneshot";
+      RemainAfterExit = true;
+      ExecStart = "${pkgs.coreutils}/bin/true";
     };
   };
+
+  # Ensure openssl is available for bootstrap
+  environment.systemPackages = [ pkgs.openssl ];
 }

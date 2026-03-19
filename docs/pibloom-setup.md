@@ -4,6 +4,17 @@
 
 Audience: operators bringing up a fresh Bloom host.
 
+## Prerequisites
+
+Before first-boot setup, you need a NixOS system with Bloom applied:
+
+1. Install NixOS using the [official ISO](https://nixos.org/download.html)
+2. After first boot, apply the Bloom configuration:
+   ```bash
+   sudo nixos-rebuild switch --flake github:alexradunet/piBloom#bloom-desktop
+   ```
+3. Reboot or log out/in, then the first-boot wizard will start automatically
+
 > 🛡️ **Security Note: NetBird is Mandatory**
 >
 > NetBird is the network security boundary for all Bloom services. The firewall
