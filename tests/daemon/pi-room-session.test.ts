@@ -60,7 +60,7 @@ describe("PiRoomSession", () => {
 		options = {
 			roomId: "!room:nixpi",
 			roomAlias: "#general:nixpi",
-			sanitizedAlias: "general_bloom",
+			sanitizedAlias: "general_nixpi",
 			sessionDir,
 			idleTimeoutMs: 60_000,
 			onAgentEnd: vi.fn(),
@@ -140,7 +140,7 @@ describe("PiRoomSession", () => {
 			...options,
 			roomId: "!room-2:nixpi",
 			roomAlias: "#other:nixpi",
-			sanitizedAlias: "other_bloom",
+			sanitizedAlias: "other_nixpi",
 			sessionDir: mkdtempSync(join(tmpdir(), "pi-room-session-")),
 		});
 

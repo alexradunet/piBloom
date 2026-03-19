@@ -3,7 +3,7 @@
 
 let
   u = config.nixpi.username;
-  bloomHomeBootstrap = pkgs.writeShellScript "nixpi-home-bootstrap" ''
+  nixpiHomeBootstrap = pkgs.writeShellScript "nixpi-home-bootstrap" ''
     set -eu
     mkdir -p "$HOME/.config/nixpi/home" "$HOME/.config/nixpi/home/tmp"
     if [ ! -f "$HOME/.config/nixpi/home/index.html" ]; then
@@ -112,7 +112,7 @@ in
       after = [ "network-online.target" ];
       wants = [ "network-online.target" ];
       serviceConfig = {
-        ExecStartPre = "${bloomHomeBootstrap}";
+        ExecStartPre = "${nixpiHomeBootstrap}";
         ExecStart = "${pkgs.nginx}/bin/nginx -c %h/.config/nixpi/home/nginx.conf";
         Restart = "on-failure";
         RestartSec = 10;

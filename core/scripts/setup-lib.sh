@@ -633,7 +633,7 @@ step_matrix() {
 		>/dev/null 2>&1 || echo "  (room may already exist)"
 
 	# User joins the room
-	curl -sf -X POST "${MATRIX_HOMESERVER}/_matrix/client/v3/join/%23general%3Abloom" \
+	curl -sf -X POST "${MATRIX_HOMESERVER}/_matrix/client/v3/join/%23general%3Anixpi" \
 		-H "Authorization: Bearer ${user_token}" \
 		-H "Content-Type: application/json" \
 		-d '{}' \
