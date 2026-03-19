@@ -627,7 +627,7 @@ describe("/bloom command handler", () => {
 		const handler = getCommandHandler();
 		const ctx = createMockExtensionContext({ hasUI: true });
 		await handler("init", ctx);
-		for (const dir of ["Persona", "Skills", "Evolutions", "audit"]) {
+		for (const dir of ["Persona", "Skills", "Evolutions", "Objects", "Episodes", "Agents", "audit"]) {
 			expect(fs.existsSync(path.join(temp.gardenDir, dir))).toBe(true);
 		}
 	});

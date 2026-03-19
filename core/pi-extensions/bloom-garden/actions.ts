@@ -346,7 +346,7 @@ export function loadAgentInfos(bloomDir: string): AgentInfo[] {
 export function handleMentionAgent(
 	bloomDir: string,
 	params: { agent_id: string; message: string },
-): { content: Array<{ type: "text"; text: string }>; details: Record<string, unknown> } {
+): { content: Array<{ type: "text"; text: string }>; details: Record<string, unknown>; isError?: boolean } {
 	const agents = loadAgentInfos(bloomDir);
 	const target = agents.find((a) => a.id === params.agent_id);
 
@@ -361,7 +361,7 @@ export function handleMentionAgent(
 			],
 			details: { availableAgents: agents.map((a) => a.id) },
 			isError: true,
-		} as unknown as { content: Array<{ type: "text"; text: string }>; details: Record<string, unknown> };
+		};
 	}
 
 	const formattedMessage = `${target.userId} ${params.message}`;
