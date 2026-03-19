@@ -188,32 +188,35 @@ run_install() {
     echo "Preparing disk configuration..."
     
     # Generate a disk config with the correct device
+    # Note: disko CLI expects { disko.devices = ... } format
     cat > "$WORKDIR/disk-config.nix" <<EOF
-{
-  disk = {
-    main = {
-      type = "disk";
-      device = "${TARGET_DISK}";
-      content = {
-        type = "gpt";
-        partitions = {
-          ESP = {
-            size = "512M";
-            type = "EF00";
-            content = {
-              type = "filesystem";
-              format = "vfat";
-              mountpoint = "/boot";
-              mountOptions = [ "defaults" ];
+{ lib, ... }: {
+  disko.devices = {
+    disk = {
+      main = {
+        type = "disk";
+        device = "${TARGET_DISK}";
+        content = {
+          type = "gpt";
+          partitions = {
+            ESP = {
+              size = "512M";
+              type = "EF00";
+              content = {
+                type = "filesystem";
+                format = "vfat";
+                mountpoint = "/boot";
+                mountOptions = [ "defaults" ];
+              };
             };
-          };
-          root = {
-            size = "100%";
-            content = {
-              type = "filesystem";
-              format = "btrfs";
-              mountpoint = "/";
-              mountOptions = [ "defaults" "compress=zstd" ];
+            root = {
+              size = "100%";
+              content = {
+                type = "filesystem";
+                format = "btrfs";
+                mountpoint = "/";
+                mountOptions = [ "defaults" "compress=zstd" ];
+              };
             };
           };
         };
