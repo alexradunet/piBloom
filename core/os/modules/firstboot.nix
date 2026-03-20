@@ -23,6 +23,7 @@ let
   bootstrapMatrixJournal = bootstrapAction "matrix-journal" "/run/current-system/sw/bin/journalctl -u matrix-synapse --no-pager";
   bootstrapNetbird = bootstrapAction "netbird-up" "/run/current-system/sw/bin/netbird up";
   bootstrapNetbirdSystemctl = bootstrapAction "netbird-systemctl" "/run/current-system/sw/bin/systemctl";
+  bootstrapMatrixSystemctl = bootstrapAction "matrix-systemctl" "/run/current-system/sw/bin/systemctl";
   bootstrapSshdSystemctl = bootstrapAction "sshd-systemctl" "/run/current-system/sw/bin/systemctl";
   bootstrapPasswd = bootstrapAction "passwd" "/run/current-system/sw/bin/passwd ${primaryUser}";
   bootstrapChpasswd = bootstrapAction "chpasswd" "/run/current-system/sw/bin/chpasswd";
@@ -36,6 +37,7 @@ in
     bootstrapMatrixJournal
     bootstrapNetbird
     bootstrapNetbirdSystemctl
+    bootstrapMatrixSystemctl
     bootstrapSshdSystemctl
     bootstrapPasswd
     bootstrapChpasswd
@@ -49,6 +51,7 @@ in
       { command = "/run/current-system/sw/bin/nixpi-bootstrap-matrix-journal"; options = [ "NOPASSWD" ]; }
       { command = "/run/current-system/sw/bin/nixpi-bootstrap-netbird-up --setup-key *"; options = [ "NOPASSWD" ]; }
       { command = "/run/current-system/sw/bin/nixpi-bootstrap-netbird-systemctl * netbird.service"; options = [ "NOPASSWD" ]; }
+      { command = "/run/current-system/sw/bin/nixpi-bootstrap-matrix-systemctl try-restart matrix-synapse.service"; options = [ "NOPASSWD" ]; }
       { command = "/run/current-system/sw/bin/nixpi-bootstrap-sshd-systemctl stop sshd.service"; options = [ "NOPASSWD" ]; }
       { command = "/run/current-system/sw/bin/nixpi-bootstrap-passwd"; options = [ "NOPASSWD" ]; }
       { command = "/run/current-system/sw/bin/nixpi-bootstrap-chpasswd"; options = [ "NOPASSWD" ]; }

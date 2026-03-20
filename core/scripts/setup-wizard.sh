@@ -456,7 +456,7 @@ finalize() {
 	if [[ "${NIXPI_KEEP_SSH_AFTER_SETUP:-0}" != "1" ]]; then
 		root_command nixpi-bootstrap-sshd-systemctl stop sshd.service || echo "warning: failed to stop sshd.service" >&2
 	fi
-	root_command systemctl try-restart matrix-synapse.service || echo "warning: failed to restart matrix-synapse.service" >&2
+	root_command nixpi-bootstrap-matrix-systemctl try-restart matrix-synapse.service || echo "warning: failed to restart matrix-synapse.service" >&2
 	if ! root_command nixpi-bootstrap-brokerctl systemd enable-now nixpi-daemon.service; then
 		echo "warning: failed to enable nixpi-daemon.service during wizard finalization" >&2
 	fi
