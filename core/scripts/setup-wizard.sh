@@ -153,14 +153,14 @@ step_password() {
 	echo "Welcome! Let's set up a password for your account."
 	echo ""
 	if [[ -n "${PREFILL_PRIMARY_PASSWORD:-}" ]]; then
-		echo "$(whoami):${PREFILL_PRIMARY_PASSWORD}" | sudo chpasswd
+		echo "$(whoami):${PREFILL_PRIMARY_PASSWORD}" | sudo nixpi-bootstrap-chpasswd
 		echo "Password set."
 	else
 		# Always use sudo to bypass current password check on first boot.
 		# The pi user has no initial password, but 'passwd' alone may still
 		# prompt for one depending on PAM configuration. Using sudo allows
 		# root to set the password directly.
-		while ! sudo passwd "$(whoami)"; do
+		while ! sudo nixpi-bootstrap-passwd; do
 			echo ""
 			echo "Password setup failed. Please try again."
 		done
@@ -243,7 +243,7 @@ step_netbird() {
 	# Ensure netbird daemon is running before attempting connection
 	if ! systemctl is-active --quiet netbird.service; then
 		echo "Starting NetBird daemon..."
-		sudo systemctl start netbird.service 2>/dev/null || true
+		sudo nixpi-bootstrap-netbird-systemctl start netbird.service 2>/dev/null || true
 	fi
 	local wait_count=0
 	while [[ ! -S /var/run/netbird/sock ]]; do
@@ -268,7 +268,7 @@ step_netbird() {
 		fi
 
 		echo "Connecting to NetBird..."
-		if sudo netbird up --setup-key "$setup_key" 2>&1; then
+		if sudo nixpi-bootstrap-netbird-up --setup-key "$setup_key" 2>&1; then
 			# Wait a moment for connection to establish
 			sleep 3
 			local status
@@ -338,10 +338,10 @@ step_services() {
 	else
 		echo "  nixPI Home setup failed."
 	fi
-    root_command nixpi-brokerctl systemd restart nixpi-home.service || echo "  home restart failed."
-    root_command nixpi-brokerctl systemd restart nixpi-chat.service || echo "  chat restart failed."
-    root_command nixpi-brokerctl systemd restart nixpi-files.service || echo "  files restart failed."
-    root_command nixpi-brokerctl systemd restart nixpi-code.service || echo "  code-server restart failed."
+    root_command nixpi-bootstrap-brokerctl systemd restart nixpi-home.service || echo "  home restart failed."
+    root_command nixpi-bootstrap-brokerctl systemd restart nixpi-chat.service || echo "  chat restart failed."
+    root_command nixpi-bootstrap-brokerctl systemd restart nixpi-files.service || echo "  files restart failed."
+    root_command nixpi-bootstrap-brokerctl systemd restart nixpi-code.service || echo "  code-server restart failed."
 	write_service_home_runtime "$mesh_ip" "$mesh_fqdn"
 	mark_done_with services "fluffychat dufs code-server"
 }
@@ -362,7 +362,7 @@ step_bootc_switch() {
 
 finalize() {
 	touch "$SETUP_COMPLETE"
-    if ! root_command nixpi-brokerctl systemd enable-now pi-daemon.service; then
+    if ! root_command nixpi-bootstrap-brokerctl systemd enable-now pi-daemon.service; then
         echo "warning: failed to enable pi-daemon.service during wizard finalization" >&2
     fi
 

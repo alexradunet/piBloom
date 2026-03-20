@@ -90,8 +90,17 @@ pkgs.testers.runNixOSTest {
     machine.succeed("systemctl is-enabled nixpi-broker.service")
     machine.succeed("systemctl is-active nixpi-broker.service")
     machine.succeed("sshd -T | grep -q '^passwordauthentication no$'")
+    machine.succeed("sshd -T | grep -q '^permitrootlogin no$'")
+    machine.succeed("sshd -T | grep -q '^maxauthtries 3$'")
+    machine.succeed("sshd -T | grep -q '^allowtcpforwarding no$'")
+    machine.succeed("sshd -T | grep -q '^allowagentforwarding no$'")
+    machine.succeed("sshd -T | grep -q '^x11forwarding no$'")
+    machine.succeed("sshd -T | grep -q '^clientaliveinterval 300$'")
+    machine.succeed("sshd -T | grep -q '^clientalivecountmax 2$'")
+    machine.succeed("sshd -T | grep -q '^allowusers alex$'")
     machine.succeed("systemctl cat nixpi-firstboot.service >/dev/null")
     machine.succeed("systemctl show -p UnitFileState --value nixpi-firstboot.service | grep -Eq 'enabled|linked'")
+    machine.succeed("systemctl is-enabled fail2ban.service")
 
     print("Existing-user install flow passed.")
   '';

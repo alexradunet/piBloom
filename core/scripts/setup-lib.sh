@@ -472,7 +472,7 @@ pid ${NIXPI_CONFIG}/home/nginx.pid;
 	}
 	NGINX
 
-	root_command nixpi-brokerctl systemd restart nixpi-home.service
+	root_command nixpi-bootstrap-brokerctl systemd restart nixpi-home.service
 }
 
 write_fluffychat_runtime_config() {

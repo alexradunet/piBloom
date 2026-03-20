@@ -76,9 +76,12 @@ is fully exposed to the local network.
 ## 🔐 SSH Access
 
 By default:
-- Password authentication is enabled for initial setup
-- Public key authentication is **enabled** (you should provision keys after first boot)
+- Password authentication is disabled
+- Public key authentication is enabled
 - Root login is disabled
+- SSH is intended as a bootstrap path and is stopped automatically after
+  `~/.nixpi/.setup-complete` unless `nixpi.bootstrap.keepSshAfterSetup = true`
+- SSH logins are restricted to the primary operator account by default
 
 Recommended hardening after first boot:
 ```bash
@@ -88,7 +91,7 @@ chmod 700 ~/.ssh
 echo "ssh-ed25519 AAAAC3... your-key" >> ~/.ssh/authorized_keys
 chmod 600 ~/.ssh/authorized_keys
 
-# Then disable password auth (requires flake change) or rely on key-only
+# Then keep SSH disabled post-setup or explicitly opt back in if you need it
 ```
 
 ## 🤖 Agent Privilege Boundary
@@ -111,6 +114,9 @@ sudo nixpi-brokerctl grant-admin 30m
 sudo nixpi-brokerctl status
 sudo nixpi-brokerctl revoke-admin
 ```
+
+Bootstrap-only passwordless sudo is also gated on setup state. The narrow
+first-boot helper commands stop working once `~/.nixpi/.setup-complete` exists.
 
 ---
 

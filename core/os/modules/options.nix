@@ -82,12 +82,29 @@ in
     };
 
     security = {
+      fail2ban.enable = lib.mkOption {
+        type = lib.types.bool;
+        default = true;
+        description = ''
+          Whether fail2ban should protect SSH against brute-force attempts.
+        '';
+      };
+
       ssh.passwordAuthentication = lib.mkOption {
         type = lib.types.bool;
         default = false;
         description = ''
           Whether SSH password authentication is enabled for the main nixPI
           host configuration.
+        '';
+      };
+
+      ssh.allowUsers = lib.mkOption {
+        type = lib.types.listOf lib.types.str;
+        default = [ ];
+        description = ''
+          Explicit SSH login allowlist. When empty, nixPI restricts SSH to the
+          resolved primary operator account when one is available.
         '';
       };
 
@@ -119,6 +136,15 @@ in
     };
 
     bootstrap = {
+      keepSshAfterSetup = lib.mkOption {
+        type = lib.types.bool;
+        default = false;
+        description = ''
+          Whether SSH should remain reachable after first-boot setup
+          completes. By default SSH is treated as a bootstrap-only path.
+        '';
+      };
+
       passwordlessSudo.enable = lib.mkOption {
         type = lib.types.bool;
         default = true;
@@ -243,6 +269,15 @@ in
         default = true;
         description = ''
           Whether Matrix account registration is enabled.
+        '';
+      };
+
+      keepRegistrationAfterSetup = lib.mkOption {
+        type = lib.types.bool;
+        default = false;
+        description = ''
+          Whether Matrix account registration should remain enabled after the
+          first-boot setup completes.
         '';
       };
 

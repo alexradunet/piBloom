@@ -2,8 +2,11 @@
 { pkgs, config, lib, ... }:
 
 let
+  resolved = import ../lib/resolve-primary-user.nix { inherit lib config; };
+  primaryHome = resolved.resolvedPrimaryHome;
   stateDir = config.nixpi.stateDir;
   secretDir = "${stateDir}/secrets";
+  setupCompleteFile = "${primaryHome}/.nixpi/.setup-complete";
   matrixBindsLocally =
     config.nixpi.matrix.bindAddress == "127.0.0.1"
     || config.nixpi.matrix.bindAddress == "::1"
@@ -68,7 +71,7 @@ in
       
       # Registration settings
       enable_registration = config.nixpi.matrix.enableRegistration;
-      enable_registration_without_verification = true;
+      enable_registration_without_verification = config.nixpi.matrix.enableRegistration;
       suppress_key_server_warning = true;
       
       # Don't require email verification
@@ -119,9 +122,23 @@ in
       if [ -f "$TOKEN_FILE" ] && [ -f "$MACAROON_FILE" ]; then
         SECRET=$(cat "$TOKEN_FILE")
         MACAROON_SECRET=$(cat "$MACAROON_FILE")
+        ENABLE_REGISTRATION="${if config.nixpi.matrix.keepRegistrationAfterSetup then (if config.nixpi.matrix.enableRegistration then "true" else "false") else "dynamic"}"
+        ENABLE_REGISTRATION_WITHOUT_VERIFICATION="false"
+        if [ "$ENABLE_REGISTRATION" = "dynamic" ]; then
+          if [ -f "${setupCompleteFile}" ]; then
+            ENABLE_REGISTRATION="false"
+          else
+            ENABLE_REGISTRATION="${if config.nixpi.matrix.enableRegistration then "true" else "false"}"
+          fi
+        fi
+        if [ "$ENABLE_REGISTRATION" = "true" ]; then
+          ENABLE_REGISTRATION_WITHOUT_VERIFICATION="${if config.nixpi.matrix.enableRegistration then "true" else "false"}"
+        fi
         cat > /var/lib/matrix-synapse/extra.yaml <<EOF
 registration_shared_secret: "$SECRET"
 macaroon_secret_key: "$MACAROON_SECRET"
+enable_registration: $ENABLE_REGISTRATION
+enable_registration_without_verification: $ENABLE_REGISTRATION_WITHOUT_VERIFICATION
 EOF
         chown root:matrix-synapse /var/lib/matrix-synapse/extra.yaml
         chmod 0640 /var/lib/matrix-synapse/extra.yaml

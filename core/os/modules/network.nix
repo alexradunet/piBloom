@@ -7,8 +7,14 @@ let
   primaryHome = resolved.resolvedPrimaryHome;
   serviceUser = config.nixpi.serviceUser;
   stateDir = config.nixpi.stateDir;
+  setupCompleteFile = "${primaryHome}/.nixpi/.setup-complete";
   cfg = config.nixpi.services;
   securityCfg = config.nixpi.security;
+  sshAllowUsers =
+    if securityCfg.ssh.allowUsers != [ ] then
+      securityCfg.ssh.allowUsers
+    else
+      lib.optional (primaryUser != "") primaryUser;
   bindsLocally =
     cfg.bindAddress == "127.0.0.1"
     || cfg.bindAddress == "::1"
@@ -46,10 +52,23 @@ in
     services.openssh = {
       enable = true;
       settings = {
+        AllowAgentForwarding = false;
+        AllowTcpForwarding = false;
+        ClientAliveCountMax = 2;
+        ClientAliveInterval = 300;
+        LoginGraceTime = 30;
+        MaxAuthTries = 3;
         PasswordAuthentication = securityCfg.ssh.passwordAuthentication;
         PubkeyAuthentication = "yes";
         PermitRootLogin = "no";
+        X11Forwarding = false;
       };
+      extraConfig = lib.optionalString (sshAllowUsers != [ ]) ''
+        AllowUsers ${lib.concatStringsSep " " sshAllowUsers}
+      '';
+    };
+    systemd.services.sshd.unitConfig = lib.mkIf (!config.nixpi.bootstrap.keepSshAfterSetup) {
+      ConditionPathExists = "!${setupCompleteFile}";
     };
 
     networking.firewall.enable = true;
@@ -58,6 +77,17 @@ in
       "${securityCfg.trustedInterface}".allowedTCPPorts = exposedPorts;
     };
     networking.networkmanager.enable = true;
+
+    services.fail2ban = lib.mkIf securityCfg.fail2ban.enable {
+      enable = true;
+      jails.sshd.settings = {
+        enabled = true;
+        backend = "systemd";
+        bantime = "1h";
+        findtime = "10m";
+        maxretry = 5;
+      };
+    };
 
     environment.etc."nixpi/fluffychat-web".source = pkgs.fluffychat-web;
 
@@ -78,7 +108,7 @@ in
       chromium
       netbird
       dufs nginx code-server
-    ];
+    ] ++ lib.optionals securityCfg.fail2ban.enable [ pkgs.fail2ban ];
 
     system.services = lib.mkMerge [
       (lib.mkIf cfg.home.enable {

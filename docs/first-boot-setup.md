@@ -61,6 +61,15 @@ Built-in services provisioned by the wizard:
 - `dufs` WebDAV file server on port `5000`
 - `code-server` on port `8443`
 
+Bootstrap security lifecycle:
+
+- SSH on port `22` is available during bootstrap
+- once `~/.nixpi/.setup-complete` is written, SSH is stopped by default
+- Matrix registration is available during bootstrap and disabled by default
+  after setup completes
+- set `nixpi.bootstrap.keepSshAfterSetup = true` only if you intentionally
+  want post-setup SSH administration
+
 ### Phase 2: Pi Persona Step
 
 After the wizard is complete, `setup` tracks a single Pi-side step:
@@ -115,6 +124,8 @@ Current behavior:
 - if any Pi-side setup step is still pending, Pi starts that setup flow first and defers unrelated conversation until the step is completed or skipped
 - after all Pi-side setup steps are done, Pi resumes normal conversation and the `persona` step remains marked complete
 - the wizard enables `pi-daemon.service` as part of setup completion
+- the wizard refreshes Matrix policy so public registration is no longer left
+  open after setup
 - the wizard refreshes the built-in service configs so NetBird peers have a stable page listing service URLs and shareable host info
 
 ## 🔗 Related

@@ -65,13 +65,23 @@ run_root_command() {
     fi
 }
 
+run_bootstrap_command() {
+    local helper="$1"
+    shift
+    if command -v "$helper" >/dev/null 2>&1; then
+        run_root_command "$helper" "$@"
+    else
+        run_root_command "$@"
+    fi
+}
+
 # --- First-boot steps ---
 
 firstboot_netbird() {
     [[ -z "${PREFILL_NETBIRD_KEY:-}" ]] && { echo "nixpi-firstboot: no NetBird key, skipping"; return 0; }
     echo "nixpi-firstboot: connecting to NetBird..."
     if ! systemctl is-active --quiet netbird.service; then
-        run_root_command systemctl start netbird.service
+        run_bootstrap_command nixpi-bootstrap-netbird-systemctl start netbird.service
     fi
     local wait_count=0
     while [[ ! -S /var/run/netbird/sock ]]; do
@@ -79,7 +89,7 @@ firstboot_netbird() {
         [[ $wait_count -ge 20 ]] && { echo "nixpi-firstboot: NetBird daemon did not start" >&2; return 1; }
         sleep 0.5
     done
-    if run_root_command netbird up --setup-key "$PREFILL_NETBIRD_KEY"; then
+    if run_bootstrap_command nixpi-bootstrap-netbird-up --setup-key "$PREFILL_NETBIRD_KEY"; then
         sleep 3
         local mesh_ip
         mesh_ip=$(netbird status 2>/dev/null | grep -oP 'NetBird IP:\s+\K[\d.]+' || true)
@@ -114,10 +124,10 @@ firstboot_services() {
     write_fluffychat_runtime_config
     write_service_home_runtime "$mesh_ip" "$mesh_fqdn"
     install_home_infrastructure || echo "nixpi-firstboot: Home setup failed (non-fatal)"
-    run_root_command nixpi-brokerctl systemd restart nixpi-home.service || echo "nixpi-firstboot: home restart failed (non-fatal)" >&2
-    run_root_command nixpi-brokerctl systemd restart nixpi-chat.service || echo "nixpi-firstboot: chat restart failed (non-fatal)" >&2
-    run_root_command nixpi-brokerctl systemd restart nixpi-files.service || echo "nixpi-firstboot: files restart failed (non-fatal)" >&2
-    run_root_command nixpi-brokerctl systemd restart nixpi-code.service || echo "nixpi-firstboot: code-server restart failed (non-fatal)" >&2
+    run_bootstrap_command nixpi-bootstrap-brokerctl systemd restart nixpi-home.service || echo "nixpi-firstboot: home restart failed (non-fatal)" >&2
+    run_bootstrap_command nixpi-bootstrap-brokerctl systemd restart nixpi-chat.service || echo "nixpi-firstboot: chat restart failed (non-fatal)" >&2
+    run_bootstrap_command nixpi-bootstrap-brokerctl systemd restart nixpi-files.service || echo "nixpi-firstboot: files restart failed (non-fatal)" >&2
+    run_bootstrap_command nixpi-bootstrap-brokerctl systemd restart nixpi-code.service || echo "nixpi-firstboot: code-server restart failed (non-fatal)" >&2
     mark_done_with services "chat files code"
 }
 
@@ -199,7 +209,7 @@ firstboot_finalize() {
         echo "nixpi-firstboot: interactive setup remains pending"
         return 0
     fi
-    run_root_command nixpi-brokerctl systemd enable-now pi-daemon.service || \
+    run_bootstrap_command nixpi-bootstrap-brokerctl systemd enable-now pi-daemon.service || \
         echo "nixpi-firstboot: pi-daemon enable failed (non-fatal)" >&2
     touch "$SETUP_COMPLETE"
     echo "nixpi-firstboot: setup complete"
