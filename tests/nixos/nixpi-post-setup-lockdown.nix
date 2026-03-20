@@ -60,7 +60,7 @@ pkgs.testers.runNixOSTest {
 
     nixpi.start()
     nixpi.wait_for_unit("multi-user.target", timeout=300)
-    nixpi.wait_for_unit("nixpi-firstboot.service", timeout=180)
+    nixpi.succeed("su - pi -c 'setup-wizard.sh'")
     nixpi.wait_until_succeeds("test -f /home/pi/.nixpi/.setup-complete", timeout=180)
     nixpi.wait_until_succeeds("curl -sf http://127.0.0.1:6167/_matrix/client/versions", timeout=60)
     nixpi.wait_until_succeeds("curl -sf http://127.0.0.1:8080 | grep -q 'NixPI Home'", timeout=60)

@@ -14,7 +14,6 @@ The core library provides shared utilities used across all NixPI components. Cen
 | Execution | `exec.ts` | Shell command execution with guardrails |
 | Matrix | `matrix.ts`, `matrix-format.ts` | Matrix client helpers, message formatting |
 | Frontmatter | `frontmatter.ts` | YAML frontmatter parsing/generation |
-| Setup | `setup.ts` | First-boot setup state management |
 | Extension Tools | `extension-tools.ts` | Pi extension utilities |
 | Shared | `shared.ts` | Common types and constants |
 
@@ -27,7 +26,6 @@ The core library provides shared utilities used across all NixPI components. Cen
 | `core/lib/matrix.ts` | Matrix client utils | Registration, login, room alias helpers | Used by daemon and extensions |
 | `core/lib/matrix-format.ts` | Message formatting | HTML/markdown conversion for Matrix | Handles Matrix message rendering |
 | `core/lib/frontmatter.ts` | Frontmatter handling | Parse and generate YAML frontmatter | Used by memory system |
-| `core/lib/setup.ts` | Setup state | First-boot wizard state management | Reads/writes `~/.nixpi/setup-state.json` |
 | `core/lib/extension-tools.ts` | Extension utils | Common extension helper functions | Used by Pi extensions |
 | `core/lib/shared.ts` | Common code | Types, constants, utilities | Shared across all lib modules |
 
@@ -130,28 +128,6 @@ The core library provides shared utilities used across all NixPI components. Cen
 
 **Outbound Dependencies**:
 - `js-yaml` for YAML parsing
-
----
-
-### `core/lib/setup.ts`
-
-**Responsibility**: First-boot setup state management.
-
-**Key Exports**:
-- `loadSetupState()` - Read setup state from disk
-- `saveSetupState(state)` - Persist setup state
-- `getSetupStatus()` - Get current setup status
-- `SetupState` - Type definition
-
-**State File**: `~/.nixpi/setup-state.json`
-
-**Setup Steps**:
-- `wizard` - Bash wizard completion
-- `persona` - Pi-guided persona setup
-
-**Inbound Dependencies**:
-- Setup extension for state tracking
-- Daemon for setup-aware behavior
 
 ---
 

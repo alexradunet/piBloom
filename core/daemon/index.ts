@@ -15,7 +15,8 @@ import {
 	matrixCredentialsPath,
 } from "../lib/matrix.js";
 import { createLogger } from "../lib/shared.js";
-import { type AgentDefinition, loadAgentDefinitionsResult } from "./agent-registry.js";
+import type { AgentDefinition } from "./agent-registry.js";
+import { loadRuntimeAgents } from "./agent-registry.js";
 import { loadDaemonConfig } from "./config.js";
 import { startWithRetry } from "./lifecycle.js";
 import { createMultiAgentRuntime } from "./multi-agent-runtime.js";
@@ -31,13 +32,13 @@ async function main(): Promise<void> {
 	log.info("starting nixpi-daemon", { idleTimeoutMs: config.idleTimeoutMs });
 
 	const credentials = loadPrimaryMatrixCredentials();
-	const { agents: configuredAgents, errors } = loadAgentDefinitionsResult();
+	const { agents, errors, fallbackToHost } = loadRuntimeAgents({
+		primaryCredentials: credentials,
+	});
 	for (const error of errors) {
 		log.warn("skipping invalid agent definition", { error });
 	}
-	const agents = configuredAgents.length > 0 ? configuredAgents : [createDefaultAgent(credentials)];
-
-	if (configuredAgents.length === 0) {
+	if (fallbackToHost) {
 		log.info("no valid multi-agent definitions found, using default host agent", {
 			invalidDefinitions: errors.length,
 		});
@@ -139,28 +140,6 @@ function loadAgentMatrixCredentials(agentId: string): MatrixAgentCredentials {
 	} catch {
 		throw new Error(`No Matrix credentials at ${path}`);
 	}
-}
-
-function createDefaultAgent(credentials: MatrixCredentials): AgentDefinition {
-	const username = credentials.botUserId.slice(1, credentials.botUserId.indexOf(":"));
-	return {
-		id: "host",
-		name: "Pi",
-		description: "Default host agent",
-		instructionsPath: "<builtin>",
-		instructionsBody: "You are Pi. Respond helpfully to Matrix room messages.",
-		matrix: {
-			username,
-			userId: credentials.botUserId,
-			autojoin: false,
-		},
-		respond: {
-			mode: "host",
-			allowAgentMentions: true,
-			maxPublicTurnsPerRoot: 2,
-			cooldownMs: 1500,
-		},
-	};
 }
 
 main().catch((err) => {

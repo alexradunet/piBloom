@@ -1,7 +1,8 @@
 /** Safe filesystem operations: path traversal protection, temp dirs, and home resolution. */
-import { existsSync, mkdirSync, realpathSync, renameSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, realpathSync, renameSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 /** Ensure a directory exists. */
 export function ensureDir(dir: string, mode?: number): void {
@@ -58,9 +59,24 @@ export function getNixPiDir(): string {
 	return process.env.NIXPI_DIR ?? path.join(os.homedir(), "nixpi");
 }
 
+/** Resolve the NixPI state directory under the user's home. */
+export function getNixPiStateDir(): string {
+	return process.env.NIXPI_STATE_DIR ?? path.join(os.homedir(), ".nixpi");
+}
+
 /** Resolve the configured Pi runtime directory. */
 export function getPiDir(): string {
 	return process.env.NIXPI_PI_DIR ?? path.join(os.homedir(), ".pi");
+}
+
+/** Resolve the persisted wizard checkpoint directory. */
+export function getWizardStateDir(): string {
+	return path.join(getNixPiStateDir(), "wizard-state");
+}
+
+/** Resolve the persona-complete marker path. */
+export function getPersonaDonePath(): string {
+	return path.join(getWizardStateDir(), "persona-done");
 }
 
 /** Path to the user's Quadlet unit directory for rootless containers. */
@@ -70,7 +86,7 @@ export function getQuadletDir(): string {
 
 /** Path to the OS update status file written by the update-check timer. */
 export function getUpdateStatusPath(): string {
-	return path.join(os.homedir(), ".nixpi", "update-status.json");
+	return path.join(getNixPiStateDir(), "update-status.json");
 }
 
 /** Path to the canonical system flake checkout used for rebuilds. */
@@ -85,5 +101,27 @@ export function getDaemonStateDir(): string {
 
 /** Path to the local repo clone used for local-only proposal workflows. */
 export function getNixPiRepoDir(): string {
-	return process.env.NIXPI_REPO_DIR ?? path.join(os.homedir(), ".nixpi", "pi-nixpi");
+	return process.env.NIXPI_REPO_DIR ?? path.join(getNixPiStateDir(), "pi-nixpi");
+}
+
+/** Resolve the package root by walking up from the current module URL. */
+export function resolvePackageDir(moduleUrl: string, maxDepth = 6): string {
+	let dir = path.dirname(fileURLToPath(moduleUrl));
+	for (let i = 0; i < maxDepth; i += 1) {
+		if (existsSync(path.join(dir, "package.json"))) return dir;
+		dir = path.dirname(dir);
+	}
+	return process.cwd();
+}
+
+/** Read the package version from a package root, defaulting to 0.1.0. */
+export function readPackageVersion(packageDir: string): string {
+	try {
+		const pkg = JSON.parse(readFileSync(path.join(packageDir, "package.json"), "utf-8")) as {
+			version?: string;
+		};
+		return pkg.version ?? "0.1.0";
+	} catch {
+		return "0.1.0";
+	}
 }

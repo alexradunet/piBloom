@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# setup-lib.sh — Shared function library for setup-wizard.sh and firstboot.sh.
+# setup-lib.sh — Shared function library for setup-wizard.sh.
 # Source this file; do not execute directly.
 #
 # Provides: checkpoint management, NetBird utilities, Matrix API/state,

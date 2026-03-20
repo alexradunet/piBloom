@@ -14,7 +14,6 @@ Extensions provide Pi with tools to interact with the NixPI system. They bridge 
 | `os` | OS health, systemd, updates, proposals | `core/pi/extensions/os/` |
 | `objects` | Durable memory object management | `core/pi/extensions/objects/` |
 | `episodes` | Episodic memory capture | `core/pi/extensions/episodes/` |
-| `setup` | First-boot setup state | `core/pi/extensions/setup/` |
 | `persona` | Persona injection and guardrails | `core/pi/extensions/persona/` |
 | `localai` | Local AI integration | `core/pi/extensions/localai/` |
 
@@ -121,32 +120,9 @@ Extensions provide Pi with tools to interact with the NixPI system. They bridge 
 
 ---
 
-### Setup Extension (`core/pi/extensions/setup/`)
-
-**Purpose**: First-boot setup state management.
-
-| File | Why | What | How / Notes |
-|------|-----|------|-------------|
-| `index.ts` | Extension entry | Tool registration | Exports extension manifest |
-| `actions.ts` | Core actions | `setup_status`, `setup_advance`, etc. | Setup operations |
-| `step-guidance.ts` | Persona guidance | Setup step instructions | Pi-facing guidance |
-
-**Key Tools**:
-| Tool | Purpose |
-|------|---------|
-| `setup_status` | Get current setup state |
-| `setup_advance` | Mark step complete |
-| `setup_reset` | Reset setup state |
-
-**Setup Steps**:
-1. `wizard` - Bash wizard completion
-2. `persona` - Pi-guided persona setup
-
----
-
 ### Persona Extension (`core/pi/extensions/persona/`)
 
-**Purpose**: Persona injection and shell guardrails.
+**Purpose**: Persona injection, post-wizard persona gating, and shell guardrails.
 
 | File | Why | What | How / Notes |
 |------|-----|------|-------------|
@@ -187,8 +163,7 @@ Extensions are registered in `package.json`:
       "./core/pi/extensions/os",
       "./core/pi/extensions/episodes",
       "./core/pi/extensions/objects",
-      "./core/pi/extensions/nixpi",
-      "./core/pi/extensions/setup"
+      "./core/pi/extensions/nixpi"
     ]
   }
 }

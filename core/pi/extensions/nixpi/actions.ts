@@ -4,10 +4,9 @@
  */
 import fs from "node:fs";
 import os from "node:os";
-import path, { dirname } from "node:path";
-import { fileURLToPath } from "node:url";
+import path from "node:path";
 import { run } from "../../../lib/exec.js";
-import { safePath } from "../../../lib/filesystem.js";
+import { readPackageVersion, resolvePackageDir, safePath } from "../../../lib/filesystem.js";
 import { stringifyFrontmatter } from "../../../lib/frontmatter.js";
 import {
 	generateAgentInstructionsMarkdown,
@@ -24,21 +23,11 @@ const NIXPI_DIRS = ["Persona", "Skills", "Evolutions", "Objects", "Episodes", "A
 // --- Package helpers ---
 
 export function getPackageDir(): string {
-	let dir = dirname(fileURLToPath(import.meta.url));
-	for (let i = 0; i < 6; i += 1) {
-		if (fs.existsSync(path.join(dir, "package.json"))) return dir;
-		dir = path.dirname(dir);
-	}
-	return process.cwd();
+	return resolvePackageDir(import.meta.url);
 }
 
 export function getPackageVersion(packageDir: string): string {
-	try {
-		const pkg = JSON.parse(fs.readFileSync(path.join(packageDir, "package.json"), "utf-8"));
-		return (pkg.version as string) ?? "0.1.0";
-	} catch {
-		return "0.1.0";
-	}
+	return readPackageVersion(packageDir);
 }
 
 // --- Directory setup ---

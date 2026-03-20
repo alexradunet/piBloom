@@ -59,7 +59,7 @@ pkgs.testers.runNixOSTest {
 
     nixpi.start()
     nixpi.wait_for_unit("multi-user.target", timeout=300)
-    nixpi.wait_for_unit("nixpi-firstboot.service", timeout=120)
+    nixpi.succeed("su - pi -c 'setup-wizard.sh'")
     nixpi.wait_until_succeeds("test -f " + home + "/.nixpi/.setup-complete", timeout=120)
 
     nixpi.wait_until_succeeds("test -f /etc/system-services/nixpi-home/webroot/index.html", timeout=120)

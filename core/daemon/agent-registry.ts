@@ -2,6 +2,7 @@ import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { type Static, Type } from "@sinclair/typebox";
 import { Value } from "@sinclair/typebox/value";
+import type { MatrixCredentials } from "../lib/matrix.js";
 import { getNixPiDir } from "../lib/filesystem.js";
 import { parseFrontmatter } from "../lib/frontmatter.js";
 import { isSupportedCronExpression } from "./scheduler.js";
@@ -48,11 +49,13 @@ export interface ProactiveJobDefinition {
 export interface LoadAgentDefinitionsOptions {
 	nixPiDir?: string;
 	serverName?: string;
+	primaryCredentials?: MatrixCredentials;
 }
 
-export interface LoadAgentDefinitionsResult {
+export interface LoadRuntimeAgentsResult {
 	agents: AgentDefinition[];
 	errors: string[];
+	fallbackToHost: boolean;
 }
 
 const DEFAULT_SERVER_NAME = "nixpi";
@@ -108,15 +111,13 @@ const AgentFrontmatterSchema = Type.Object({
 type AgentFrontmatter = Static<typeof AgentFrontmatterSchema>;
 type ProactiveJobFrontmatter = Static<typeof ProactiveJobSchema>;
 
-export function loadAgentDefinitions(options: LoadAgentDefinitionsOptions = {}): AgentDefinition[] {
-	return loadAgentDefinitionsResult(options).agents;
-}
-
-export function loadAgentDefinitionsResult(options: LoadAgentDefinitionsOptions = {}): LoadAgentDefinitionsResult {
+export function loadRuntimeAgents(options: LoadAgentDefinitionsOptions = {}): LoadRuntimeAgentsResult {
 	const nixPiDir = options.nixPiDir ?? getNixPiDir();
 	const serverName = options.serverName ?? DEFAULT_SERVER_NAME;
 	const agentsDir = join(nixPiDir, "Agents");
-	if (!existsSync(agentsDir)) return { agents: [], errors: [] };
+	if (!existsSync(agentsDir)) {
+		return buildRuntimeAgents([], [], options.primaryCredentials);
+	}
 
 	const agentIds = readdirSync(agentsDir, { withFileTypes: true })
 		.filter((entry) => entry.isDirectory())
@@ -138,7 +139,47 @@ export function loadAgentDefinitionsResult(options: LoadAgentDefinitionsOptions 
 		}
 	}
 
-	return { agents, errors };
+	return buildRuntimeAgents(agents, errors, options.primaryCredentials);
+}
+
+function buildRuntimeAgents(
+	agents: AgentDefinition[],
+	errors: string[],
+	primaryCredentials?: MatrixCredentials,
+): LoadRuntimeAgentsResult {
+	if (agents.length > 0) {
+		return { agents, errors, fallbackToHost: false };
+	}
+	if (!primaryCredentials) {
+		return { agents, errors, fallbackToHost: false };
+	}
+	return {
+		agents: [createDefaultAgent(primaryCredentials)],
+		errors,
+		fallbackToHost: true,
+	};
+}
+
+function createDefaultAgent(credentials: MatrixCredentials): AgentDefinition {
+	const username = credentials.botUserId.slice(1, credentials.botUserId.indexOf(":"));
+	return {
+		id: "host",
+		name: "Pi",
+		description: "Default host agent",
+		instructionsPath: "<builtin>",
+		instructionsBody: "You are Pi. Respond helpfully to Matrix room messages.",
+		matrix: {
+			username,
+			userId: credentials.botUserId,
+			autojoin: false,
+		},
+		respond: {
+			mode: "host",
+			allowAgentMentions: true,
+			maxPublicTurnsPerRoot: 2,
+			cooldownMs: DEFAULT_COOLDOWN_MS,
+		},
+	};
 }
 
 function normalizeAgentDefinition(

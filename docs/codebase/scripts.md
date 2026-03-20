@@ -21,10 +21,9 @@ Scripts and tools bridge the gap between the repository and runtime operations:
 
 ### Setup Scripts (`core/scripts/`)
 
-> Note: If `core/scripts/` doesn't exist or is empty, setup may be handled inline in NixOS modules or the first-boot service.
+> Setup is owned by `setup-wizard.sh`; there is no separate first-boot service path.
 
 Setup orchestration is primarily handled by:
-- `nixpi-firstboot.service` (defined in `core/os/modules/firstboot.nix`)
 - `setup-wizard.sh` (installed as a system command)
 
 ### VM Tools (`tools/`)
@@ -78,25 +77,13 @@ Setup orchestration is primarily handled by:
 
 ---
 
-## 🔄 First-Boot Service
+## 🔄 First-Boot Flow
 
-While not a standalone script file, the first-boot logic is important:
+First boot is now a single flow:
 
-### `nixpi-firstboot.service`
-
-**Definition**: `core/os/modules/firstboot.nix`
-
-**Purpose**: Trigger setup wizard on first interactive login.
-
-**Behavior**:
-1. Runs before TTY login
-2. If `~/.nixpi/.setup-complete` missing → Start wizard
-3. Wizard handles: password, NetBird, Matrix, AI setup
-4. Marks completion with sentinel file
-
-**Recovery**:
-- Corrupt state → Auto-backup and reset
-- Interrupt → Resumable on next login
+1. Login shell launches `setup-wizard.sh` until `~/.nixpi/.setup-complete` exists
+2. Wizard handles password, network, Matrix, AI setup, and service refresh
+3. Persona completion is tracked only by `~/.nixpi/wizard-state/persona-done`
 
 ---
 

@@ -65,7 +65,7 @@ pkgs.testers.runNixOSTest {
     home = "/home/pi"
     username = "pi"
 
-    # Start the node - firstboot should run automatically
+    # Start the node and run the single setup wizard path
     nixpi.start()
     
     # Wait for basic system to be up
@@ -80,8 +80,8 @@ pkgs.testers.runNixOSTest {
     # Wait for netbird to be ready
     nixpi.wait_for_unit("netbird.service", timeout=60)
     
-    # Test 1: Firstboot service runs and completes (exit 0 or 1 both accepted by unit)
-    nixpi.wait_for_unit("nixpi-firstboot.service", timeout=120)
+    # Test 1: Wizard completes unattended from prefill state
+    nixpi.succeed("su - pi -c 'setup-wizard.sh'")
     
     # Test 2: .setup-complete marker file was created (unattended mode)
     nixpi.succeed("test -f " + home + "/.nixpi/.setup-complete")
@@ -89,9 +89,9 @@ pkgs.testers.runNixOSTest {
     # Test 3: prefill.env exists (not deleted after consumption)
     nixpi.succeed("test -f " + home + "/.nixpi/prefill.env")
     
-    # Test 4: firstboot log was created and contains expected content
-    nixpi.succeed("test -f " + home + "/.nixpi/firstboot.log")
-    log_content = nixpi.succeed("cat " + home + "/.nixpi/firstboot.log")
+    # Test 4: wizard log was created and contains expected content
+    nixpi.succeed("test -f " + home + "/.nixpi/wizard.log")
+    log_content = nixpi.succeed("cat " + home + "/.nixpi/wizard.log")
     
     # Debug: print log content
     print("=== Firstboot log content ===")

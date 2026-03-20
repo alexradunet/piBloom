@@ -36,7 +36,6 @@ Tests ensure NixPI works correctly across:
 | `matrix-agents.test.ts` | Agent overlay parsing | `core/lib/frontmatter.ts` |
 | `matrix-registration.test.ts` | User registration | `core/lib/matrix.ts` |
 | `room-alias.test.ts` | Room resolution | `core/lib/matrix.ts` |
-| `setup.test.ts` | Setup state | `core/lib/setup.ts` |
 | `shared.test.ts` | Shared utilities | `core/lib/shared.ts` |
 
 ### Extension Tests (`tests/extensions/`)
@@ -49,7 +48,6 @@ Tests ensure NixPI works correctly across:
 | `os-proposal.test.ts` | OS proposal flow | `core/pi/extensions/os/` |
 | `objects.test.ts` | Objects extension | `core/pi/extensions/objects/` |
 | `episodes.test.ts` | Episodes extension | `core/pi/extensions/episodes/` |
-| `setup.test.ts` | Setup extension | `core/pi/extensions/setup/` |
 | `persona.test.ts` | Persona extension | `core/pi/extensions/persona/` |
 | `localai.test.ts` | LocalAI extension | `core/pi/extensions/localai/` |
 
@@ -95,7 +93,7 @@ Tests ensure NixPI works correctly across:
 | Test | Purpose | Check Name |
 |------|---------|------------|
 | `smoke-matrix` | Matrix starts | `checks.x86_64-linux.nixos-smoke` |
-| `smoke-firstboot` | Firstboot service | `checks.x86_64-linux.nixos-smoke` |
+| `smoke-firstboot` | Setup wizard path | `checks.x86_64-linux.nixos-smoke` |
 | `smoke-security` | Basic security | `checks.x86_64-linux.nixos-smoke` |
 | `smoke-broker` | Broker service | `checks.x86_64-linux.nixos-smoke` |
 | `nixpi-matrix` | Matrix integration | `checks.x86_64-linux.nixos-full` |

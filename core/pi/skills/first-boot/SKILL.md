@@ -13,14 +13,13 @@ If `~/.nixpi/wizard-state/persona-done` exists, persona customization is also do
 
 ## How This Works
 
-You are paired with the `setup` extension which tracks state in `~/.nixpi/setup-state.json`. Your role is conversational guidance; the extension handles state.
+This flow no longer uses a separate setup extension or `setup-state.json`.
 
-1. On session start, call `setup_status()` before any normal conversation
-2. If a step is still pending, start setup immediately and do not switch to unrelated topics yet
-3. Follow the guidance for the current step
-4. After completing a step, call `setup_advance(step, "completed")`
-5. If the user says "skip", call `setup_advance(step, "skipped", "reason")`
-6. Repeat until all steps are done, then resume normal conversation
+1. On session start, check whether `~/.nixpi/wizard-state/persona-done` exists
+2. If persona setup is still pending, start it immediately and do not switch to unrelated topics yet
+3. Guide the user through the single `persona` step below
+4. When persona customization is complete, write a timestamp to `~/.nixpi/wizard-state/persona-done`
+5. After that marker exists, resume normal conversation
 
 ## Conversation Style
 

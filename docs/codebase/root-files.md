@@ -93,8 +93,7 @@ The root files define how the project is built, tested, and deployed. They are t
       "./core/pi/extensions/os",
       "./core/pi/extensions/episodes",
       "./core/pi/extensions/objects",
-      "./core/pi/extensions/nixpi",
-      "./core/pi/extensions/setup"
+      "./core/pi/extensions/nixpi"
     ],
     "skills": ["./core/pi/skills"]
   }

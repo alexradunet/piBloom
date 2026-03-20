@@ -9,15 +9,27 @@ import { createTempNixPi, type TempNixPi } from "../helpers/temp-nixpi.js";
 
 let temp: TempNixPi;
 let api: MockExtensionAPI;
+let originalHome: string | undefined;
+let originalStateDir: string | undefined;
+let originalPiDir: string | undefined;
 
 beforeEach(async () => {
 	temp = createTempNixPi();
+	originalHome = process.env.HOME;
+	originalStateDir = process.env.NIXPI_STATE_DIR;
+	originalPiDir = process.env.NIXPI_PI_DIR;
+	process.env.HOME = temp.nixPiDir;
+	process.env.NIXPI_STATE_DIR = path.join(temp.nixPiDir, ".nixpi");
+	process.env.NIXPI_PI_DIR = path.join(temp.nixPiDir, ".pi");
 	api = createMockExtensionAPI();
 	const mod = await import("../../core/pi/extensions/persona/index.js");
 	mod.default(api as never);
 });
 
 afterEach(() => {
+	process.env.HOME = originalHome;
+	process.env.NIXPI_STATE_DIR = originalStateDir;
+	process.env.NIXPI_PI_DIR = originalPiDir;
 	temp.cleanup();
 });
 
@@ -50,6 +62,39 @@ describe("persona session_start", () => {
 	it("sets session name to 'Pi'", async () => {
 		await api.fireEvent("session_start");
 		expect(api._sessionName).toBe("Pi");
+	});
+
+	it("injects persona-setup guidance when machine setup is complete but persona is pending", async () => {
+		fs.mkdirSync(path.join(temp.nixPiDir, ".nixpi"), { recursive: true });
+		fs.writeFileSync(path.join(temp.nixPiDir, ".nixpi", ".setup-complete"), "done", "utf-8");
+
+		const result = (await api.fireEvent(
+			"before_agent_start",
+			{
+				systemPrompt: "BASE",
+			},
+			createMockExtensionContext(),
+		)) as { systemPrompt: string };
+
+		expect(result.systemPrompt).toContain("## Persona Setup");
+		expect(result.systemPrompt).toContain("BASE");
+		expect(result.systemPrompt).toContain("persona-done");
+	});
+
+	it("does not inject persona-setup guidance after persona customization is complete", async () => {
+		fs.mkdirSync(path.join(temp.nixPiDir, ".nixpi", "wizard-state"), { recursive: true });
+		fs.writeFileSync(path.join(temp.nixPiDir, ".nixpi", ".setup-complete"), "done", "utf-8");
+		fs.writeFileSync(path.join(temp.nixPiDir, ".nixpi", "wizard-state", "persona-done"), "done", "utf-8");
+
+		const result = (await api.fireEvent(
+			"before_agent_start",
+			{
+				systemPrompt: "BASE",
+			},
+			createMockExtensionContext(),
+		)) as { systemPrompt: string };
+
+		expect(result.systemPrompt).not.toContain("## Persona Setup");
 	});
 
 	it("injects a durable memory digest into the system prompt", async () => {

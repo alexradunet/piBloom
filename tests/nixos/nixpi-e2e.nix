@@ -101,17 +101,17 @@ pkgs.testers.runNixOSTest {
     # E2E Test 1: NixPI server is accessible from client
     client.succeed("ping -c 3 pi")
     
-    # E2E Test 2: Firstboot completes and the system reaches its steady state
-    nixpi.wait_for_unit("nixpi-firstboot.service", timeout=180)
+    # E2E Test 2: Wizard completes and the system reaches its steady state
+    nixpi.succeed("su - pi -c 'setup-wizard.sh'")
     nixpi.wait_until_succeeds("test -f " + home + "/.nixpi/.setup-complete", timeout=180)
 
     # E2E Test 3: Matrix homeserver is available locally on the NixPI node
     nixpi.wait_for_unit("matrix-synapse.service", timeout=60)
     nixpi.succeed("curl -sf http://127.0.0.1:6167/_matrix/client/versions")
 
-    # E2E Test 4: Firstboot logged its completion in unattended mode
-    firstboot_log = nixpi.succeed("cat " + home + "/.nixpi/firstboot.log")
-    assert "setup complete" in firstboot_log.lower(), "Firstboot log missing setup completion marker"
+    # E2E Test 4: Wizard logged its completion in unattended mode
+    wizard_log = nixpi.succeed("cat " + home + "/.nixpi/wizard.log")
+    assert "setup complete" in wizard_log.lower(), "Wizard log missing setup completion marker"
     
     # E2E Test 5: Registration is disabled in the steady state
     register_resp = nixpi.succeed("""

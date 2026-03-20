@@ -115,7 +115,7 @@ setup-wizard.sh
 ```
 Pi session start
     ↓
-setup_status() check
+check persona-done marker
     ↓
 Pending "persona" step?
     ↓
@@ -128,14 +128,13 @@ Yes: Inject persona guidance
 | File | Purpose |
 |------|---------|
 | `~/.nixpi/.setup-complete` | Wizard completion sentinel |
-| `~/.nixpi/setup-state.json` | Pi-side setup state |
 | `~/.nixpi/wizard-state/persona-done` | Persona step marker |
 
 ### Key Files
 
 | File | Role |
 |------|------|
-| `core/pi/extensions/setup/` | Setup extension tools |
+| `core/pi/extensions/persona/` | Persona setup prompt injection |
 | `core/scripts/` | First-boot scripts |
 
 ## 📡 Matrix Room Message Flow

@@ -2,24 +2,20 @@
  * Handler / business logic for persona.
  */
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import os from "node:os";
 import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
 import jsYaml from "js-yaml";
-import { getNixPiDir, getPiDir, getUpdateStatusPath } from "../../../lib/filesystem.js";
+import {
+	getNixPiDir,
+	getPersonaDonePath,
+	getPiDir,
+	getUpdateStatusPath,
+	getWizardStateDir,
+	resolvePackageDir,
+} from "../../../lib/filesystem.js";
 import { createLogger } from "../../../lib/shared.js";
 import type { NixPiContext, GuardrailsConfig } from "./types.js";
 
 const log = createLogger("persona");
-
-function resolvePackageDir(): string {
-	let dir = dirname(fileURLToPath(import.meta.url));
-	for (let i = 0; i < 6; i += 1) {
-		if (existsSync(join(dir, "package.json"))) return dir;
-		dir = dirname(dir);
-	}
-	return process.cwd();
-}
 
 /** Collapse whitespace so `rm  -rf` or `rm\t-rf` can't bypass patterns. */
 export function normalizeCommand(cmd: string): string {
@@ -29,7 +25,7 @@ export function normalizeCommand(cmd: string): string {
 /** Load and compile guardrail patterns from YAML config. */
 export function loadGuardrails(): Array<{ tool: string; pattern: RegExp; label: string }> {
 	const workspaceDir = getNixPiDir();
-	const packageDir = resolvePackageDir();
+	const packageDir = resolvePackageDir(import.meta.url);
 
 	// User customization takes priority over defaults
 	const gardenPath = join(workspaceDir, "guardrails.yaml");
@@ -113,7 +109,7 @@ export function buildRestoredContextBlock(ctx: NixPiContext): string {
 export function loadPersona(): string {
 	const workspaceDir = getNixPiDir();
 	const vaultDir = join(workspaceDir, "Persona");
-	const packageDir = resolvePackageDir();
+	const packageDir = resolvePackageDir(import.meta.url);
 	const defaultPersonaDir = existsSync(join(packageDir, "core", "pi", "persona"))
 		? join(packageDir, "core", "pi", "persona")
 		: join(packageDir, "persona");
@@ -131,4 +127,21 @@ export function loadPersona(): string {
 		})
 		.join("\n\n");
 	return `## Pi Persona\n\n${sections}`;
+}
+
+export function isPersonaSetupPending(): boolean {
+	return !existsSync(getPersonaDonePath());
+}
+
+export function buildPersonaSetupBlock(): string {
+	return [
+		"",
+		"## Persona Setup",
+		"",
+		"The machine setup is complete, but persona customization is still pending.",
+		"Before normal conversation, guide the user through defining or confirming Pi's persona and operating style.",
+		"When the user is satisfied, create the marker file by writing a timestamp to the persona-done path.",
+		`Marker path: ${getPersonaDonePath()}`,
+		`Wizard state dir: ${getWizardStateDir()}`,
+	].join("\n");
 }

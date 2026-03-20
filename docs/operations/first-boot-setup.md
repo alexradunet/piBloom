@@ -81,28 +81,7 @@ During that Pi-side first conversation, Pi should also orient the user to the pl
 
 ## 🔄 Recovery
 
-### Corrupt State
-
-If setup state is corrupt:
-
-- `setup` backs up a corrupt `setup-state.json`
-- A fresh initial state is created automatically
-
-### Restart Specific Step
-
-If you want to restart only the Pi-side step:
-
-```
-setup_reset(step="persona")
-```
-
-### Restart All Setup
-
-If you want to restart all Pi-side setup state:
-
-```
-setup_reset() with no step
-```
+If you want to redo persona setup, remove `~/.nixpi/wizard-state/persona-done` and open Pi again.
 
 ## 📚 Reference
 
@@ -111,22 +90,15 @@ setup_reset() with no step
 | Path | Purpose |
 |------|---------|
 | `~/.nixpi/.setup-complete` | Wizard complete sentinel |
-| `~/.nixpi/setup-state.json` | Pi-side setup state |
 | `~/.nixpi/wizard-state/persona-done` | Persona step complete marker |
 | `/var/lib/nixpi/agent/matrix-credentials.json` | Primary Matrix credentials |
 
-### Current Tool Surface
-
-- `setup_status`
-- `setup_advance`
-- `setup_reset`
-
 ### Current Behavior
 
-- Before the wizard completes, `setup_status` reports that Pi is waiting for the wizard
-- After the wizard completes, opening Pi causes it to check `setup_status()` before normal conversation
-- If any Pi-side setup step is still pending, Pi starts that setup flow first and defers unrelated conversation until the step is completed or skipped
-- After all Pi-side setup steps are done, Pi resumes normal conversation and the `persona` step remains marked complete
+- Before the wizard completes, Pi does not start normal conversation
+- After the wizard completes, opening Pi checks only for `persona-done`
+- If persona setup is still pending, Pi starts that flow first and defers unrelated conversation
+- After `persona-done` exists, Pi resumes normal conversation
 - The wizard enables `nixpi-daemon.service` as part of setup completion
 - The wizard refreshes Matrix policy so public registration is no longer left open after setup
 - The wizard refreshes the built-in service configs so NetBird peers have a stable page listing service URLs and shareable host info

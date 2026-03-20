@@ -151,8 +151,8 @@
               nixpi.succeed("id alex")
               nixpi.succeed("id agent")
 
-              # nixpi-firstboot was attempted (exit 0 or 1 both accepted by unit)
-              nixpi.wait_for_unit("nixpi-firstboot.service", timeout=60)
+              # setup is now owned by the interactive wizard; just verify it is installed
+              nixpi.succeed("command -v setup-wizard.sh")
 
               # NetworkManager is running
               nixpi.succeed("systemctl is-active NetworkManager")

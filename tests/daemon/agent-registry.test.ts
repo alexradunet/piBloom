@@ -3,9 +3,9 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { loadAgentDefinitions, loadAgentDefinitionsResult } from "../../core/daemon/agent-registry.js";
+import { loadRuntimeAgents } from "../../core/daemon/agent-registry.js";
 
-describe("loadAgentDefinitions", () => {
+describe("loadRuntimeAgents", () => {
 	const tempDirs: string[] = [];
 
 	afterEach(() => {
@@ -54,8 +54,9 @@ Plan first.
 `,
 		);
 
-		const agents = loadAgentDefinitions({ nixPiDir: workspaceDir });
+		const { agents, fallbackToHost } = loadRuntimeAgents({ nixPiDir: workspaceDir });
 		expect(agents).toHaveLength(1);
+		expect(fallbackToHost).toBe(false);
 		expect(agents[0]).toEqual({
 			id: "planner",
 			name: "Planner",
@@ -95,7 +96,7 @@ Question assumptions.
 `,
 		);
 
-		const agents = loadAgentDefinitions({ nixPiDir: workspaceDir });
+		const { agents } = loadRuntimeAgents({ nixPiDir: workspaceDir });
 		expect(agents[0]?.respond).toEqual({
 			mode: "mentioned",
 			allowAgentMentions: true,
@@ -138,7 +139,7 @@ matrix:
 `,
 		);
 
-		const agents = loadAgentDefinitions({ nixPiDir: workspaceDir });
+		const { agents } = loadRuntimeAgents({ nixPiDir: workspaceDir });
 		expect(agents.map((agent) => agent.id)).toEqual(["host", "planner"]);
 	});
 
@@ -156,7 +157,7 @@ matrix:
 `,
 		);
 
-		const result = loadAgentDefinitionsResult({ nixPiDir: workspaceDir });
+		const result = loadRuntimeAgents({ nixPiDir: workspaceDir });
 		expect(result.agents).toEqual([]);
 		expect(result.errors).toEqual([expect.stringContaining("missing required field 'id'")]);
 	});
@@ -175,7 +176,7 @@ matrix:
 `,
 		);
 
-		const result = loadAgentDefinitionsResult({ nixPiDir: workspaceDir });
+		const result = loadRuntimeAgents({ nixPiDir: workspaceDir });
 		expect(result.agents).toEqual([]);
 		expect(result.errors).toEqual([expect.stringContaining("missing required field 'name'")]);
 	});
@@ -195,7 +196,7 @@ matrix:
 `,
 		);
 
-		const result = loadAgentDefinitionsResult({ nixPiDir: workspaceDir });
+		const result = loadRuntimeAgents({ nixPiDir: workspaceDir });
 		expect(result.agents).toEqual([]);
 		expect(result.errors).toEqual([expect.stringContaining("missing required field 'matrix.username'")]);
 	});
@@ -228,7 +229,7 @@ matrix:
 `,
 		);
 
-		const result = loadAgentDefinitionsResult({ nixPiDir: workspaceDir });
+		const result = loadRuntimeAgents({ nixPiDir: workspaceDir });
 		expect(result.agents.map((agent) => agent.id)).toEqual(["host"]);
 		expect(result.errors).toHaveLength(1);
 	});
@@ -248,7 +249,7 @@ matrix:
 `,
 		);
 
-		const agents = loadAgentDefinitions({ nixPiDir: workspaceDir, serverName: "homebox" });
+		const { agents } = loadRuntimeAgents({ nixPiDir: workspaceDir, serverName: "homebox" });
 		expect(agents[0]?.matrix.userId).toBe("@planner:homebox");
 	});
 
@@ -283,7 +284,7 @@ proactive:
 `,
 		);
 
-		const agents = loadAgentDefinitions({ nixPiDir: workspaceDir });
+		const { agents } = loadRuntimeAgents({ nixPiDir: workspaceDir });
 		expect(agents[0]?.proactive?.jobs).toEqual([
 			{
 				id: "daily-heartbeat",
@@ -326,7 +327,7 @@ proactive:
 `,
 		);
 
-		const result = loadAgentDefinitionsResult({ nixPiDir: workspaceDir });
+		const result = loadRuntimeAgents({ nixPiDir: workspaceDir });
 		expect(result.agents).toEqual([]);
 		expect(result.errors).toEqual([expect.stringContaining("invalid interval_minutes")]);
 	});
@@ -353,7 +354,7 @@ proactive:
 `,
 		);
 
-		const result = loadAgentDefinitionsResult({ nixPiDir: workspaceDir });
+		const result = loadRuntimeAgents({ nixPiDir: workspaceDir });
 		expect(result.agents).toEqual([]);
 		expect(result.errors).toEqual([expect.stringContaining("unsupported cron")]);
 	});
@@ -385,8 +386,32 @@ proactive:
 `,
 		);
 
-		const result = loadAgentDefinitionsResult({ nixPiDir: workspaceDir });
+		const result = loadRuntimeAgents({ nixPiDir: workspaceDir });
 		expect(result.agents).toEqual([]);
 		expect(result.errors).toEqual([expect.stringContaining("duplicate proactive job 'daily-heartbeat'")]);
+	});
+
+	it("falls back to the builtin host agent when no agent definitions exist", () => {
+		const workspaceDir = mkdtempSync(join(tmpdir(), "nixpi-agents-empty-"));
+		tempDirs.push(workspaceDir);
+		const result = loadRuntimeAgents({
+			nixPiDir: workspaceDir,
+			primaryCredentials: {
+				homeserver: "http://matrix",
+				botUserId: "@pi:nixpi",
+				botAccessToken: "token",
+				botPassword: "secret",
+				registrationToken: "reg-token",
+			},
+		});
+		expect(result.fallbackToHost).toBe(true);
+		expect(result.agents).toEqual([
+			expect.objectContaining({
+				id: "host",
+				instructionsPath: "<builtin>",
+				matrix: expect.objectContaining({ userId: "@pi:nixpi" }),
+				respond: expect.objectContaining({ mode: "host" }),
+			}),
+		]);
 	});
 });

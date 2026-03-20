@@ -19,6 +19,7 @@ NIXPI_CONFIG="${NIXPI_CONFIG_DIR:-${NIXPI_STATE_DIR:-$HOME/.config/nixpi}/servic
 PI_DIR="${NIXPI_PI_DIR:-$HOME/.pi}"
 MATRIX_HOMESERVER="http://localhost:6167"
 MATRIX_STATE_DIR="$WIZARD_STATE/matrix-state"
+LEGACY_SETUP_STATE="$HOME/.nixpi/setup-state.json"
 
 # --- Prefill (for VM/dev use) ---
 # Create ~/.nixpi/prefill.env on your host to skip manual prompts.
@@ -36,6 +37,11 @@ if [[ -f "$PREFILL_FILE" ]]; then
 	source "$PREFILL_FILE"
 fi
 
+NONINTERACTIVE_SETUP=0
+if [[ -f "$PREFILL_FILE" ]]; then
+	NONINTERACTIVE_SETUP=1
+fi
+
 # Load shared function library.
 SETUP_LIB="$(dirname "$0")/setup-lib.sh"
 if [[ ! -f "$SETUP_LIB" ]]; then
@@ -47,6 +53,29 @@ source "$SETUP_LIB"
 # --- Checkpoint helpers ---
 
 step_done() { [[ -f "$WIZARD_STATE/$1" ]]; }
+
+prepare_local_state() {
+	mkdir -p "$WIZARD_STATE" "$NIXPI_DIR"
+	rm -f "$LEGACY_SETUP_STATE"
+}
+
+ensure_local_repo_clone() {
+	local repo_dir="$HOME/.nixpi/pi-nixpi"
+	if [[ -d "$repo_dir/.git" ]]; then
+		return 0
+	fi
+	mkdir -p "$(dirname "$repo_dir")"
+	if ! curl -fsI --connect-timeout 5 https://github.com >/dev/null 2>&1; then
+		echo "Skipping local NixPI repo clone until network is available."
+		return 0
+	fi
+	echo "Cloning local NixPI repo for proposal workflows..."
+	if timeout 30 git clone --depth 1 https://github.com/alexradunet/NixPI.git "$repo_dir"; then
+		echo "Local repo ready at $repo_dir."
+	else
+		echo "Local repo clone failed. You can retry later with: git clone https://github.com/alexradunet/NixPI.git $repo_dir"
+	fi
+}
 
 
 write_pi_settings_defaults() {
@@ -120,6 +149,8 @@ print_service_access_summary() {
 # --- Step functions ---
 
 step_welcome() {
+	prepare_local_state
+	ensure_local_repo_clone
 	echo ""
 	echo "Welcome to NixPI."
 	echo "Let's configure your device. This takes a few minutes."
@@ -146,6 +177,11 @@ step_password() {
 	# Check if user already has a password set
 	if sudo passwd -S "$(whoami)" 2>/dev/null | grep -qE 'P\s+\d{2}/\d{2}/\d{4}'; then
 		echo "You already have a password set for this account."
+		if [[ "$NONINTERACTIVE_SETUP" -eq 1 ]]; then
+			echo "Keeping existing password for noninteractive setup."
+			mark_done password
+			return
+		fi
 		read -rp "Change password? [y/N]: " change_pw
 		if [[ ! "$change_pw" =~ ^[Yy]$ ]]; then
 			echo "Keeping existing password."
@@ -155,6 +191,11 @@ step_password() {
 	else
 		echo "Welcome! Let's set up a password for your account."
 		echo ""
+		if [[ "$NONINTERACTIVE_SETUP" -eq 1 ]]; then
+			echo "Skipping password prompt for noninteractive setup."
+			mark_done password
+			return
+		fi
 	fi
 	
 	if [[ -n "${PREFILL_PRIMARY_PASSWORD:-}" ]]; then
@@ -181,6 +222,11 @@ step_network() {
 	fi
 
 	echo "No network connection detected."
+	if [[ "$NONINTERACTIVE_SETUP" -eq 1 ]]; then
+		echo "Skipping interactive network setup in noninteractive mode."
+		mark_done network
+		return
+	fi
 	echo ""
 	echo "Options:"
 	echo "  1) Launch WiFi setup (nmtui) - recommended"
@@ -247,6 +293,12 @@ step_netbird() {
 	echo "  2) Setup key - for headless/automated setup"
 	echo "  3) Skip - configure later"
 	echo ""
+
+	if [[ "$NONINTERACTIVE_SETUP" -eq 1 && -z "${PREFILL_NETBIRD_KEY:-}" ]]; then
+		echo "Skipping NetBird setup in noninteractive mode."
+		mark_done netbird
+		return
+	fi
 
 	while true; do
 		read -rp "Select option [1/2/3]: " nb_choice
@@ -331,6 +383,11 @@ step_netbird() {
 step_git() {
 	echo ""
 	echo "--- Git Identity ---"
+	if [[ "$NONINTERACTIVE_SETUP" -eq 1 && -z "${PREFILL_NAME:-}" && -z "${PREFILL_EMAIL:-}" ]]; then
+		echo "Skipping git identity prompts in noninteractive mode."
+		mark_done git
+		return
+	fi
 	if [[ -n "${PREFILL_NAME:-}" ]]; then
 		git_name="$PREFILL_NAME"
 		echo "Your name: [prefilled]"
@@ -396,10 +453,14 @@ step_bootc_switch() {
 # --- Finalization ---
 
 finalize() {
+	if [[ "${NIXPI_KEEP_SSH_AFTER_SETUP:-0}" != "1" ]]; then
+		root_command nixpi-bootstrap-sshd-systemctl stop sshd.service || echo "warning: failed to stop sshd.service" >&2
+	fi
+	root_command systemctl try-restart matrix-synapse.service || echo "warning: failed to restart matrix-synapse.service" >&2
+	if ! root_command nixpi-bootstrap-brokerctl systemd enable-now nixpi-daemon.service; then
+		echo "warning: failed to enable nixpi-daemon.service during wizard finalization" >&2
+	fi
 	touch "$SETUP_COMPLETE"
-    if ! root_command nixpi-bootstrap-brokerctl systemd enable-now nixpi-daemon.service; then
-        echo "warning: failed to enable nixpi-daemon.service during wizard finalization" >&2
-    fi
 
 	local mesh_ip
 	mesh_ip=$(read_checkpoint_data netbird)

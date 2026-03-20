@@ -7,8 +7,10 @@
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import { buildMemoryDigest } from "../objects/digest.js";
 import {
+	buildPersonaSetupBlock,
 	buildRestoredContextBlock,
 	checkUpdateAvailable,
+	isPersonaSetupPending,
 	loadContext,
 	loadGuardrails,
 	loadPersona,
@@ -48,6 +50,10 @@ export default function (pi: ExtensionAPI) {
 		}
 		if (memoryDigest) {
 			systemPrompt += memoryDigest;
+		}
+
+		if (isPersonaSetupPending()) {
+			systemPrompt += buildPersonaSetupBlock();
 		}
 
 		return { systemPrompt };

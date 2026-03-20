@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const createMultiAgentRuntimeMock = vi.fn();
 const startWithRetryMock = vi.fn();
-const loadAgentDefinitionsResultMock = vi.fn();
+const loadRuntimeAgentsMock = vi.fn();
 const loadSchedulerStateMock = vi.fn();
 const saveSchedulerStateMock = vi.fn();
 const readFileSyncMock = vi.fn();
@@ -36,7 +36,7 @@ vi.mock("../../core/lib/shared.js", async () => {
 });
 
 vi.mock("../../core/daemon/agent-registry.js", () => ({
-	loadAgentDefinitionsResult: loadAgentDefinitionsResultMock,
+	loadRuntimeAgents: loadRuntimeAgentsMock,
 }));
 
 vi.mock("../../core/daemon/lifecycle.js", () => ({
@@ -88,7 +88,19 @@ describe("daemon bootstrap", () => {
 			proactiveJobs: 0,
 		};
 		createMultiAgentRuntimeMock.mockReturnValue(runtime);
-		loadAgentDefinitionsResultMock.mockReturnValue({ agents: [], errors: ["bad overlay"] });
+		loadRuntimeAgentsMock.mockReturnValue({
+			agents: [
+				{
+					id: "host",
+					name: "Pi",
+					instructionsPath: "<builtin>",
+					matrix: { userId: "@pi:nixpi" },
+					respond: { mode: "host" },
+				},
+			],
+			errors: ["bad overlay"],
+			fallbackToHost: true,
+		});
 
 		await import("../../core/daemon/index.js");
 
@@ -118,9 +130,10 @@ describe("daemon bootstrap", () => {
 			proactiveJobs: 2,
 		};
 		createMultiAgentRuntimeMock.mockReturnValue(runtime);
-		loadAgentDefinitionsResultMock.mockReturnValue({
+		loadRuntimeAgentsMock.mockReturnValue({
 			agents: [{ id: "ops" }, { id: "support" }],
 			errors: [],
+			fallbackToHost: false,
 		});
 
 		const bootstrapModule = "../../core/daemon/index.js?multi";

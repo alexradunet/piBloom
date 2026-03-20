@@ -1,4 +1,3 @@
-# core/os/modules/firstboot.nix
 { config, pkgs, lib, ... }:
 
 let
@@ -42,70 +41,6 @@ in
     bootstrapChpasswd
     bootstrapBroker
   ];
-
-  systemd.services.nixpi-firstboot = {
-    description = "NixPI First-Boot Setup";
-    wantedBy = [ "multi-user.target" ];
-    after = [
-      "network-online.target"
-      "matrix-synapse.service"
-      "netbird.service"
-      "nixpi-daemon.service"
-      "nixpi-home.service"
-      "nixpi-element-web.service"
-    ];
-    wants = [
-      "network-online.target"
-      "matrix-synapse.service"
-      "netbird.service"
-      "nixpi-daemon.service"
-      "nixpi-home.service"
-      "nixpi-element-web.service"
-    ];
-    serviceConfig = {
-      Type = "oneshot";
-      RemainAfterExit = true;
-      User = primaryUser;
-      ExecStart = "${pkgs.bash}/bin/bash ${../../scripts/firstboot.sh}";
-      StandardOutput = "journal";
-      StandardError = "journal";
-      Environment = [
-        "HOME=${primaryHome}"
-        "NIXPI_DIR=${primaryHome}/nixpi"
-        "NIXPI_STATE_DIR=${stateDir}"
-        "NIXPI_PI_DIR=${stateDir}/agent"
-        "NIXPI_CONFIG_DIR=${stateDir}/services"
-        "NIXPI_KEEP_SSH_AFTER_SETUP=${if config.nixpi.bootstrap.keepSshAfterSetup then "1" else "0"}"
-      ];
-      SuccessExitStatus = "0 1";
-    };
-    unitConfig.ConditionPathExists = "!${primaryHome}/.nixpi/.setup-complete";
-  };
-
-  systemd.services.nixpi-post-setup = {
-    description = "NixPI post-setup security transitions";
-    unitConfig.ConditionPathExists = setupCompleteFile;
-    serviceConfig = {
-      Type = "oneshot";
-      User = "root";
-      Group = "root";
-    };
-    script = ''
-      ${lib.optionalString (!config.nixpi.bootstrap.keepSshAfterSetup) ''
-        systemctl stop sshd.service || true
-      ''}
-      systemctl try-restart matrix-synapse.service || true
-    '';
-  };
-
-  systemd.paths.nixpi-post-setup = {
-    description = "Watch for NixPI setup completion";
-    wantedBy = [ "multi-user.target" ];
-    pathConfig = {
-      PathChanged = "${primaryHome}/.nixpi";
-      Unit = "nixpi-post-setup.service";
-    };
-  };
 
   security.sudo.extraRules = lib.optional config.nixpi.bootstrap.passwordlessSudo.enable {
     users = [ primaryUser ];
