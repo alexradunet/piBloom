@@ -5,7 +5,8 @@ set -euo pipefail
 # Attaches nixPI to an existing NixOS installation.
 # 
 # Usage:
-#   curl -fsSL ... | bash                    # Install from GitHub
+#   curl -fsSL ... | bash                    # Install from GitHub (non-interactive)
+#   bash <(curl -fsSL ...)                   # Interactive with prompt
 #   NIXPI_PRIMARY_USER=alex bash ...         # Specify user explicitly
 #   bash ... github:owner/repo#branch        # Use custom flake
 
@@ -35,11 +36,18 @@ echo "  - Import your existing NixOS configuration"
 echo "  - Layer nixPI services on top (Matrix, built-in services, daemon)"
 echo "  - Add '${primary_user}' to the 'agent' group"
 echo ""
-read -p "Continue? [Y/n] " -n 1 -r
-echo
-if [[ ! $REPLY =~ ^[Yy]$ ]] && [[ -n $REPLY ]]; then
-	echo "Aborted."
-	exit 1
+
+# Only prompt if stdin is a terminal (not when piped)
+if [[ -t 0 ]]; then
+	read -p "Continue? [Y/n] " -n 1 -r
+	echo
+	if [[ ! $REPLY =~ ^[Yy]$ ]] && [[ -n $REPLY ]]; then
+		echo "Aborted."
+		exit 1
+	fi
+else
+	echo "Running non-interactively (piped). Use -y flag or set NIXPI_AUTO_CONFIRM=1 to skip this warning."
+	sleep 2
 fi
 
 exec sudo --preserve-env=NIXPI_PRIMARY_USER \
