@@ -28,18 +28,6 @@ This documentation has been migrated to a VitePress site.
 npm run docs:dev
 ```
 
-## 📝 Legacy Documentation
+## 📝 Documentation Source
 
-The following old documentation files are preserved for reference but are no longer maintained:
-
-- `daemon-architecture.md` → [reference/daemon-architecture](https://alexradunet.github.io/nixPI/reference/daemon-architecture)
-- `first-boot-setup.md` → [operations/first-boot-setup](https://alexradunet.github.io/nixPI/operations/first-boot-setup)
-- `fleet-pr-workflow.md` → [reference/fleet-workflow](https://alexradunet.github.io/nixPI/reference/fleet-workflow)
-- `live-testing-checklist.md` → [operations/live-testing](https://alexradunet.github.io/nixPI/operations/live-testing)
-- `matrix-infrastructure.md` → [reference/infrastructure](https://alexradunet.github.io/nixPI/reference/infrastructure)
-- `memory-model.md` → [reference/memory-model](https://alexradunet.github.io/nixPI/reference/memory-model)
-- `netbird-infrastructure.md` → [reference/infrastructure](https://alexradunet.github.io/nixPI/reference/infrastructure)
-- `quick_deploy.md` → [operations/quick-deploy](https://alexradunet.github.io/nixPI/operations/quick-deploy)
-- `security-model.md` → [reference/security-model](https://alexradunet.github.io/nixPI/reference/security-model)
-- `service-architecture.md` → [reference/service-architecture](https://alexradunet.github.io/nixPI/reference/service-architecture)
-- `supply-chain.md` → [reference/supply-chain](https://alexradunet.github.io/nixPI/reference/supply-chain)
+The VitePress pages under `docs/operations/`, `docs/reference/`, `docs/architecture/`, and `docs/codebase/` are the maintained source of truth.

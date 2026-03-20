@@ -18,7 +18,7 @@ in
   options.nixpi = {
     primaryUser = lib.mkOption {
       type = lib.types.str;
-      default = builtins.getEnv "NIXPI_PRIMARY_USER";
+      default = "";
       description = ''
         Primary human/operator account for the nixPI machine.
       '';
@@ -38,7 +38,6 @@ in
       default = false;
       description = ''
         Whether nixPI should create and manage the primary operator account.
-        Disable this when layering nixPI onto an existing NixOS user.
       '';
     };
 
@@ -47,8 +46,8 @@ in
         type = lib.types.enum [ "existing-user" "managed-user" ];
         default = "existing-user";
         description = ''
-          Whether nixPI should attach to an existing operator account or create
-          and manage one directly.
+          Whether nixPI should use an existing operator account or create and
+          manage one directly.
         '';
       };
 
@@ -57,9 +56,7 @@ in
         default = true;
         description = ''
           Whether the installer should attempt to resolve `nixpi.primaryUser`
-          from the invoking human account when `nixpi.primaryUser` is empty.
-          The declarative module graph itself does not inspect `users.users`
-          for this, because that causes evaluation recursion in VM builds.
+          from installer state when `nixpi.primaryUser` is empty.
         '';
       };
     };

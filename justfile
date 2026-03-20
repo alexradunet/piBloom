@@ -3,9 +3,8 @@
 system    := "x86_64-linux"
 flake     := "."
 host      := "desktop"
-installer_sim_host := "installer-sim-vm"
+vm_host   := "desktop-vm"
 output    := "result"
-installer_sim_output := "result-installer-sim"
 ovmf      := "/usr/share/edk2/ovmf/OVMF_CODE.fd"
 ovmf_vars := "/usr/share/edk2/ovmf/OVMF_VARS.fd"
 
@@ -17,9 +16,9 @@ build:
 switch:
     sudo nixos-rebuild switch --flake {{ flake }}#{{ host }}
 
-# Apply config from the remote GitHub flake
+# Apply the installed nixPI system flake
 update:
-    sudo nixos-rebuild switch --flake github:alexradunet/nixPI#{{ host }}
+    sudo nixos-rebuild switch --flake /etc/nixos
 
 # Roll back to the previous NixOS generation
 rollback:
@@ -27,7 +26,11 @@ rollback:
 
 # Build qcow2 VM image for testing (uses qemu module, not disk-image.nix)
 qcow2:
-    nix build {{ flake }}#nixosConfigurations.{{ host }}.config.system.build.vm
+    nix build {{ flake }}#nixosConfigurations.{{ vm_host }}.config.system.build.vm
+
+# Build the graphical nixPI installer ISO
+iso:
+    nix build {{ flake }}#installerIso
 
 # Run VM (fresh build from current codebase)
 vm: qcow2
@@ -56,57 +59,6 @@ vm-ssh:
     fi
     echo "Connecting to VM..."
     ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -p 2222 pi@localhost
-
-# Build a plain NixOS VM to simulate installing nixPI onto an existing machine.
-installer-sim-qcow2:
-    nix build {{ flake }}#nixosConfigurations.{{ installer_sim_host }}.config.system.build.vm -o {{ installer_sim_output }}
-
-# Run the installer simulation VM (fresh build from current codebase)
-vm-sim-install: installer-sim-qcow2
-    NIXPI_VM_OUTPUT={{ installer_sim_output }} NIXPI_VM_DISK_PATH=/tmp/nixpi-installer-sim-vm-disk.qcow2 NIXPI_VM_LOG_PATH=/tmp/nixpi-installer-sim-vm.log tools/run-qemu.sh --mode headless
-
-# Run the installer simulation VM with GUI display
-vm-sim-install-gui: installer-sim-qcow2
-    NIXPI_VM_OUTPUT={{ installer_sim_output }} NIXPI_VM_DISK_PATH=/tmp/nixpi-installer-sim-vm-disk.qcow2 NIXPI_VM_LOG_PATH=/tmp/nixpi-installer-sim-vm.log tools/run-qemu.sh --mode gui
-
-# Run the installer simulation VM in background daemon mode
-vm-sim-install-daemon: installer-sim-qcow2
-    NIXPI_VM_OUTPUT={{ installer_sim_output }} NIXPI_VM_DISK_PATH=/tmp/nixpi-installer-sim-vm-disk.qcow2 NIXPI_VM_LOG_PATH=/tmp/nixpi-installer-sim-vm.log tools/run-qemu.sh --mode daemon
-
-# SSH into the installer simulation VM
-vm-sim-install-ssh:
-    #!/usr/bin/env bash
-    if ! pgrep -f "[q]emu-system-x86_64.*nixpi-installer-sim-vm-disk" > /dev/null; then
-        echo "No installer simulation VM running. Start with: just vm-sim-install-daemon"
-        exit 1
-    fi
-    echo "Connecting to installer simulation VM..."
-    ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -p 2222 alex@localhost
-
-# Show installer VM log
-vm-sim-install-logs:
-    tail -f /tmp/nixpi-installer-sim-vm.log
-
-# Stop the installer simulation VM
-vm-sim-install-stop:
-    #!/usr/bin/env bash
-    pid=$(pgrep -f "[q]emu-system-x86_64.*nixpi-installer-sim-vm-disk" || true)
-    if [ -z "$pid" ]; then
-        echo "No installer simulation VM running"
-        exit 0
-    fi
-    echo "Stopping installer simulation VM (PID: $pid)..."
-    kill "$pid" 2>/dev/null || true
-    sleep 2
-    if kill -0 "$pid" 2>/dev/null; then
-        echo "Force killing installer simulation VM..."
-        kill -9 "$pid" 2>/dev/null || true
-    fi
-    echo "Installer simulation VM stopped"
-
-# One-shot live installer test with a real NetBird setup key supplied at runtime.
-live-install-e2e:
-    tools/run-install-vm-e2e.sh
 
 # Show VM log (for vm-daemon)
 vm-logs:

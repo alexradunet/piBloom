@@ -16,7 +16,7 @@ let
     elevationDuration = config.nixpi.agent.elevation.duration;
     osUpdateEnable = config.nixpi.agent.osUpdate.enable;
     allowedUnits = config.nixpi.agent.allowedUnits;
-    remoteFlake = "github:alexradunet/nixPI#desktop";
+    defaultFlake = "/etc/nixos";
   });
 
   brokerProgram = pkgs.writeScriptBin "nixpi-broker" ''
@@ -95,7 +95,7 @@ let
             if action == "rollback":
                 return run_command(["nixos-rebuild", "switch", "--rollback"])
             if action == "apply":
-                flake = req.get("flake") or CONFIG["remoteFlake"]
+                flake = req.get("flake") or CONFIG["defaultFlake"]
                 return run_command(["nixos-rebuild", "switch", "--flake", flake])
             raise ValueError(f"unsupported nixos-update action: {action}")
         if op == "schedule-reboot":

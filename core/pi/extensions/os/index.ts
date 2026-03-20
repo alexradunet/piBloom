@@ -22,15 +22,8 @@ import { handleNixConfigProposal } from "./actions-proposal.js";
 const NixosUpdateParams = Type.Object({
 	action: StringEnum(["status", "apply", "rollback"] as const, {
 		description:
-			"status: list NixOS generations. apply: run nixos-rebuild switch from the selected source. rollback: revert to previous generation.",
+			"status: list NixOS generations. apply: run nixos-rebuild switch from /etc/nixos. rollback: revert to previous generation.",
 	}),
-	source: Type.Optional(
-		StringEnum(["remote", "local"] as const, {
-			description:
-				"Which flake source to use for apply. remote uses the GitHub flake. local uses ~/.nixpi/pi-nixpi. Ignored for status and rollback.",
-			default: "remote",
-		}),
-	),
 });
 
 const NixConfigProposalParams = Type.Object({
@@ -59,11 +52,11 @@ export default function (pi: ExtensionAPI) {
 			name: "nixos_update",
 			label: "NixOS Update Management",
 			description:
-				"Manage NixOS OS updates: view generation history, apply from the remote or reviewed local flake, or rollback to the previous generation.",
+				"Manage NixOS OS updates: view generation history, apply the installed /etc/nixos flake, or rollback to the previous generation.",
 			parameters: NixosUpdateParams,
 			async execute(_toolCallId, params, signal, _onUpdate, ctx) {
 				const p = params as Static<typeof NixosUpdateParams>;
-				return handleNixosUpdate(p.action, p.source ?? "remote", signal, ctx);
+				return handleNixosUpdate(p.action, signal, ctx);
 			},
 		}),
 		defineTool({

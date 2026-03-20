@@ -16,7 +16,6 @@ Scripts and tools bridge the gap between the repository and runtime operations:
 |-----------|---------|----------|
 | Setup scripts | First-boot wizard | `core/scripts/` |
 | VM runner | QEMU VM execution | `tools/run-qemu.sh` |
-| E2E installer | Live install testing | `tools/run-install-vm-e2e.sh` |
 
 ## 📋 Script Inventory
 
@@ -33,7 +32,6 @@ Setup orchestration is primarily handled by:
 | File | Why | What | How / Notes |
 |------|-----|------|-------------|
 | `run-qemu.sh` | VM execution | Run QEMU VMs for testing | Used by `just vm*` commands |
-| `run-install-vm-e2e.sh` | E2E testing | Live install with NetBird | Full E2E validation |
 
 ---
 
@@ -73,43 +71,10 @@ Setup orchestration is primarily handled by:
 
 **Inbound Dependencies**:
 - `just vm`, `just vm-gui`, `just vm-daemon`
-- `just vm-sim-install*`
 
 **Outbound Dependencies**:
 - QEMU system
 - `ovmf` (UEFI firmware)
-
----
-
-### `tools/run-install-vm-e2e.sh`
-
-**Responsibility**: End-to-end live installation testing with NetBird.
-
-**Flow**:
-1. Boots plain NixOS installer VM
-2. Installs nixPI onto existing user
-3. Injects prefill configuration
-4. Waits for firstboot completion
-5. Verifies all services active
-
-**Requirements**:
-- `NIXPI_TEST_NETBIRD_SETUP_KEY` environment variable
-- KVM support for reasonable performance
-
-**Verification Steps**:
-- `agent` user exists
-- `nixpi-broker` service active
-- `nixpi-daemon` service active
-- `matrix-synapse` service active
-- NetBird connected
-
-**Usage**:
-```bash
-export NIXPI_TEST_NETBIRD_SETUP_KEY='...'
-just live-install-e2e
-```
-
-**Security Note**: Setup key is consumed at runtime only, never committed.
 
 ---
 
@@ -141,7 +106,6 @@ While not a standalone script file, the first-boot logic is important:
 |--------|-------------|------|
 | `setup-wizard.sh` | Production | First boot only |
 | `run-qemu.sh` | Development | Anytime for testing |
-| `run-install-vm-e2e.sh` | Development | CI/CD validation |
 
 ---
 

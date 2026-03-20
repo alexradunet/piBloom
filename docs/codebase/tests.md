@@ -106,7 +106,6 @@ Tests ensure nixPI works correctly across:
 | `nixpi-e2e` | End-to-end | `checks.x86_64-linux.nixos-full` |
 | `nixpi-home` | Home service | `checks.x86_64-linux.nixos-full` |
 | `nixpi-security` | Security model | `checks.x86_64-linux.nixos-full` |
-| `nixpi-install-flow` | Install process | `checks.x86_64-linux.nixos-full` |
 | `nixpi-modular-services` | Services | `checks.x86_64-linux.nixos-full` |
 | `nixpi-matrix-bridge` | Matrix bridge | `checks.x86_64-linux.nixos-full` |
 | `nixpi-bootstrap-mode` | Bootstrap | `checks.x86_64-linux.nixos-full` |

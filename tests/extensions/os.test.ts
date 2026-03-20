@@ -107,13 +107,13 @@ const mockRun = vi.mocked(execModule.run);
 describe("handleNixosUpdate — status", () => {
 	it("returns generation list on exit 0", async () => {
 		mockRun.mockResolvedValueOnce({ stdout: "gen1\ngen2", stderr: "", exitCode: 0 });
-		const result = await handleNixosUpdate("status", "remote", undefined, {} as never);
+		const result = await handleNixosUpdate("status", undefined, {} as never);
 		expect(result.content[0].text).toContain("gen1");
 	});
 
 	it("returns stderr on non-zero exit", async () => {
 		mockRun.mockResolvedValueOnce({ stdout: "", stderr: "permission denied", exitCode: 1 });
-		const result = await handleNixosUpdate("status", "remote", undefined, {} as never);
+		const result = await handleNixosUpdate("status", undefined, {} as never);
 		expect(result.content[0].text).toContain("permission denied");
 	});
 });
@@ -122,24 +122,17 @@ describe("handleNixosUpdate — rollback", () => {
 	it("returns success message on exit 0", async () => {
 		const ctx = createMockExtensionContext();
 		mockRun.mockResolvedValueOnce({ stdout: "", stderr: "", exitCode: 0 });
-		const result = await handleNixosUpdate("rollback", "remote", undefined, ctx as never);
+		const result = await handleNixosUpdate("rollback", undefined, ctx as never);
 		expect(result.content[0].text).toContain("Rolled back");
 	});
 });
 
-describe("handleNixosUpdate — apply local (missing repo)", () => {
-	it("returns error when local repo is absent", async () => {
+describe("handleNixosUpdate — apply (missing system flake)", () => {
+	it("returns error when /etc/nixos/flake.nix is absent", async () => {
 		const ctx = createMockExtensionContext();
-		const prev = process.env.NIXPI_REPO_DIR;
-		process.env.NIXPI_REPO_DIR = "/tmp/nixpi-repo-does-not-exist-12345";
-		const result = await handleNixosUpdate("apply", "local", undefined, ctx as never);
-		if (prev === undefined) {
-			delete process.env.NIXPI_REPO_DIR;
-		} else {
-			process.env.NIXPI_REPO_DIR = prev;
-		}
+		const result = await handleNixosUpdate("apply", undefined, ctx as never);
 		expect(result.isError).toBe(true);
-		expect(result.content[0].text).toContain("Local nixPI repo not found");
+		expect(result.content[0].text).toContain("System flake not found at /etc/nixos");
 	});
 });
 

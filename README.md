@@ -37,20 +37,22 @@ Current platform capabilities:
 
 ## 🚀 Quick Start
 
-Install nixPI on an existing NixOS system:
+Install nixPI from the standard graphical nixPI installer image:
 
 ```bash
-# 1. Install NixOS from the official ISO: https://nixos.org/download.html
-# 2. Download and extract nixPI:
-curl -L https://github.com/alexradunet/nixpi/archive/refs/heads/main.tar.gz | tar xz -C ~
-mv ~/nixpi-main ~/nixpi
-cd ~/nixpi
+# 1. Build the installer ISO
+nix build .#installerIso
 
-# 3. Apply nixPI to your existing user (replace 'alex' with your username)
-sudo NIXPI_PRIMARY_USER=alex nixos-rebuild switch --impure --flake .#desktop-attach
-
-# 4. Reboot, then run the setup wizard to complete configuration:
+# 2. Write ./result/iso/*.iso to a USB stick and boot it
+# 3. Complete the graphical installer
+# 4. Reboot into nixPI, then finish first boot
 setup-wizard.sh
+```
+
+After install, nixPI is operated as a normal local flake-based NixOS system:
+
+```bash
+sudo nixos-rebuild switch --flake /etc/nixos
 ```
 
 See the [documentation site](https://alexradunet.github.io/nixPI) for detailed instructions.

@@ -1,6 +1,4 @@
 import fs from "node:fs";
-import os from "node:os";
-import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createMockExtensionContext } from "../helpers/mock-extension-context.js";
 
@@ -11,76 +9,52 @@ vi.mock("../../core/lib/exec.js", () => ({
 }));
 
 describe("os nixos_update handler", () => {
-	let repoDir: string;
-	const originalRepoDir = process.env.NIXPI_REPO_DIR;
-
 	beforeEach(() => {
 		vi.resetModules();
 		runMock.mockReset();
-		repoDir = fs.mkdtempSync(path.join(os.tmpdir(), "nixpi-switch-"));
-		process.env.NIXPI_REPO_DIR = repoDir;
 	});
 
 	afterEach(() => {
-		if (originalRepoDir === undefined) {
-			delete process.env.NIXPI_REPO_DIR;
-		} else {
-			process.env.NIXPI_REPO_DIR = originalRepoDir;
-		}
-		fs.rmSync(repoDir, { recursive: true, force: true });
+		vi.restoreAllMocks();
 	});
 
-	it("applies the remote flake by default", async () => {
+	it("applies the installed /etc/nixos flake", async () => {
+		vi.spyOn(fs, "existsSync").mockReturnValue(true);
 		runMock.mockResolvedValueOnce({ stdout: "ok\n", stderr: "", exitCode: 0 });
 
 		const { handleNixosUpdate } = await import("../../core/pi/extensions/os/actions.js");
 		const ctx = createMockExtensionContext({ hasUI: true });
-		const result = await handleNixosUpdate("apply", "remote", undefined, ctx as never);
+		const result = await handleNixosUpdate("apply", undefined, ctx as never);
 
 		expect(ctx.ui.confirm).toHaveBeenCalled();
 		expect(runMock).toHaveBeenCalledWith(
 			"nixpi-brokerctl",
-			["nixos-update", "apply"],
+			["nixos-update", "apply", "/etc/nixos"],
 			undefined,
 		);
 		expect(result.isError).toBe(false);
-		expect(result.content[0].text).toContain("from remote source");
+		expect(result.content[0].text).toContain("from /etc/nixos");
 	});
 
-	it("applies the reviewed local clone when source=local", async () => {
-		runMock.mockResolvedValueOnce({ stdout: "ok\n", stderr: "", exitCode: 0 });
+	it("fails early if the installed system flake is missing", async () => {
+		vi.spyOn(fs, "existsSync").mockReturnValue(false);
 
 		const { handleNixosUpdate } = await import("../../core/pi/extensions/os/actions.js");
 		const ctx = createMockExtensionContext({ hasUI: true });
-		const result = await handleNixosUpdate("apply", "local", undefined, ctx as never);
-
-		expect(runMock).toHaveBeenCalledWith(
-			"nixpi-brokerctl",
-			["nixos-update", "apply", `${repoDir}#desktop`],
-			undefined,
-		);
-		expect(result.isError).toBe(false);
-		expect(result.content[0].text).toContain("from local source");
-	});
-
-	it("fails early if the local repo is missing", async () => {
-		fs.rmSync(repoDir, { recursive: true, force: true });
-
-		const { handleNixosUpdate } = await import("../../core/pi/extensions/os/actions.js");
-		const ctx = createMockExtensionContext({ hasUI: true });
-		const result = await handleNixosUpdate("apply", "local", undefined, ctx as never);
+		const result = await handleNixosUpdate("apply", undefined, ctx as never);
 
 		expect(runMock).not.toHaveBeenCalled();
 		expect(result.isError).toBe(true);
-		expect(result.content[0].text).toContain("Local nixPI repo not found");
+		expect(result.content[0].text).toContain("System flake not found at /etc/nixos");
 	});
 
-	it("returns error result when remote apply exits non-zero", async () => {
+	it("returns error result when apply exits non-zero", async () => {
+		vi.spyOn(fs, "existsSync").mockReturnValue(true);
 		runMock.mockResolvedValueOnce({ stdout: "", stderr: "build failed", exitCode: 1 });
 
 		const { handleNixosUpdate } = await import("../../core/pi/extensions/os/actions.js");
 		const ctx = createMockExtensionContext({ hasUI: true });
-		const result = await handleNixosUpdate("apply", "remote", undefined, ctx as never);
+		const result = await handleNixosUpdate("apply", undefined, ctx as never);
 
 		expect(result.isError).toBe(true);
 		expect(result.content[0].text).toContain("build failed");

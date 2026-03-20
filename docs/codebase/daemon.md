@@ -95,7 +95,6 @@
 **Environment Variables**:
 - `NIXPI_DAEMON_MODE` - `host-only` or `multi-agent`
 - `NIXPI_MATRIX_HOMESERVER` - Matrix server URL
-- `NIXPI_PRIMARY_USER` - Primary operator account
 
 **Inbound Dependencies**:
 - Systemd service startup

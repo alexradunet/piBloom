@@ -1,10 +1,10 @@
 # Quick Deploy
 
-> Build, deploy, and test nixPI
+> Build, install, and validate nixPI
 
 ## 🌱 Audience
 
-Operators and maintainers installing nixPI on NixOS or running test VMs.
+Operators and maintainers installing nixPI from the official installer image or validating local builds.
 
 ## 🛡️ Security Note: NetBird is Mandatory
 
@@ -14,44 +14,46 @@ NetBird is the network security boundary for all nixPI services. The firewall tr
 
 ## 🚀 Installation Workflow
 
-nixPI is installed on top of a standard NixOS system.
+nixPI ships as a standard graphical NixOS installer image. It is based on the upstream GNOME + Calamares installer and writes a normal `/etc/nixos/flake.nix` on the installed machine.
 
-### 1. Install NixOS
+### 1. Build or Download the Installer ISO
 
-1. Download the [official NixOS ISO](https://nixos.org/download.html)
-2. Install NixOS with your preferred desktop environment
-3. Set up your user, hostname, and basic configuration
-4. Complete the standard NixOS install process
-
-### 2. Download nixPI
-
-After first boot (works without git installed):
+Build locally:
 
 ```bash
-nix --extra-experimental-features 'nix-command flakes' run nixpkgs#git -- clone https://github.com/alexradunet/nixpi.git ~/nixpi
-cd ~/nixpi
+nix build .#installerIso
 ```
 
-### 3. Attach nixPI
+The resulting image is in `./result/iso/`.
 
-Apply nixPI to your existing operator account:
+### 2. Write the Image to USB
+
+Use your preferred image writer, or from a Linux host:
 
 ```bash
-# Replace 'alex' with your actual username
-sudo NIXPI_PRIMARY_USER=alex nixos-rebuild switch --impure --flake .#desktop-attach
+sudo dd if=./result/iso/*.iso of=/dev/<usb-device> bs=4M status=progress oflag=sync
 ```
+
+### 3. Install nixPI
+
+1. Boot the USB stick
+2. Launch the graphical installer
+3. Choose disk layout, timezone, hostname, and your primary user
+4. Reboot into the installed system
+
+The installed machine lands with a standard local system flake in `/etc/nixos`.
 
 ### 4. Complete Setup
 
-Reboot, then run the setup wizard:
+Run the setup wizard after reboot if it does not auto-start:
 
 ```bash
 setup-wizard.sh
 ```
 
-The wizard auto-runs on TTY login before setup completes. If it doesn't start (e.g., using a graphical display manager), run `setup-wizard.sh` manually.
+The wizard auto-runs on TTY login before setup completes. If it doesn't start, run `setup-wizard.sh` manually.
 
-## 💻 Development: VM Testing
+## 💻 Development: Local Builds and VM Testing
 
 For development and testing, use the QEMU VM workflow.
 
@@ -70,121 +72,34 @@ Or install all deps at once:
 just deps
 ```
 
-### VM Commands
+### Common Commands
 
 ```bash
-just vm         # Build and run VM (headless, serial console)
-just vm-gui     # Run VM with GUI display
-just vm-ssh     # SSH into running VM
-just vm-stop    # Stop the VM
-
-just vm-sim-install         # Boot plain NixOS for install simulation
-just vm-sim-install-gui     # Same, with GUI display
-just vm-sim-install-daemon  # Background installer simulation VM
-just vm-sim-install-ssh     # SSH into installer simulation VM as alex
-just vm-sim-install-stop    # Stop installer simulation VM
-```
-
-**Default forwarded ports**:
-- `2222` → guest SSH
-
-**Default local VM sizing**:
-- 16 GiB RAM
-- 4 vCPUs
-- 24 GiB qcow2 disk
-
-Override if needed:
-
-```bash
-NIXPI_VM_MEMORY_MB=8192 NIXPI_VM_CPUS=2 just vm-daemon
-```
-
-**Default operator user**: your existing NixOS account. The `agent` system user owns the always-on runtime.
-
-### Full Install Simulation
-
-To simulate the real MiniPC flow in a VM, boot the plain NixOS installer simulation:
-
-```bash
-just vm-sim-install-daemon
-just vm-sim-install-ssh
-```
-
-Login:
-- user: `alex`
-- password: `cico`
-
-Inside the guest, install nixPI onto that existing user:
-
-```bash
-sudo NIXPI_PRIMARY_USER=alex nixos-rebuild switch --impure --flake /mnt/host-repo#desktop
-```
-
-That path uses the current checkout mounted read-only into the VM and exercises the real existing-user install flow.
-
-### Live NetBird E2E
-
-For a one-shot live install test that also brings the guest onto NetBird, export a setup key at runtime:
-
-```bash
-export NIXPI_TEST_NETBIRD_SETUP_KEY='...'
-just live-install-e2e
-```
-
-This flow:
-
-1. Boots the plain installer VM
-2. Installs nixPI onto the existing `alex` user
-3. Injects a temporary prefill file from `/tmp`
-4. Waits for firstboot to complete
-5. Verifies `agent`, broker, daemon, Matrix, and NetBird are active
-
-The key is consumed at runtime only. It is not committed to the repo and should not be hardcoded into Nix derivations.
-
-## 🔄 OTA Updates
-
-The `nixpi-update` timer checks for updates every 6 hours automatically. To apply manually:
-
-```bash
-just update          # pull from remote flake and switch
-just rollback        # revert to previous generation
-```
-
-Or directly after exporting the operator account:
-
-```bash
-sudo --preserve-env=NIXPI_PRIMARY_USER NIXPI_PRIMARY_USER="$USER" nixos-rebuild switch --impure --flake github:alexradunet/nixPI#desktop
-```
-
-## 📚 Reference
-
-### Common `just` Commands
-
-```bash
-just deps            # Install build dependencies
-just switch          # Apply local flake to running system
-just update          # Apply remote flake to running system
-just rollback        # Revert to previous generation
-just clean           # Remove build artifacts
-just lint            # Run nix flake check
-just fmt             # Format Nix files
-
-# VM commands
-just vm              # Run VM (headless)
+just iso             # Build the installer ISO
+just vm              # Build and run VM (headless, serial console)
 just vm-gui          # Run VM with GUI display
 just vm-ssh          # SSH into running VM
-just vm-stop         # Stop running VM
-
-# Testing commands
+just vm-stop         # Stop the VM
 just check-config    # Fast: validate NixOS config
 just check-boot      # Thorough: boot test in VM
 ```
 
-### After First Login
+**Default operator user**: the user chosen during graphical install. The `agent` system user owns the always-on runtime.
 
-1. Complete `setup-wizard.sh` (prompted automatically on tty1)
-2. Let Pi resume the persona step
-3. Use `setup_status` if you need to inspect or resume Pi-side setup state
+## 🔄 OTA Updates
+
+The installed system uses the local `/etc/nixos` flake. To apply updates manually:
+
+```bash
+sudo nix flake update /etc/nixos
+sudo nixos-rebuild switch --flake /etc/nixos
+```
+
+To roll back:
+
+```bash
+sudo nixos-rebuild switch --rollback
+```
 
 ## 🔗 Related
 

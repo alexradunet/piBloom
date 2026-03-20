@@ -52,5 +52,5 @@ Ship gate:
 
 ## 🔗 Related
 
-- [first-boot-setup.md](first-boot-setup.md)
-- [quick_deploy.md](quick_deploy.md)
+- [operations/first-boot-setup.md](operations/first-boot-setup.md)
+- [operations/quick-deploy.md](operations/quick-deploy.md)

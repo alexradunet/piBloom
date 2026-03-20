@@ -42,12 +42,12 @@ The OS modules define how nixPI integrates with NixOS. They provide:
 | Category | Options | Purpose |
 |----------|---------|---------|
 | `nixpi.primaryUser` | Username | Primary operator account |
-| `nixpi.install.mode` | `managed-user`, `system-wide` | Installation scope |
+| `nixpi.install.mode` | `managed-user`, `existing-user` | Installation scope |
 | `nixpi.createPrimaryUser` | Boolean | Auto-create user |
 | `nixpi.bootstrap.*` | Various | First-boot behavior |
 | `nixpi.services.*` | Daemon, home, chat | Service toggles |
 | `nixpi.matrix.*` | Homeserver settings | Matrix configuration |
-| `nixpi.network.*` | NetBird, firewall | Network settings |
+| `nixpi.security.*` | SSH, firewall, trusted interface | Network security settings |
 
 ---
 
@@ -98,9 +98,9 @@ NixOS modules use appPackage
 
 | File | Why | What | How / Notes |
 |------|-----|------|-------------|
-| `x86_64.nix` | Desktop config | Full desktop configuration | Main install target |
-| `x86_64-attach.nix` | Attach config | Attach to existing NixOS | Install on existing system |
-| `installer-sim-vm.nix` | Installer simulation VM | Plain NixOS for VM install | Testing installer flow |
+| `x86_64.nix` | Desktop config | Managed nixPI desktop profile | Base installed system shape |
+| `x86_64-vm.nix` | Desktop VM config | Desktop profile plus VM-only mounts | Local QEMU/dev target |
+| `installer-iso.nix` | Installer image | Graphical Calamares-based installer ISO | Official installation media |
 
 ### Host Configuration Pattern
 
@@ -108,14 +108,13 @@ NixOS modules use appPackage
 { config, pkgs, lib, ... }:
 {
   imports = [
-    ./hardware-configuration.nix  # Or generic defaults
-    self.nixosModules.nixpi       # nixPI feature modules
-    self.nixosModules.firstboot   # First-boot service
+    self.nixosModules.nixpi
+    self.nixosModules.firstboot
+    ./hardware-configuration.nix
   ];
 
-  nixpi.primaryUser = "alex";
+  nixpi.primaryUser = "pi";
   nixpi.install.mode = "managed-user";
-  # ...
 }
 ```
 
@@ -125,7 +124,7 @@ NixOS modules use appPackage
 
 | File | Why | What | How / Notes |
 |------|-----|------|-------------|
-| `resolve-primary-user.nix` | User resolution | Determine primary user from env or config | Handles `NIXPI_PRIMARY_USER` |
+| `resolve-primary-user.nix` | User resolution | Determine primary user from config | Shared primary home/user helper |
 
 ---
 

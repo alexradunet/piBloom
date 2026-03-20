@@ -25,9 +25,10 @@ This section covers operational procedures for nixPI:
 
 ```bash
 # Deploy
-just switch          # Apply local config
-just update          # Apply remote config
-just rollback        # Revert to previous
+just iso             # Build installer ISO
+sudo nix flake update /etc/nixos
+sudo nixos-rebuild switch --flake /etc/nixos
+sudo nixos-rebuild switch --rollback
 
 # VMs
 just vm              # Run test VM

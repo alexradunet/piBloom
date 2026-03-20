@@ -6,7 +6,7 @@ import { existsSync } from "node:fs";
 import { readFile, writeFile } from "node:fs/promises";
 import type { ExtensionContext } from "@mariozechner/pi-coding-agent";
 import { run } from "../../../lib/exec.js";
-import { getNixpiRepoDir, getUpdateStatusPath } from "../../../lib/filesystem.js";
+import { getUpdateStatusPath } from "../../../lib/filesystem.js";
 import { errorResult, guardServiceName, requireConfirmation, truncate } from "../../../lib/shared.js";
 import type { UpdateStatus } from "./types.js";
 
@@ -14,12 +14,11 @@ import type { UpdateStatus } from "./types.js";
 
 export async function handleNixosUpdate(
 	action: "status" | "apply" | "rollback",
-	source: "remote" | "local",
 	signal: AbortSignal | undefined,
 	ctx: ExtensionContext,
 ) {
 	if (action === "apply" || action === "rollback") {
-		const target = action === "apply" ? `OS ${action} (${source})` : `OS ${action}`;
+		const target = `OS ${action}`;
 		const denied = await requireConfirmation(ctx, target);
 		if (denied) return errorResult(denied);
 	}
@@ -44,20 +43,20 @@ export async function handleNixosUpdate(
 	}
 
 	// apply
-	const flake = source === "local" ? `${getNixpiRepoDir()}#desktop` : "github:alexradunet/nixPI#desktop";
-	if (source === "local" && !existsSync(getNixpiRepoDir())) {
-		return errorResult(`Local nixPI repo not found at ${getNixpiRepoDir()}. Cannot switch the local flake.`);
+	const flake = "/etc/nixos";
+	if (!existsSync("/etc/nixos/flake.nix")) {
+		return errorResult("System flake not found at /etc/nixos. nixPI updates require the installed /etc/nixos flake.");
 	}
 	const args = ["nixos-update", "apply"];
-	if (source === "local") args.push(flake);
+	args.push(flake);
 	const result = await run("nixpi-brokerctl", args, signal);
 	const text =
 		result.exitCode === 0
-			? `Update applied successfully from ${source} source. New generation is active.`
+			? "Update applied successfully from /etc/nixos. New generation is active."
 			: `Update failed: ${result.stderr}`;
 	return {
 		content: [{ type: "text" as const, text: truncate(text) }],
-		details: { exitCode: result.exitCode, source, flake },
+		details: { exitCode: result.exitCode, flake },
 		isError: result.exitCode !== 0,
 	};
 }

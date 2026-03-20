@@ -1,4 +1,5 @@
 # core/os/hosts/x86_64.nix
+# Canonical nixPI desktop profile used for dev builds and the installed system shape.
 { lib, ... }:
 
 {
@@ -20,22 +21,16 @@
   boot.loader.efi.canTouchEfiVariables = true;
   boot.kernelParams = [ "console=tty0" "console=ttyS0,115200" ];
 
-  # VM dev share: mount host's ~/.nixpi into /mnt/host-nixpi via 9p virtfs.
-  # Requires QEMU -virtfs flag (see justfile). nofail means this is ignored on real hardware.
-  fileSystems."/mnt/host-nixpi" = {
-    device = "host-nixpi";
-    fsType = "9p";
-    options = [ "trans=virtio" "ro" "nofail" ];
-  };
-
   nixpkgs.config.allowUnfree = true;
 
-  time.timeZone   = "UTC";
-  i18n.defaultLocale = "en_US.UTF-8";
+  nixpi.primaryUser = lib.mkDefault "pi";
+  nixpi.install.mode = lib.mkDefault "managed-user";
+  nixpi.createPrimaryUser = lib.mkDefault true;
 
-  virtualisation.vmVariant = {
-    nixpi.primaryUser = lib.mkDefault "pi";
-    nixpi.install.mode = lib.mkDefault "managed-user";
-    nixpi.createPrimaryUser = lib.mkDefault true;
-  };
+  time.timeZone = "UTC";
+  i18n.defaultLocale = "en_US.UTF-8";
+  networking.networkmanager.enable = true;
+  services.xserver.xkb = { layout = "us"; variant = ""; };
+  console.keyMap = "us";
+  networking.hostName = lib.mkDefault "nixpi";
 }

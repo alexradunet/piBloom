@@ -22,8 +22,9 @@
       specialArgs = { inherit piAgent appPackage; };
     in {
       packages.${system} = {
-        pi        = piAgent;
+        pi = piAgent;
         app = appPackage;
+        installerIso = self.nixosConfigurations.installer-iso.config.system.build.isoImage;
       };
 
       nixosModules = {
@@ -51,9 +52,7 @@
         firstboot = import ./core/os/modules/firstboot.nix;
       };
 
-      # NixOS configuration for the nixPI desktop/workstation install.
-      # Use this after installing standard NixOS:
-      #   NIXPI_PRIMARY_USER=<your-user> sudo --preserve-env=NIXPI_PRIMARY_USER nixos-rebuild switch --impure --flake github:alexradunet/nixPI#desktop
+      # Managed nixPI desktop profile used for local builds and installer generation.
       nixosConfigurations.desktop = nixpkgs.lib.nixosSystem {
         inherit system specialArgs;
         modules = [
@@ -61,23 +60,19 @@
         ];
       };
 
-      # Attach nixPI to an existing NixOS installation.
-      # This imports your existing hardware-configuration.nix and configuration.nix,
-      # then layers nixPI services on top in existing-user mode.
-      # Usage: NIXPI_PRIMARY_USER=alex sudo --preserve-env=NIXPI_PRIMARY_USER nixos-rebuild switch --impure --flake github:alexradunet/nixPI#desktop-attach
-      nixosConfigurations.desktop-attach = nixpkgs.lib.nixosSystem {
+      # Local VM/dev profile that adds VM-only mounts on top of the desktop profile.
+      nixosConfigurations.desktop-vm = nixpkgs.lib.nixosSystem {
         inherit system specialArgs;
         modules = [
-          ./core/os/hosts/x86_64-attach.nix
+          ./core/os/hosts/x86_64-vm.nix
         ];
       };
 
-
-      # Development/test VM that simulates the plain NixOS installer path.
-      nixosConfigurations.installer-sim-vm = nixpkgs.lib.nixosSystem {
+      # Graphical installer ISO built on top of the standard NixOS Calamares image.
+      nixosConfigurations.installer-iso = nixpkgs.lib.nixosSystem {
         inherit system specialArgs;
         modules = [
-          ./core/os/hosts/installer-sim-vm.nix
+          ./core/os/hosts/installer-iso.nix
         ];
       };
 
@@ -173,8 +168,8 @@
           config = self.nixosConfigurations.installed-test.config.system.build.toplevel;
 
           # Regression guard for the local desktop VM path used by `just qcow2`.
-          desktop-vm = self.nixosConfigurations.desktop.config.system.build.vm;
-          installer-sim-vm = self.nixosConfigurations.installer-sim-vm.config.system.build.vm;
+          desktop-vm = self.nixosConfigurations.desktop-vm.config.system.build.vm;
+          installer-iso = self.nixosConfigurations.installer-iso.config.system.build.isoImage;
 
           # Thorough: boot the installed system in a NixOS test VM and verify
           # that critical services come up.
@@ -197,7 +192,6 @@
             { name = "nixpi-e2e"; path = nixosTests.nixpi-e2e; }
             { name = "nixpi-home"; path = nixosTests.nixpi-home; }
             { name = "nixpi-security"; path = nixosTests.nixpi-security; }
-            { name = "nixpi-install-flow"; path = nixosTests.nixpi-install-flow; }
             { name = "nixpi-modular-services"; path = nixosTests.nixpi-modular-services; }
             { name = "nixpi-matrix-bridge"; path = nixosTests.nixpi-matrix-bridge; }
             { name = "nixpi-bootstrap-mode"; path = nixosTests.nixpi-bootstrap-mode; }
@@ -206,7 +200,6 @@
           ];
 
           nixos-destructive = mkCheckLane "nixos-destructive" [
-            { name = "nixpi-install-flow"; path = nixosTests.nixpi-install-flow; }
             { name = "nixpi-post-setup-lockdown"; path = nixosTests.nixpi-post-setup-lockdown; }
             { name = "nixpi-broker"; path = nixosTests.nixpi-broker; }
           ];

@@ -78,9 +78,6 @@ in
   # Firewall and service exposure policy test
   nixpi-security = mkTest ./nixpi-security.nix;
 
-  # Existing-user install flow test
-  nixpi-install-flow = mkTest ./nixpi-install-flow.nix;
-
   # Modular service/configData regression test
   nixpi-modular-services = mkTest ./nixpi-modular-services.nix;
 

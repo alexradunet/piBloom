@@ -131,7 +131,7 @@ Before exposing a nixPI host to any network:
 
 ## 🔗 Related
 
-- [first-boot-setup.md](first-boot-setup.md) — First-boot setup guide
-- [quick_deploy.md](quick_deploy.md) — Build and deployment guide
+- [operations/first-boot-setup.md](operations/first-boot-setup.md) — First-boot setup guide
+- [operations/quick-deploy.md](operations/quick-deploy.md) — Build and deployment guide
 - [supply-chain.md](supply-chain.md) — Image trust policy
 - [../AGENTS.md](../AGENTS.md) — Reference for sensitive paths

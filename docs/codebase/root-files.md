@@ -54,9 +54,11 @@ The root files define how the project is built, tested, and deployed. They are t
 **Key Exports**:
 - `packages.${system}.pi` - Pi agent package
 - `packages.${system}.app` - Main app package
+- `packages.${system}.installerIso` - Graphical installer image
 - `nixosModules.nixpi` - Composable module exporting all nixPI features
-- `nixosConfigurations.desktop` - Full desktop configuration
-- `nixosConfigurations.desktop-attach` - Attach to existing NixOS
+- `nixosConfigurations.desktop` - Managed nixPI desktop profile
+- `nixosConfigurations.desktop-vm` - VM/dev profile
+- `nixosConfigurations.installer-iso` - Official installer image
 - `checks.${system}.*` - Build and VM tests
 
 **Inbound Dependencies**:
@@ -134,7 +136,6 @@ The root files define how the project is built, tested, and deployed. They are t
 | `check-boot` | Full VM boot test |
 
 **Environment Variables**:
-- `NIXPI_PRIMARY_USER` - Target user for rebuilds
 - `NIXPI_VM_MEMORY_MB` - VM RAM override
 - `NIXPI_VM_CPUS` - VM CPU override
 

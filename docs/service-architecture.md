@@ -28,4 +28,4 @@ These are declared as user systemd services in the OS modules and are expected t
 
 - [../README.md](../README.md)
 - [../AGENTS.md](../AGENTS.md)
-- [first-boot-setup.md](first-boot-setup.md)
+- [operations/first-boot-setup.md](operations/first-boot-setup.md)

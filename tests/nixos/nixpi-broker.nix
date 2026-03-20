@@ -95,7 +95,7 @@ pkgs.testers.runNixOSTest {
     assert elevated["effectiveAutonomy"] == "admin", elevated
 
     # Admin passes the permission gate, then hits the explicit OS-update disable check.
-    maintain.fail("nixpi-brokerctl nixos-update apply github:alexradunet/nixPI#desktop >/tmp/update.out 2>/tmp/update.err")
+    maintain.fail("nixpi-brokerctl nixos-update apply /etc/nixos >/tmp/update.out 2>/tmp/update.err")
     maintain.succeed("grep -q 'OS updates are disabled' /tmp/update.err")
 
     maintain.succeed("nixpi-brokerctl revoke-admin >/tmp/revoke.json")
