@@ -1,17 +1,11 @@
 # core/os/hosts/x86_64.nix
 # Canonical NixPI desktop profile used for dev builds and the installed system shape.
-{ lib, ... }:
+{ lib, self, ... }:
 
 {
   imports = [
-    ../modules/app.nix
-    ../modules/broker.nix
-    ../modules/firstboot.nix
-    ../modules/llm.nix
-    ../modules/matrix.nix
-    ../modules/network.nix
-    ../modules/shell.nix
-    ../modules/update.nix
+    self.nixosModules.nixpi
+    self.nixosModules.firstboot
   ];
 
   system.stateVersion = "25.05";

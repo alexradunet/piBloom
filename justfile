@@ -170,12 +170,9 @@ check-nixos-destructive:
 
 # Lint Nix files
 lint:
-    nix flake check
+    nix flake check --no-build
     statix check .
 
 # Format Nix files
-# Note: ** glob requires globstar in bash (shopt -s globstar). nixfmt receives
-# the expanded paths from the shell; if your shell doesn't expand **, list paths
-# explicitly or use: find core/os -name '*.nix' | xargs nixfmt; nixfmt flake.nix
 fmt:
-    nixfmt core/os/**/*.nix flake.nix
+    nix fmt

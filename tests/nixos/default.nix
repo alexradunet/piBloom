@@ -16,7 +16,7 @@
 
 let
   # Import shared helpers
-  testLib = import ./lib.nix { inherit pkgs lib; };
+  testLib = import ./lib.nix { inherit pkgs lib self; };
   
   inherit (testLib)
     nixPiModules

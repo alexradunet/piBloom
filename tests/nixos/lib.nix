@@ -1,7 +1,7 @@
 # tests/nixos/lib.nix
 # Shared helpers for NixPI NixOS integration tests
 
-{ pkgs, lib }:
+{ pkgs, lib, self }:
 
 {
   mkBaseNode = extraConfig: {
@@ -96,16 +96,10 @@ EOF
     fileSystems."/boot" = { device = "/dev/vda1"; fsType = "vfat"; };
   };
 
-  # Standard NixPI modules list
+  # Reuse the flake's exported module composition so tests stay aligned with
+  # the real desktop/consumer entrypoint.
   nixPiModules = [
-    ../../core/os/modules/options.nix
-    ../../core/os/modules/app.nix
-    ../../core/os/modules/broker.nix
-    ../../core/os/modules/llm.nix
-    ../../core/os/modules/matrix.nix
-    ../../core/os/modules/network.nix
-    ../../core/os/modules/shell.nix
-    ../../core/os/modules/update.nix
+    self.nixosModules.nixpi
   ];
 
   # NixPI modules without nixpi-shell (for tests that define their own operator user)

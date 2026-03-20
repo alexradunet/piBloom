@@ -28,13 +28,15 @@
       piAgent = pkgs.callPackage ./core/os/pkgs/pi {};
       appPackage = pkgs.callPackage ./core/os/pkgs/app { inherit piAgent; };
 
-      specialArgs = { inherit piAgent appPackage; };
+      specialArgs = { inherit piAgent appPackage self; };
     in {
       packages.${system} = {
         pi = piAgent;
         app = appPackage;
         installerIso = self.nixosConfigurations.installer-iso.config.system.build.isoImage;
       };
+
+      formatter.${system} = pkgs.nixfmt-rfc-style;
 
       nixosModules = {
         # Single composable module exporting all NixPI feature modules.
@@ -234,6 +236,8 @@
           biome
 
           # Linting & utilities
+          nixfmt-rfc-style
+          statix
           shellcheck
           jq
           curl
