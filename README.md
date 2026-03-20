@@ -41,8 +41,9 @@ Install nixPI on an existing NixOS system:
 
 ```bash
 # 1. Install NixOS from the official ISO: https://nixos.org/download.html
-# 2. Clone this repo and install nixPI:
-git clone https://github.com/alexradunet/nixpi.git ~/nixpi
+# 2. Download and extract nixPI:
+curl -L https://github.com/alexradunet/nixpi/archive/refs/heads/main.tar.gz | tar xz -C ~
+mv ~/nixpi-main ~/nixpi
 cd ~/nixpi
 
 # 3. Apply nixPI to your existing user (replace 'alex' with your username)

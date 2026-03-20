@@ -23,9 +23,10 @@ nixPI is installed on top of a standard NixOS system:
    - Set up your user, hostname, and basic system configuration
    - Complete the standard NixOS install process
 
-2. **Clone the nixPI repository** after first boot:
+2. **Download nixPI** after first boot (works without git installed):
    ```bash
-   git clone https://github.com/alexradunet/nixpi.git ~/nixpi
+   curl -L https://github.com/alexradunet/nixpi/archive/refs/heads/main.tar.gz | tar xz -C ~
+   mv ~/nixpi-main ~/nixpi
    cd ~/nixpi
    ```
 

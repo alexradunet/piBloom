@@ -5,10 +5,9 @@
 # It imports your existing /etc/nixos configuration.
 # 
 # USAGE:
-#   git clone https://github.com/alexradunet/nixpi.git ~/nixpi
-# 
-# Or manually:
-#   NIXPI_PRIMARY_USER=yourusername sudo --preserve-env=NIXPI_PRIMARY_USER nixos-rebuild switch --impure --flake github:alexradunet/nixpi#desktop-attach
+#   curl -L https://github.com/alexradunet/nixpi/archive/refs/heads/main.tar.gz | tar xz -C ~
+#   mv ~/nixpi-main ~/nixpi && cd ~/nixpi
+#   sudo NIXPI_PRIMARY_USER=yourusername nixos-rebuild switch --impure --flake .#desktop-attach
 
 { lib, pkgs, config, ... }:
 
@@ -39,10 +38,10 @@ in
       message = ''
         NIXPI_PRIMARY_USER must be set to your username.
         
-        Usage: NIXPI_PRIMARY_USER=yourusername sudo --preserve-env=NIXPI_PRIMARY_USER nixos-rebuild switch --impure --flake github:alexradunet/nixpi#desktop-attach
-        
-        Or use the install script:
-        curl -fsSL https://raw.githubusercontent.com/alexradunet/nixPI/main/core/scripts/nixpi-install.sh | bash
+        Download nixPI and install:
+          curl -L https://github.com/alexradunet/nixpi/archive/refs/heads/main.tar.gz | tar xz -C ~
+          mv ~/nixpi-main ~/nixpi && cd ~/nixpi
+          sudo NIXPI_PRIMARY_USER=yourusername nixos-rebuild switch --impure --flake .#desktop-attach
       '';
     }
     {
