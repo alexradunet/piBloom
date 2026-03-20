@@ -50,6 +50,11 @@ netbird_ip() {
 }
 
 root_command() {
+	if [[ $# -gt 0 && "$1" == nixpi-bootstrap-* ]] && command -v "$1" >/dev/null 2>&1; then
+		"$@"
+		return
+	fi
+
 	local sudo_bin=""
 	if command -v sudo >/dev/null 2>&1; then
 		sudo_bin="$(command -v sudo)"

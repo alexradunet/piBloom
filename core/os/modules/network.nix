@@ -46,6 +46,7 @@ in
 
     hardware.enableAllFirmware = true;
     services.netbird.enable = true;
+    services.netbird.clients.default.config.DisableAutoConnect = lib.mkForce true;
 
     services.openssh = {
       enable = true;
