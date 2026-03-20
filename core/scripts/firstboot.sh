@@ -106,12 +106,12 @@ firstboot_services() {
     local mesh_ip mesh_fqdn
     mesh_ip=$(read_checkpoint_data netbird)
     mesh_fqdn=$(netbird_fqdn)
-    write_fluffychat_runtime_config
+    write_element_web_runtime_config
     write_service_home_runtime "$mesh_ip" "$mesh_fqdn"
     install_home_infrastructure || echo "nixpi-firstboot: Home setup failed (non-fatal)"
     run_bootstrap_command nixpi-bootstrap-brokerctl systemd restart nixpi-home.service || echo "nixpi-firstboot: home restart failed (non-fatal)" >&2
-    run_bootstrap_command nixpi-bootstrap-brokerctl systemd restart nixpi-chat.service || echo "nixpi-firstboot: chat restart failed (non-fatal)" >&2
-    mark_done_with services "home chat"
+    run_bootstrap_command nixpi-bootstrap-brokerctl systemd restart nixpi-element-web.service || echo "nixpi-firstboot: element restart failed (non-fatal)" >&2
+    mark_done_with services "home element-web"
 }
 
 firstboot_localai() {

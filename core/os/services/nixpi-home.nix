@@ -14,6 +14,10 @@ in
       type = types.port;
     };
 
+    bindAddress = mkOption {
+      type = types.str;
+    };
+
     stateDir = mkOption {
       type = types.pathWith { absolute = true; };
     };
@@ -22,12 +26,16 @@ in
       type = types.str;
     };
 
-    chatPort = mkOption {
+    elementWebPort = mkOption {
       type = types.port;
     };
 
     matrixPort = mkOption {
       type = types.port;
+    };
+
+    matrixClientBaseUrl = mkOption {
+      type = types.str;
     };
 
     trustedInterface = mkOption {
@@ -37,11 +45,14 @@ in
 
   config = {
     process.argv = [
-      "${pkgs.nginx}/bin/nginx"
-      "-e"
-      "stderr"
-      "-c"
-      config.configData."nginx.conf".path
+      "${pkgs.static-web-server}/bin/static-web-server"
+      "--host"
+      config.nixpi-home.bindAddress
+      "--port"
+      (toString config.nixpi-home.port)
+      "--root"
+      webroot
+      "--health"
     ];
 
     configData = {
@@ -51,39 +62,22 @@ in
         <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>NixPI Home</title></head>
         <body>
           <h1>NixPI Home</h1>
-          <p>Primary interfaces: terminal, Matrix, and the built-in web chat.</p>
+          <p>Primary interfaces: terminal, Matrix, and Element Web.</p>
           <h2>Local access</h2>
           <ul>
             <li>Home: <a href="http://localhost:${toString config.nixpi-home.port}">http://localhost:${toString config.nixpi-home.port}</a></li>
-            <li>NixPI Chat: <a href="http://localhost:${toString config.nixpi-home.chatPort}">http://localhost:${toString config.nixpi-home.chatPort}</a></li>
+            <li>Element Web: <a href="http://localhost:${toString config.nixpi-home.elementWebPort}">http://localhost:${toString config.nixpi-home.elementWebPort}</a></li>
             <li>Matrix: <a href="http://localhost:${toString config.nixpi-home.matrixPort}">http://localhost:${toString config.nixpi-home.matrixPort}</a></li>
           </ul>
           <h2>Remote access</h2>
           <p>Use your NetBird hostname or mesh IP on interface ${config.nixpi-home.trustedInterface} with these ports.</p>
           <ul>
             <li>Home: ${toString config.nixpi-home.port}</li>
-            <li>NixPI Chat: ${toString config.nixpi-home.chatPort}</li>
-            <li>Matrix: ${toString config.nixpi-home.matrixPort}</li>
+            <li>Element Web: ${toString config.nixpi-home.elementWebPort}</li>
+            <li>Matrix URL: ${config.nixpi-home.matrixClientBaseUrl}</li>
           </ul>
         </body>
         </html>
-      '';
-      "nginx.conf".text = ''
-        daemon off;
-        pid ${config.nixpi-home.stateDir}/services/home/nginx.pid;
-        error_log stderr;
-        events { worker_connections 64; }
-        http {
-            include ${pkgs.nginx}/conf/mime.types;
-            default_type application/octet-stream;
-            access_log off;
-            client_body_temp_path ${config.nixpi-home.stateDir}/services/home/tmp;
-            server {
-                listen ${toString config.nixpi-home.port};
-                root ${webroot};
-                try_files $uri $uri/ =404;
-            }
-        }
       '';
     };
 
@@ -102,7 +96,6 @@ in
         PrivateTmp = true;
         ProtectSystem = "strict";
         ProtectHome = false;
-        ReadWritePaths = [ "${config.nixpi-home.stateDir}/services/home" ];
       };
     };
   };

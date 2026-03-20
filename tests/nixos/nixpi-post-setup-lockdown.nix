@@ -83,7 +83,7 @@ pkgs.testers.runNixOSTest {
 
     # Local services remain available on loopback.
     nixpi.succeed("curl -sf http://127.0.0.1:8080 | grep -q 'NixPI Home'")
-    nixpi.succeed("curl -sf http://127.0.0.1:8081/config.json | grep -q 'defaultHomeserver'")
+    nixpi.succeed("curl -sf http://127.0.0.1:8081/config.json | grep -q 'default_server_config'")
 
     # Bootstrap wrappers refuse to run after setup.
     nixpi.fail("su - pi -c 'sudo -n /run/current-system/sw/bin/nixpi-bootstrap-read-matrix-secret >/tmp/secret.out 2>/tmp/secret.err'")

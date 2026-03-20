@@ -19,7 +19,7 @@ Before first-boot setup, you need a system installed from the NixPI installer im
 
 NetBird is the network security boundary for all NixPI services. The firewall configuration (`trustedInterfaces = ["wt0"]`) only protects services when the NetBird interface (`wt0`) is active. Without NetBird:
 
-- Matrix, Home (port 8080), and Web Chat (port 8081) are exposed to the local network
+- Matrix, Home (port 8080), and Element Web (port 8081) are exposed to the local network
 - A compromised local device could access OS tools via prompt injection
 
 **Complete NetBird setup and verify `wt0` is active before exposing this machine to any network.**
@@ -54,7 +54,7 @@ NixPI's first-boot experience has two phases.
 **Built-in services provisioned**:
 
 - Home status page on port `8080`
-- Web Chat (`fluffychat`) on port `8081`
+- Element Web on port `8081`
 
 **Bootstrap security lifecycle**:
 

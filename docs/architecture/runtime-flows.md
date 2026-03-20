@@ -32,7 +32,7 @@ Understanding how control and data flow through NixPI is essential for:
 
 3. **Service installation**
    - `nixpi-daemon.service` enabled
-   - `nixpi-home.service`, `nixpi-chat.service` configured
+   - `nixpi-home.service`, `nixpi-element-web.service` configured
    - Matrix Synapse provisioned
 
 ### Key Files
@@ -56,7 +56,7 @@ multi-user.target
 ├─ matrix-synapse.service
 ├─ netbird.service
 ├─ nixpi-home.service
-├─ nixpi-chat.service
+├─ nixpi-element-web.service
 └─ nixpi-daemon.service (after setup complete)
 ```
 

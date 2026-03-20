@@ -24,7 +24,7 @@ NixPI delivers a complete platform with:
 | **Persona System** | Injected personality, shell guardrails, memory compaction |
 | **NixOS Integration** | Proposal workflow for human-reviewed system changes |
 | **Matrix Daemon** | Always-on room runtime with multi-agent support |
-| **Built-in Services** | Home (`:8080`), Web Chat (`:8081`), Matrix (`:6167`) |
+| **Built-in Services** | Home (`:8080`), Element Web (`:8081`), Matrix (`:6167`) |
 | **Memory System** | Markdown-native durable memory in `~/nixpi/Objects/` |
 | **Episodic Memory** | Append-only capture in `~/nixpi/Episodes/` |
 | **First-Boot Flow** | Bash wizard + Pi-guided persona completion |

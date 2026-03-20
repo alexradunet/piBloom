@@ -33,7 +33,7 @@ are accessible **only** to peers on the NetBird mesh:
 |---------|------|---------|
 | Home | 8080 | Minimal service directory with shareable access URLs |
 | Matrix | 6167 | Homeserver for messaging |
-| fluffychat | 8081 | Web Matrix client |
+| element-web | 8081 | Web Matrix client |
 
 ---
 

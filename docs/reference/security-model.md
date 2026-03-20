@@ -30,7 +30,7 @@ When NetBird is active and the `wt0` interface is up, the following services are
 |---------|------|---------|
 | Home | 8080 | Minimal service directory with shareable access URLs |
 | Matrix | 6167 | Homeserver for messaging |
-| fluffychat | 8081 | Web Matrix client |
+| element-web | 8081 | Web Matrix client |
 
 ---
 

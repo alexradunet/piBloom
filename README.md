@@ -28,7 +28,7 @@ Current platform capabilities:
 - persona injection, shell guardrails, durable-memory digest injection, and compaction context persistence
 - local-only Nix proposal support for checking the seeded repo clone, refreshing `flake.lock`, and validating config before review
 - host OS management tools for NixOS updates, local/remote switch, systemd, health, and reboot scheduling
-- built-in user services for Home and Web Chat
+- built-in user services for Home and Element Web
 - markdown-native durable memory in `~/nixpi/Objects/`
 - append-only episodic memory in `~/nixpi/Episodes/`
 - a unified Matrix room daemon with synthesized host-agent fallback and optional multi-agent overlays
@@ -87,7 +87,7 @@ Installed by default:
 - `matrix-synapse.service`
 - `nixpi-daemon.service` after setup once AI auth and defaults are ready
 - `nixpi-home.service`
-- `nixpi-chat.service`
+- `nixpi-element-web.service`
 
 ## 🌿 Repository Layout
 
@@ -112,7 +112,7 @@ NixPI extends Pi through two active runtime layers:
 Built-in service surface is part of the base NixOS system:
 
 - `Home` on `:8080`
-- `Web Chat` on `:8081`
+- `Element Web` on `:8081`
 - `Matrix` on `:6167`
 
 ## 📚 Documentation Structure

@@ -10,7 +10,7 @@ NixPI ships these services as part of the base NixOS system. They are not option
 ## Always Available
 
 - `NixPI Home` on `:8080` — minimal service directory showing localhost and NetBird access details
-- `NixPI Chat` on `:8081` — FluffyChat web client for the local NixPI Matrix server
+- `Element Web` on `:8081` — Element Web client for the local NixPI Matrix server
 
 ## Operational Notes
 
@@ -21,7 +21,7 @@ NixPI ships these services as part of the base NixOS system. They are not option
 ## Expected Unit Names
 
 - `nixpi-home`
-- `nixpi-chat`
+- `nixpi-element-web`
 
 ## URLs
 

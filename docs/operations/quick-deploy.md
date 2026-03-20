@@ -8,7 +8,7 @@ Operators and maintainers installing NixPI from the official installer image or 
 
 ## 🛡️ Security Note: NetBird is Mandatory
 
-NetBird is the network security boundary for all NixPI services. The firewall trusts only the NetBird interface (`wt0`). Without NetBird running, all services (Matrix, Home, Web Chat) are exposed to the local network.
+NetBird is the network security boundary for all NixPI services. The firewall trusts only the NetBird interface (`wt0`). Without NetBird running, all services (Matrix, Home, Element Web) are exposed to the local network.
 
 **Complete NetBird setup and verify `wt0` is active before exposing this machine to any network.** See [Security Model](../reference/security-model) for the full threat model.
 

@@ -29,7 +29,7 @@ NixPI combines several technologies to create a self-hosted AI companion OS. The
 | Service | Port | Purpose |
 |---------|------|---------|
 | Home | `:8080` | Service directory and status page |
-| Web Chat | `:8081` | FluffyChat web client |
+| Element Web | `:8081` | Element Web client |
 | Matrix | `:6167` | Continuwuity homeserver |
 
 ## 🧩 How the Layers Connect
@@ -39,7 +39,7 @@ NixPI combines several technologies to create a self-hosted AI companion OS. The
 ```
 ┌─────────────────────────────────────────┐
 │           User Interface                │
-│    (Matrix, Web Chat, CLI tools)        │
+│   (Matrix, Element Web, CLI tools)      │
 └─────────────────┬───────────────────────┘
                   │
 ┌─────────────────▼───────────────────────┐

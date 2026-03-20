@@ -193,38 +193,11 @@ write_service_home_runtime() {
 		"$template" > "$NIXPI_CONFIG/home/index.html"
 }
 
-nginx_prefix() {
-	dirname "$(dirname "$(readlink -f "$(command -v nginx)")")"
-}
-
 install_home_infrastructure() {
-	local prefix tmpdir
-	prefix=$(nginx_prefix)
-	tmpdir="$NIXPI_CONFIG/home/tmp"
-	mkdir -p "$NIXPI_CONFIG/home" "$tmpdir"
-
-	cat > "$NIXPI_CONFIG/home/nginx.conf" <<-NGINX
-	daemon off;
-pid ${NIXPI_CONFIG}/home/nginx.pid;
-	error_log stderr;
-	events { worker_connections 64; }
-	http {
-	    include ${prefix}/conf/mime.types;
-	    default_type application/octet-stream;
-	    access_log off;
-	    client_body_temp_path ${tmpdir};
-	    server {
-	        listen 8080;
-	        root ${NIXPI_CONFIG}/home;
-	        try_files \$uri \$uri/ =404;
-	    }
-	}
-	NGINX
-
-	root_command nixpi-bootstrap-brokerctl systemd restart nixpi-home.service
+	mkdir -p "$NIXPI_CONFIG/home"
 }
 
-write_fluffychat_runtime_config() {
+write_element_web_runtime_config() {
 	local mesh_fqdn mesh_ip primary_host primary_matrix_url
 	mesh_fqdn=$(netbird_fqdn)
 	mesh_ip=$(netbird_ip)
@@ -238,8 +211,14 @@ write_fluffychat_runtime_config() {
 	mkdir -p "$NIXPI_CONFIG/chat"
 	cat > "$NIXPI_CONFIG/chat/config.json" <<-CONFIG
 	{
-	  "applicationName": "NixPI Chat",
-	  "defaultHomeserver": "${primary_matrix_url}"
+	  "default_server_config": {
+	    "m.homeserver": {
+	      "base_url": "${primary_matrix_url}",
+	      "server_name": "${primary_host:-localhost}"
+	    }
+	  },
+	  "brand": "Element",
+	  "disable_guests": true
 	}
 	CONFIG
 }

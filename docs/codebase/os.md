@@ -57,7 +57,7 @@ The OS modules define how NixPI integrates with NixOS. They provide:
 |------|-----|------|-------------|
 | `nixpi-daemon.nix` | Daemon service | `nixpi-daemon.service` definition | Main runtime service |
 | `nixpi-home.nix` | Home service | Status page on :8080 | Built-in service |
-| `nixpi-chat.nix` | Chat service | FluffyChat on :8081 | Web Matrix client |
+| `nixpi-element-web.nix` | Element Web service | Element Web on :8081 | Web Matrix client |
 | `nixpi-broker.nix` | Broker service | Privilege escalation service | Admin operations |
 | `nixpi-update.nix` | Update service | Automatic update timer | Maintenance window updates |
 
@@ -68,7 +68,7 @@ The OS modules define how NixPI integrates with NixOS. They provide:
 | `nixpi-daemon.service` | `agent` | Unprivileged runtime |
 | `nixpi-broker.service` | `root` | Privileged operations |
 | `nixpi-home.service` | `agent` | Web service |
-| `nixpi-chat.service` | `agent` | Web service |
+| `nixpi-element-web.service` | `agent` | Web service |
 | `matrix-synapse.service` | `matrix-synapse` | Homeserver |
 
 ---

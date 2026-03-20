@@ -17,7 +17,7 @@ The current built-in service set is:
 | Service | Port | Purpose |
 |---------|------|---------|
 | Home | `:8080` | Service directory and status page |
-| Web Chat | `:8081` | FluffyChat web Matrix client |
+| Element Web | `:8081` | Element Web Matrix client |
 | Matrix | `:6167` | Continuwuity Matrix homeserver |
 
 These are declared as user systemd services in the OS modules and are expected to exist on every NixPI node.

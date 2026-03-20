@@ -21,7 +21,7 @@ let
     || cfg.bindAddress == "localhost";
   exposedPorts =
     lib.optionals cfg.home.enable [ cfg.home.port ]
-    ++ lib.optionals cfg.chat.enable [ cfg.chat.port ]
+    ++ lib.optionals cfg.elementWeb.enable [ cfg.elementWeb.port ]
     ++ [ config.nixpi.matrix.port ];
 in
 
@@ -88,11 +88,7 @@ in
       };
     };
 
-    environment.etc."nixpi/fluffychat-web".source = pkgs.fluffychat-web;
-
     systemd.tmpfiles.rules = [
-      "d ${stateDir}/services/home/tmp 0770 ${serviceUser} ${serviceUser} -"
-      "d ${stateDir}/services/chat/tmp 0770 ${serviceUser} ${serviceUser} -"
       "d ${primaryHome}/nixpi 2775 ${primaryUser} ${serviceUser} -"
     ];
 
@@ -103,7 +99,6 @@ in
       qemu OVMF
       chromium
       netbird
-      nginx
     ] ++ lib.optionals securityCfg.fail2ban.enable [ pkgs.fail2ban ];
 
     system.services = lib.mkMerge [
@@ -112,19 +107,31 @@ in
           imports = [ (lib.modules.importApply ../services/nixpi-home.nix { inherit pkgs; }) ];
           nixpi-home = {
             port = cfg.home.port;
+            bindAddress = cfg.bindAddress;
             inherit stateDir serviceUser;
-            chatPort = cfg.chat.port;
+            elementWebPort = cfg.elementWeb.port;
             matrixPort = config.nixpi.matrix.port;
+            matrixClientBaseUrl =
+              if config.nixpi.matrix.clientBaseUrl != "" then
+                config.nixpi.matrix.clientBaseUrl
+              else
+                "http://${config.networking.hostName}:${toString config.nixpi.matrix.port}";
             trustedInterface = securityCfg.trustedInterface;
           };
         };
       })
-      (lib.mkIf cfg.chat.enable {
-        nixpi-chat = {
-          imports = [ (lib.modules.importApply ../services/nixpi-chat.nix { inherit pkgs; }) ];
-          nixpi-chat = {
-            port = cfg.chat.port;
-            matrixPort = config.nixpi.matrix.port;
+      (lib.mkIf cfg.elementWeb.enable {
+        nixpi-element-web = {
+          imports = [ (lib.modules.importApply ../services/nixpi-element-web.nix { inherit pkgs; }) ];
+          nixpi-element-web = {
+            port = cfg.elementWeb.port;
+            bindAddress = cfg.bindAddress;
+            matrixServerName = config.networking.hostName;
+            matrixClientBaseUrl =
+              if config.nixpi.matrix.clientBaseUrl != "" then
+                config.nixpi.matrix.clientBaseUrl
+              else
+                "http://${config.networking.hostName}:${toString config.nixpi.matrix.port}";
             inherit stateDir serviceUser;
           };
         };
@@ -133,7 +140,7 @@ in
     warnings =
       lib.optional (!securityCfg.enforceServiceFirewall && !bindsLocally) ''
         NixPI's built-in service surface is bound to `${cfg.bindAddress}` without
-        the trusted-interface firewall restriction. Home, Chat, and
+        the trusted-interface firewall restriction. Home, Element Web, and
         Matrix may be reachable on all network interfaces.
       '';
   };

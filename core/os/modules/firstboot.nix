@@ -52,7 +52,7 @@ in
       "netbird.service"
       "nixpi-daemon.service"
       "nixpi-home.service"
-      "nixpi-chat.service"
+      "nixpi-element-web.service"
     ];
     wants = [
       "network-online.target"
@@ -60,7 +60,7 @@ in
       "netbird.service"
       "nixpi-daemon.service"
       "nixpi-home.service"
-      "nixpi-chat.service"
+      "nixpi-element-web.service"
     ];
     serviceConfig = {
       Type = "oneshot";

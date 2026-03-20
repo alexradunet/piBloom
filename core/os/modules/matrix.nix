@@ -23,6 +23,11 @@ let
       config.nixpi.matrix.macaroonSecretKeyFile
     else
       generatedMacaroonSecretFile;
+  clientBaseUrl =
+    if config.nixpi.matrix.clientBaseUrl != "" then
+      config.nixpi.matrix.clientBaseUrl
+    else
+      "http://${config.networking.hostName}:${toString config.nixpi.matrix.port}";
 in
 {
   imports = [ ./options.nix ];
@@ -45,7 +50,7 @@ in
     
     settings = {
       server_name = config.networking.hostName;
-      public_baseurl = "http://localhost:${toString config.nixpi.matrix.port}";
+      public_baseurl = clientBaseUrl;
       
       listeners = [
         {

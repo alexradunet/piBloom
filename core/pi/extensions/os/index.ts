@@ -34,7 +34,7 @@ const NixConfigProposalParams = Type.Object({
 });
 
 const SystemdControlParams = Type.Object({
-	service: Type.String({ description: "Service name (e.g. nixpi-chat)" }),
+	service: Type.String({ description: "Service name (e.g. nixpi-element-web)" }),
 	action: StringEnum(["start", "stop", "restart", "status"] as const),
 });
 

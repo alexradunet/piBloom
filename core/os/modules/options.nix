@@ -167,7 +167,7 @@ in
           "nixpi-daemon.service"
           "netbird.service"
           "nixpi-home.service"
-          "nixpi-chat.service"
+          "nixpi-element-web.service"
           "matrix-synapse.service"
           "nixpi-update.service"
         ];
@@ -215,9 +215,9 @@ in
         port = mkPortOption 8080 "TCP port for the NixPI Home landing page.";
       };
 
-      chat = {
-        enable = lib.mkEnableOption "NixPI web chat service" // { default = true; };
-        port = mkPortOption 8081 "TCP port for the NixPI Chat web client.";
+      elementWeb = {
+        enable = lib.mkEnableOption "NixPI Element Web service" // { default = true; };
+        port = mkPortOption 8081 "TCP port for the NixPI Element Web client.";
       };
     };
 
@@ -231,6 +231,16 @@ in
       };
 
       port = mkPortOption 6167 "TCP port for the local Matrix homeserver.";
+
+      clientBaseUrl = lib.mkOption {
+        type = lib.types.str;
+        default = "";
+        description = ''
+          Client-facing Matrix base URL used by Element Web and advertised to
+          operators. When left empty, NixPI derives it from the hostname and
+          configured Matrix port.
+        '';
+      };
 
       enableRegistration = lib.mkOption {
         type = lib.types.bool;

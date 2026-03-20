@@ -101,10 +101,10 @@ print_service_access_summary() {
 	fi
 	echo "    Share this   - send other NetBird peers the NixPI Home URL"
 	if [[ -n "$mesh_host" ]]; then
-		echo "    NixPI Chat   - http://${mesh_host}:8081"
+		echo "    Element Web  - http://${mesh_host}:8081"
 	fi
 	if [[ -n "$mesh_ip" && "$mesh_ip" != "$mesh_host" ]]; then
-		echo "    NixPI Chat   - http://${mesh_ip}:8081"
+		echo "    Element Web  - http://${mesh_ip}:8081"
 	fi
 	echo "    FluffyChat   - preconfigured for this NixPI server"
 	if [[ -n "$mesh_host" ]]; then
@@ -368,7 +368,7 @@ step_services() {
 	mesh_fqdn=$(netbird_fqdn)
 
 	echo "  Refreshing built-in service configs..."
-	write_fluffychat_runtime_config
+	write_element_web_runtime_config
 	write_service_home_runtime "$mesh_ip" "$mesh_fqdn"
 	if install_home_infrastructure; then
 		echo "  NixPI Home ready."
@@ -376,9 +376,9 @@ step_services() {
 		echo "  NixPI Home setup failed."
 	fi
     root_command nixpi-bootstrap-brokerctl systemd restart nixpi-home.service || echo "  home restart failed."
-    root_command nixpi-bootstrap-brokerctl systemd restart nixpi-chat.service || echo "  chat restart failed."
+    root_command nixpi-bootstrap-brokerctl systemd restart nixpi-element-web.service || echo "  element restart failed."
 	write_service_home_runtime "$mesh_ip" "$mesh_fqdn"
-	mark_done_with services "home chat"
+	mark_done_with services "home element-web"
 }
 
 step_bootc_switch() {

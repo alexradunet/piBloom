@@ -13,7 +13,7 @@ NixPI no longer ships a separate packaged-service layer. The user-facing service
 The current built-in service set is:
 
 - `Home` on `:8080`
-- `Web Chat` on `:8081`
+- `Element Web` on `:8081`
 - `Matrix` on `:6167`
 
 These are declared as user systemd services in the OS modules and are expected to exist on every NixPI node.
@@ -21,7 +21,7 @@ These are declared as user systemd services in the OS modules and are expected t
 ## 📚 Operational Notes
 
 - Home is a minimal status page for the service surface
-- FluffyChat is preconfigured for the local NixPI Matrix server
+- Element Web is preconfigured for the local NixPI Matrix server
 - use `systemd_control` to inspect and restart these units
 
 ## 🔗 Related
