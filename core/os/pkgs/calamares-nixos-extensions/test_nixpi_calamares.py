@@ -31,6 +31,7 @@ class NixpiCalamaresTests(unittest.TestCase):
         self.assertEqual(artifacts["nixpi_install_path"], "/mnt/target/etc/nixos/nixpi-install.nix")
         self.assertEqual(artifacts["nixpi_host_path"], "/mnt/target/etc/nixos/nixpi-host.nix")
         self.assertEqual(artifacts["flake_path"], "/mnt/target/etc/nixos/flake.nix")
+        self.assertEqual(artifacts["flake_install_ref"], "/mnt/target/etc/nixos#pi-box")
         self.assertIn('nix.settings.experimental-features = [ "nix-command" "flakes" ];', artifacts["nixpi_install_module"])
         self.assertIn('nixosConfigurations."pi-box"', artifacts["nixpi_flake"])
         self.assertNotIn("./nixpi-install.nix", artifacts["host_cfg"])

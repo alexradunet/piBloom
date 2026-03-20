@@ -196,6 +196,8 @@
             module="${installerPkgs.calamares-nixos-extensions}/lib/calamares/modules/nixos/main.py"
             grep -F 'def write_nixpi_install_artifacts(' "$module" >/dev/null
             grep -F 'nix.settings.experimental-features = [ "nix-command" "flakes" ];' "$module" >/dev/null
+            grep -F '"--flake",' "$module" >/dev/null
+            grep -F 'nixpi_artifacts["flake_install_ref"]' "$module" >/dev/null
             if grep -F -- '--extra-experimental-features' "$module" >/dev/null; then
               echo "unexpected nixos-install experimental-features flag in $module" >&2
               exit 1

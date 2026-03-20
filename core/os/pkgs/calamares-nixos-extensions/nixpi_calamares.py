@@ -69,10 +69,12 @@ def prepare_nixpi_install_artifacts(root_mount_point, variables, cfg):
     hostname = _string_var(variables, "hostname", "nixpi")
 
     return {
+        "hostname": hostname,
         "nixpi_source_target": os.path.join(nixpi_etc, "nixpi"),
         "nixpi_install_path": os.path.join(nixpi_etc, "nixpi-install.nix"),
         "nixpi_host_path": os.path.join(nixpi_etc, "nixpi-host.nix"),
         "flake_path": os.path.join(nixpi_etc, "flake.nix"),
+        "flake_install_ref": f"{nixpi_etc}#{hostname}",
         "host_cfg": strip_nixpi_install_import(cfg),
         "nixpi_install_module": NIXPI_INSTALL_MODULE_TEMPLATE.replace("@@username@@", username),
         "nixpi_flake": NIXPI_FLAKE_TEMPLATE.replace("@@hostname@@", hostname),

@@ -29,35 +29,48 @@ stdenv.mkDerivation {
     python <<'PY'
 from pathlib import Path
 
+
+def replace_once(text, before, after, description):
+    updated = text.replace(before, after, 1)
+    if updated == text:
+        raise RuntimeError(f"failed to patch {description}")
+    return updated
+
+
 path = Path("source/modules/nixos/main.py")
 text = path.read_text()
 helper_code = ${builtins.toJSON nixpiCalamaresHelpers}
 
-old_header = """{
+text = replace_once(
+    text,
+    """{
   imports =
     [ # Include the results of the hardware scan.
       ./hardware-configuration.nix
     ];
 
-"""
-new_header = """{
+""",
+    """{
   imports =
     [ # Include the results of the hardware scan.
       ./hardware-configuration.nix
       ./nixpi-install.nix
     ];
 
-"""
-text = text.replace(old_header, new_header, 1)
+""",
+    "configuration imports",
+)
 
 marker = 'def env_is_set(name):\n'
-text = text.replace(marker, helper_code + "\n\n" + marker, 1)
+text = replace_once(text, marker, helper_code + "\n\n" + marker, "NixPI helper injection")
 
-old_write = """    # Write the configuration.nix file
+text = replace_once(
+    text,
+    """    # Write the configuration.nix file
     libcalamares.utils.host_env_process_output(["cp", "/dev/stdin", config], None, cfg)
-"""
-new_write = """    # Materialize the NixPI installation helpers and the standard /etc/nixos flake.
-    write_nixpi_install_artifacts(
+""",
+    """    # Materialize the NixPI installation helpers and the standard /etc/nixos flake.
+    nixpi_artifacts = write_nixpi_install_artifacts(
         root_mount_point,
         variables,
         cfg,
@@ -66,8 +79,28 @@ new_write = """    # Materialize the NixPI installation helpers and the standard
 
     # Write the configuration.nix file used by nixos-install itself.
     libcalamares.utils.host_env_process_output(["cp", "/dev/stdin", config], None, cfg)
-"""
-text = text.replace(old_write, new_write, 1)
+""",
+    "NixPI config materialization",
+)
+
+text = replace_once(
+    text,
+    """        [
+            "nixos-install",
+            "--no-root-passwd",
+            "--root",
+            root_mount_point,
+""",
+    """        [
+            "nixos-install",
+            "--no-root-passwd",
+            "--flake",
+            nixpi_artifacts["flake_install_ref"],
+            "--root",
+            root_mount_point,
+""",
+    "nixos-install flake invocation",
+)
 
 path.write_text(text)
 PY
