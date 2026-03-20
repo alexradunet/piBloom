@@ -7,10 +7,10 @@ PRIMARY_PASSWORD="${NIXPI_TEST_PRIMARY_PASSWORD:-cico}"
 MATRIX_PASSWORD="${NIXPI_TEST_MATRIX_PASSWORD:-testpassword123}"
 PI_USERNAME="${NIXPI_TEST_USERNAME:-e2etest}"
 NETBIRD_SETUP_KEY="${NIXPI_TEST_NETBIRD_SETUP_KEY:-}"
-OUTPUT_PATH="${NIXPI_TEST_VM_OUTPUT:-result-installer}"
+OUTPUT_PATH="${NIXPI_TEST_VM_OUTPUT:-result-installer-sim}"
 HOST_STATE_PATH="${NIXPI_TEST_VM_STATE_PATH:-/tmp/nixpi-live-e2e-state}"
-DISK_PATH="${NIXPI_TEST_VM_DISK_PATH:-/tmp/nixpi-installer-vm-disk.qcow2}"
-LOG_PATH="${NIXPI_TEST_VM_LOG_PATH:-/tmp/nixpi-installer-vm.log}"
+DISK_PATH="${NIXPI_TEST_VM_DISK_PATH:-/tmp/nixpi-installer-sim-vm-disk.qcow2}"
+LOG_PATH="${NIXPI_TEST_VM_LOG_PATH:-/tmp/nixpi-installer-sim-vm.log}"
 PREFILL_PATH="${NIXPI_TEST_PREFILL_PATH:-/tmp/nixpi-live-e2e-prefill.env}"
 SSH_OPTS=(-o ConnectTimeout=5 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -p 2222)
 
@@ -34,7 +34,7 @@ cleanup() {
 trap cleanup EXIT
 
 cd "$ROOT_DIR"
-nix build .#nixosConfigurations.installer-vm.config.system.build.vm -o "$OUTPUT_PATH"
+nix build .#nixosConfigurations.installer-sim-vm.config.system.build.vm -o "$OUTPUT_PATH"
 
 NIXPI_VM_OUTPUT="$OUTPUT_PATH" \
 NIXPI_VM_DISK_PATH="$DISK_PATH" \

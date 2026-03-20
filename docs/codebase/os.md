@@ -100,7 +100,7 @@ NixOS modules use appPackage
 |------|-----|------|-------------|
 | `x86_64.nix` | Desktop config | Full desktop configuration | Main install target |
 | `x86_64-attach.nix` | Attach config | Attach to existing NixOS | Install on existing system |
-| `installer-vm.nix` | Installer VM | Plain NixOS for VM install | Testing installer flow |
+| `installer-sim-vm.nix` | Installer simulation VM | Plain NixOS for VM install | Testing installer flow |
 
 ### Host Configuration Pattern
 

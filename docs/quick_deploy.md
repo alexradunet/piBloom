@@ -69,11 +69,11 @@ just vm-gui     # Run VM with GUI display
 just vm-ssh     # SSH into running VM
 just vm-stop    # Stop the VM
 
-just vm-install         # Boot plain NixOS for install simulation
-just vm-install-gui     # Same, with GUI display
-just vm-install-daemon  # Background installer VM
-just vm-install-ssh     # SSH into installer VM as alex
-just vm-install-stop    # Stop installer VM
+just vm-sim-install         # Boot plain NixOS for install simulation
+just vm-sim-install-gui     # Same, with GUI display
+just vm-sim-install-daemon  # Background installer simulation VM
+just vm-sim-install-ssh     # SSH into installer simulation VM as alex
+just vm-sim-install-stop    # Stop installer simulation VM
 ```
 
 Default forwarded ports in `just vm`:
@@ -99,8 +99,8 @@ Default operator user: your existing NixOS account. The `agent` system user owns
 To simulate the real MiniPC flow in a VM, boot the plain NixOS installer simulation:
 
 ```bash
-just vm-install-daemon
-just vm-install-ssh
+just vm-sim-install-daemon
+just vm-sim-install-ssh
 ```
 
 Login:

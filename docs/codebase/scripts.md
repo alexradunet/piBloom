@@ -73,7 +73,7 @@ Setup orchestration is primarily handled by:
 
 **Inbound Dependencies**:
 - `just vm`, `just vm-gui`, `just vm-daemon`
-- `just vm-install*`
+- `just vm-sim-install*`
 
 **Outbound Dependencies**:
 - QEMU system

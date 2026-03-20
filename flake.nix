@@ -1,6 +1,6 @@
 # flake.nix
 {
-  description = "nixPI — Pi-native AI companion OS on NixOS";
+  description = "nixPi — Pi-native AI companion OS on NixOS";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
@@ -73,10 +73,11 @@
       };
 
 
-      nixosConfigurations.installer-vm = nixpkgs.lib.nixosSystem {
+      # Development/test VM that simulates the plain NixOS installer path.
+      nixosConfigurations.installer-sim-vm = nixpkgs.lib.nixosSystem {
         inherit system specialArgs;
         modules = [
-          ./core/os/hosts/installer-vm.nix
+          ./core/os/hosts/installer-sim-vm.nix
         ];
       };
 
@@ -173,7 +174,7 @@
 
           # Regression guard for the local desktop VM path used by `just qcow2`.
           desktop-vm = self.nixosConfigurations.desktop.config.system.build.vm;
-          installer-vm = self.nixosConfigurations.installer-vm.config.system.build.vm;
+          installer-sim-vm = self.nixosConfigurations.installer-sim-vm.config.system.build.vm;
 
           # Thorough: boot the installed system in a NixOS test VM and verify
           # that critical services come up.

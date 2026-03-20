@@ -3,9 +3,9 @@
 system    := "x86_64-linux"
 flake     := "."
 host      := "desktop"
-installer_host := "installer-vm"
+installer_sim_host := "installer-sim-vm"
 output    := "result"
-installer_output := "result-installer"
+installer_sim_output := "result-installer-sim"
 ovmf      := "/usr/share/edk2/ovmf/OVMF_CODE.fd"
 ovmf_vars := "/usr/share/edk2/ovmf/OVMF_VARS.fd"
 
@@ -58,51 +58,51 @@ vm-ssh:
     ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -p 2222 pi@localhost
 
 # Build a plain NixOS VM to simulate installing nixPI onto an existing machine.
-installer-qcow2:
-    nix build {{ flake }}#nixosConfigurations.{{ installer_host }}.config.system.build.vm -o {{ installer_output }}
+installer-sim-qcow2:
+    nix build {{ flake }}#nixosConfigurations.{{ installer_sim_host }}.config.system.build.vm -o {{ installer_sim_output }}
 
 # Run the installer simulation VM (fresh build from current codebase)
-vm-install: installer-qcow2
-    NIXPI_VM_OUTPUT={{ installer_output }} NIXPI_VM_DISK_PATH=/tmp/nixpi-installer-vm-disk.qcow2 NIXPI_VM_LOG_PATH=/tmp/nixpi-installer-vm.log tools/run-qemu.sh --mode headless
+vm-sim-install: installer-sim-qcow2
+    NIXPI_VM_OUTPUT={{ installer_sim_output }} NIXPI_VM_DISK_PATH=/tmp/nixpi-installer-sim-vm-disk.qcow2 NIXPI_VM_LOG_PATH=/tmp/nixpi-installer-sim-vm.log tools/run-qemu.sh --mode headless
 
 # Run the installer simulation VM with GUI display
-vm-install-gui: installer-qcow2
-    NIXPI_VM_OUTPUT={{ installer_output }} NIXPI_VM_DISK_PATH=/tmp/nixpi-installer-vm-disk.qcow2 NIXPI_VM_LOG_PATH=/tmp/nixpi-installer-vm.log tools/run-qemu.sh --mode gui
+vm-sim-install-gui: installer-sim-qcow2
+    NIXPI_VM_OUTPUT={{ installer_sim_output }} NIXPI_VM_DISK_PATH=/tmp/nixpi-installer-sim-vm-disk.qcow2 NIXPI_VM_LOG_PATH=/tmp/nixpi-installer-sim-vm.log tools/run-qemu.sh --mode gui
 
 # Run the installer simulation VM in background daemon mode
-vm-install-daemon: installer-qcow2
-    NIXPI_VM_OUTPUT={{ installer_output }} NIXPI_VM_DISK_PATH=/tmp/nixpi-installer-vm-disk.qcow2 NIXPI_VM_LOG_PATH=/tmp/nixpi-installer-vm.log tools/run-qemu.sh --mode daemon
+vm-sim-install-daemon: installer-sim-qcow2
+    NIXPI_VM_OUTPUT={{ installer_sim_output }} NIXPI_VM_DISK_PATH=/tmp/nixpi-installer-sim-vm-disk.qcow2 NIXPI_VM_LOG_PATH=/tmp/nixpi-installer-sim-vm.log tools/run-qemu.sh --mode daemon
 
 # SSH into the installer simulation VM
-vm-install-ssh:
+vm-sim-install-ssh:
     #!/usr/bin/env bash
-    if ! pgrep -f "[q]emu-system-x86_64.*nixpi-installer-vm-disk" > /dev/null; then
-        echo "No installer VM running. Start with: just vm-install-daemon"
+    if ! pgrep -f "[q]emu-system-x86_64.*nixpi-installer-sim-vm-disk" > /dev/null; then
+        echo "No installer simulation VM running. Start with: just vm-sim-install-daemon"
         exit 1
     fi
-    echo "Connecting to installer VM..."
+    echo "Connecting to installer simulation VM..."
     ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -p 2222 alex@localhost
 
 # Show installer VM log
-vm-install-logs:
-    tail -f /tmp/nixpi-installer-vm.log
+vm-sim-install-logs:
+    tail -f /tmp/nixpi-installer-sim-vm.log
 
 # Stop the installer simulation VM
-vm-install-stop:
+vm-sim-install-stop:
     #!/usr/bin/env bash
-    pid=$(pgrep -f "[q]emu-system-x86_64.*nixpi-installer-vm-disk" || true)
+    pid=$(pgrep -f "[q]emu-system-x86_64.*nixpi-installer-sim-vm-disk" || true)
     if [ -z "$pid" ]; then
-        echo "No installer VM running"
+        echo "No installer simulation VM running"
         exit 0
     fi
-    echo "Stopping installer VM (PID: $pid)..."
+    echo "Stopping installer simulation VM (PID: $pid)..."
     kill "$pid" 2>/dev/null || true
     sleep 2
     if kill -0 "$pid" 2>/dev/null; then
-        echo "Force killing installer VM..."
+        echo "Force killing installer simulation VM..."
         kill -9 "$pid" 2>/dev/null || true
     fi
-    echo "Installer VM stopped"
+    echo "Installer simulation VM stopped"
 
 # One-shot live installer test with a real NetBird setup key supplied at runtime.
 live-install-e2e:
