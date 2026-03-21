@@ -13,6 +13,7 @@ LOG_FILE="${NIXPI_VM_LOG_PATH:-/tmp/nixpi-vm.log}"
 DISK_SIZE="${NIXPI_VM_DISK_SIZE:-24G}"
 MEMORY_MB="${NIXPI_VM_MEMORY_MB:-16384}"
 VM_CPUS="${NIXPI_VM_CPUS:-4}"
+DISPLAY_BACKEND="${NIXPI_VM_DISPLAY_BACKEND:-sdl}"
 MIN_DISK_BYTES=$((8 * 1024 * 1024 * 1024))
 HOST_REPO_PATH="${NIXPI_VM_HOST_REPO_PATH:-$PWD}"
 HOST_NIXPI_PATH="${NIXPI_VM_HOST_STATE_PATH:-$HOME/.nixpi}"
@@ -114,8 +115,8 @@ case "$mode" in
         exec "$RUNNER"
         ;;
     gui)
-        echo "Starting VM with GUI... Close window to exit"
-        export QEMU_OPTS="${QEMU_OPTS} -vga virtio -display gtk"
+        echo "Starting VM with GUI (${DISPLAY_BACKEND})... Close window to exit"
+        export QEMU_OPTS="${QEMU_OPTS} -vga virtio -display ${DISPLAY_BACKEND}"
         exec "$RUNNER"
         ;;
     daemon)

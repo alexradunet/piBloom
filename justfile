@@ -30,29 +30,31 @@ rollback:
 qcow2:
     nix build {{ flake }}#nixosConfigurations.{{ vm_host }}.config.system.build.vm
 
-# Build the graphical NixPI installer ISO
+# Build the minimal NixPI installer ISO
 iso:
     nix build {{ flake }}#installerIso
 
-# Boot the graphical installer ISO in QEMU for full install-flow testing.
+# Boot the minimal installer ISO in QEMU for full install-flow testing.
 # Override with:
-#   NIXPI_INSTALL_VM_DISK_PATH=/tmp/custom.qcow2
+#   NIXPI_INSTALL_VM_DISK_PATH=$HOME/custom.qcow2
 #   NIXPI_INSTALL_VM_DISK_SIZE=32G
 #   NIXPI_INSTALL_VM_MEMORY_MB=8192
 #   NIXPI_INSTALL_VM_CPUS=4
 #   NIXPI_INSTALL_VM_SSH_PORT=2222
+#   NIXPI_INSTALL_VM_DISPLAY_BACKEND=sdl|gtk|spice-app
 vm-install-iso: iso
     #!/usr/bin/env bash
     set -euo pipefail
 
-    disk="${NIXPI_INSTALL_VM_DISK_PATH:-/tmp/nixpi-install-vm.qcow2}"
+    disk="${NIXPI_INSTALL_VM_DISK_PATH:-$HOME/nixpi-install-vm.qcow2}"
     disk_size="${NIXPI_INSTALL_VM_DISK_SIZE:-32G}"
     memory_mb="${NIXPI_INSTALL_VM_MEMORY_MB:-8192}"
     vm_cpus="${NIXPI_INSTALL_VM_CPUS:-4}"
     ssh_port="${NIXPI_INSTALL_VM_SSH_PORT:-2222}"
+    display_backend="${NIXPI_INSTALL_VM_DISPLAY_BACKEND:-sdl}"
     ovmf_code="{{ ovmf }}"
     ovmf_vars_template="{{ ovmf_vars }}"
-    ovmf_vars="/tmp/nixpi-install-ovmf-vars.fd"
+    ovmf_vars="${NIXPI_INSTALL_VM_OVMF_VARS_PATH:-$HOME/.cache/nixpi-install-ovmf-vars.fd}"
     iso_path="$(find result/iso -maxdepth 1 -name '*.iso' | head -n1)"
 
     if [ -z "$iso_path" ]; then
@@ -65,11 +67,13 @@ vm-install-iso: iso
         qemu-img create -f qcow2 "$disk" "$disk_size" >/dev/null
     fi
 
+    mkdir -p "$(dirname "$ovmf_vars")"
     cp "$ovmf_vars_template" "$ovmf_vars"
 
     echo "Booting installer ISO: $iso_path"
     echo "Disk: $disk"
     echo "SSH forward: localhost:$ssh_port -> guest:22"
+    echo "Display backend: $display_backend"
 
     exec qemu-system-x86_64 \
         -enable-kvm \
@@ -81,7 +85,7 @@ vm-install-iso: iso
         -cdrom "$iso_path" \
         -boot d \
         -nic user,model=virtio-net-pci,hostfwd=tcp::"$ssh_port"-:22 \
-        -display gtk \
+        -display "$display_backend" \
         -vga virtio
 
 # Run VM (fresh build from current codebase)
@@ -150,17 +154,16 @@ deps:
 check-config:
     nix {{ nix_opts }} build {{ flake }}#checks.{{ system }}.config --no-link
 
-# Fast installer backend check: validates the patched Calamares Python backend
-# and runs helper-level regression tests without booting the ISO.
+# Fast installer helper regression tests without booting the ISO.
 check-installer:
     nix {{ nix_opts }} build {{ flake }}#checks.{{ system }}.installer-backend --no-link
 
-# Fast generated-config eval: forces the shared Calamares install module to
+# Fast generated-config eval: forces the shared installer module to
 # evaluate as a NixOS module before the full VM smoke path.
 check-installer-generated-config:
     nix {{ nix_opts }} build {{ flake }}#checks.{{ system }}.installer-generated-config --no-link
 
-# Live Calamares installer smoke test. This is intentionally separate from the
+# Live minimal installer smoke test. This is intentionally separate from the
 # PR smoke lane until runtime and stability are proven.
 check-installer-smoke:
     nix {{ nix_vm_lane_opts }} build {{ flake }}#checks.{{ system }}.nixpi-installer-smoke --no-link -L

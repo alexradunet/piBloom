@@ -37,14 +37,17 @@ Current platform capabilities:
 
 ## 🚀 Quick Start
 
-Install NixPI from the standard graphical NixPI installer image:
+Install NixPI from the standard minimal NixPI installer image:
 
 ```bash
 # 1. Build the installer ISO
 nix build .#installerIso
 
 # 2. Write ./result/iso/*.iso to a USB stick and boot it
-# 3. Complete the graphical installer
+# 3. Partition and mount the target disk, then run:
+#    nixos-generate-config --root /mnt
+#    nixpi-installer --root /mnt --hostname <host> --primary-user <user>
+#    nixos-install --no-root-passwd --flake /mnt/etc/nixos#<host>
 # 4. Reboot into NixPI, then finish first boot
 setup-wizard.sh
 ```

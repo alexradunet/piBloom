@@ -12,7 +12,7 @@
 #
 # Or run all: nix flake check
 
-{ pkgs, lib, piAgent, appPackage, self, installerPkgs ? pkgs }:
+{ pkgs, lib, piAgent, appPackage, self, installerHelper ? null }:
 
 let
   # Import shared helpers
@@ -64,7 +64,7 @@ let
       mkExistingUserConfig
       mkPrefillActivation
       self
-      installerPkgs;
+      installerHelper;
   };
 in
 {
@@ -113,6 +113,6 @@ in
   # Broker autonomy and privilege boundaries test
   nixpi-broker = mkTest ./nixpi-broker.nix;
 
-  # Live installer smoke test that drives Calamares through a real install.
+  # Live installer smoke test that drives the minimal manual install flow.
   nixpi-installer-smoke = mkInstallerTest ./nixpi-installer-smoke.nix;
 }

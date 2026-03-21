@@ -14,7 +14,7 @@ NetBird is the network security boundary for all NixPI services. The firewall tr
 
 ## 🚀 Installation Workflow
 
-NixPI ships as a standard graphical NixOS installer image. It is based on the upstream GNOME + Calamares installer and writes a normal `/etc/nixos/flake.nix` on the installed machine.
+NixPI ships as a minimal NixOS installer image. It boots to a console, follows the standard manual installation flow, and writes a normal `/etc/nixos/flake.nix` on the installed machine through the `nixpi-installer` helper.
 
 ### 1. Build or Download the Installer ISO
 
@@ -37,9 +37,11 @@ sudo dd if=./result/iso/*.iso of=/dev/<usb-device> bs=4M status=progress oflag=s
 ### 3. Install NixPI
 
 1. Boot the USB stick
-2. Launch the graphical installer
-3. Choose disk layout, timezone, hostname, and your primary user
-4. Reboot into the installed system
+2. Partition, format, and mount the target disk
+3. Run `nixos-generate-config --root /mnt`
+4. Run `nixpi-installer --root /mnt --hostname <host> --primary-user <user>`
+5. Run `nixos-install --no-root-passwd --flake /mnt/etc/nixos#<host>`
+6. Reboot into the installed system
 
 The installed machine lands with a standard local system flake in `/etc/nixos` and a local NixPI working tree should be maintained in `~/nixpi`.
 
@@ -84,7 +86,7 @@ just check-config    # Fast: validate NixOS config
 just check-boot      # Thorough: boot test in VM
 ```
 
-**Default operator user**: the user chosen during graphical install. The `agent` system user owns the always-on runtime.
+**Default operator user**: the user passed to `nixpi-installer --primary-user`. The `agent` system user owns the always-on runtime.
 
 ## 🔄 OTA Updates
 

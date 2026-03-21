@@ -12,13 +12,8 @@
       pkgs = nixpkgs.legacyPackages.${system};
       lib = nixpkgs.lib;
       nixpiSource = lib.cleanSource ./.;
-      installerCalamaresOverlay = import ./core/os/overlays/installer-calamares.nix {
+      installerHelper = pkgs.callPackage ./core/os/pkgs/installer {
         inherit nixpiSource;
-      };
-      installerPkgs = import nixpkgs {
-        inherit system;
-        config.allowUnfree = true;
-        overlays = [ installerCalamaresOverlay ];
       };
       # pkgsUnfree is used only for boot nixosTest.  pkgs.testers.nixosTest
       # injects its own pkgs as nixpkgs.pkgs for test nodes, which means modules
@@ -28,11 +23,12 @@
       piAgent = pkgs.callPackage ./core/os/pkgs/pi {};
       appPackage = pkgs.callPackage ./core/os/pkgs/app { inherit piAgent; };
 
-      specialArgs = { inherit piAgent appPackage self; };
+      specialArgs = { inherit piAgent appPackage self installerHelper; };
     in {
       packages.${system} = {
         pi = piAgent;
         app = appPackage;
+        nixpi-installer = installerHelper;
         installerIso = self.nixosConfigurations.installer-iso.config.system.build.isoImage;
       };
 
@@ -87,7 +83,7 @@
         ];
       };
 
-      # Graphical installer ISO built on top of the standard NixOS Calamares image.
+      # Minimal installer ISO built on top of the standard NixOS minimal image.
       nixosConfigurations.installer-iso = nixpkgs.lib.nixosSystem {
         inherit system specialArgs;
         modules = [
@@ -127,11 +123,11 @@
 
       checks.${system} = 
         let
-          calamaresHelper = ./core/os/pkgs/calamares-nixos-extensions/nixpi_calamares.py;
-          calamaresHelperTests = ./core/os/pkgs/calamares-nixos-extensions/test_nixpi_calamares.py;
+          installerHelperSource = ./core/os/pkgs/installer/nixpi_installer.py;
+          installerHelperTests = ./core/os/pkgs/installer/test_nixpi_installer.py;
           generatedInstallModule =
             let
-              template = builtins.readFile ./core/os/pkgs/calamares-nixos-extensions/nixpi-install-module.nix.in;
+              template = builtins.readFile ./core/os/pkgs/installer/nixpi-install-module.nix.in;
               sourceRoot = toString nixpiSource;
             in
             builtins.toFile "nixpi-install-generated.nix" (
@@ -144,7 +140,7 @@
           # Using pkgsUnfree so tests can use packages that require allowUnfree
           nixosTests = import ./tests/nixos {
             pkgs = pkgsUnfree;
-            inherit lib piAgent appPackage self installerPkgs;
+            inherit lib piAgent appPackage self installerHelper;
           };
           bootCheck = pkgsUnfree.testers.runNixOSTest {
             name = "boot";
@@ -199,32 +195,28 @@
           # evaluation failures without touching QEMU.
           config = self.nixosConfigurations.installed-test.config.system.build.toplevel;
 
-          # Fast installer-specific guard: build the exact Calamares extension
-          # used by the ISO and validate the generated Python job artifact.
-          installer-calamares = installerPkgs.runCommandLocal "installer-calamares-check" {
-            nativeBuildInputs = [ installerPkgs.python3 ];
+          # Fast installer-specific guard: validate the thin installer helper
+          # used by the minimal ISO and ensure it remains importable.
+          installer-helper = pkgs.runCommandLocal "installer-helper-check" {
+            nativeBuildInputs = [ pkgs.python3 ];
           } ''
-            module="${installerPkgs.calamares-nixos-extensions}/lib/calamares/modules/nixos/main.py"
-            install_template="${installerPkgs.calamares-nixos-extensions}/share/calamares/nixpi-templates/nixpi-install-module.nix.in"
+            module="${installerHelper}/share/nixpi-installer/nixpi_installer.py"
+            install_template="${installerHelper}/share/nixpi-installer/nixpi-install-module.nix.in"
             grep -F 'def write_nixpi_install_artifacts(' "$module" >/dev/null
             grep -F 'nix.settings.experimental-features = [ "nix-command" "flakes" ];' "$install_template" >/dev/null
             grep -F '{ pkgs, ... }:' "$install_template" >/dev/null
-            grep -F '"--option",' "$module" >/dev/null
-            grep -F '"extra-experimental-features",' "$module" >/dev/null
-            grep -F '"nix-command flakes",' "$module" >/dev/null
-            if grep -F '"--flake",' "$module" >/dev/null; then
-              echo "unexpected nixos-install flake mode in $module" >&2
-              exit 1
-            fi
-            PYTHONPYCACHEPREFIX="$TMPDIR/pycache" python3 -m py_compile "$module"
+            grep -F 'NIXPI_CONFIGURATION_TEMPLATE' "$module" >/dev/null
+            grep -F 'nixpi.install.mode = "managed-user";' "$install_template" >/dev/null
+            PYTHONPYCACHEPREFIX="$TMPDIR/pycache" ${pkgs.python3}/bin/python3 -m py_compile "$module"
             touch "$out"
           '';
 
-          installer-backend = installerPkgs.runCommandLocal "installer-backend-check" {
-            nativeBuildInputs = [ installerPkgs.python3 ];
+          installer-backend = pkgs.runCommandLocal "installer-backend-check" {
+            nativeBuildInputs = [ pkgs.python3 ];
           } ''
-            export NIXPI_CALAMARES_HELPER="${calamaresHelper}"
-            python3 "${calamaresHelperTests}"
+            export NIXPI_INSTALLER_HELPER="${installerHelperSource}"
+            export NIXPI_INSTALLER_TEMPLATE="${./core/os/pkgs/installer/nixpi-install-module.nix.in}"
+            ${pkgs.python3}/bin/python3 "${installerHelperTests}"
             touch "$out"
           '';
 

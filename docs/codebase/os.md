@@ -100,7 +100,7 @@ NixOS modules use appPackage
 |------|-----|------|-------------|
 | `x86_64.nix` | Desktop config | Managed NixPI desktop profile | Base installed system shape |
 | `x86_64-vm.nix` | Desktop VM config | Desktop profile plus VM-only mounts | Local QEMU/dev target |
-| `installer-iso.nix` | Installer image | Graphical Calamares-based installer ISO | Official installation media |
+| `installer-iso.nix` | Installer image | Minimal console installer ISO with NixPI helper tooling | Official installation media |
 
 ### Host Configuration Pattern
 

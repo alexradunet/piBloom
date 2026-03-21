@@ -72,7 +72,7 @@ tests/nixos/
 ├── nixpi-daemon.nix           # Pi daemon test
 ├── nixpi-e2e.nix              # End-to-end integration test
 ├── nixpi-home.nix             # NixPI Home and built-in system services test
-├── nixpi-installer-smoke.nix  # live Calamares installer smoke test
+├── nixpi-installer-smoke.nix  # live minimal manual installer smoke test
 ├── nixpi-modular-services.nix # system.services/configData regression
 ├── nixpi-matrix-bridge.nix    # multi-node Matrix daemon transport test
 └── README.md            # This file

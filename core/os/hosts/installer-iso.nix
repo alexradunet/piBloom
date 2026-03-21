@@ -1,15 +1,8 @@
-{ lib, pkgs, modulesPath, ... }:
+{ lib, pkgs, modulesPath, installerHelper, ... }:
 
-let
-  nixpiSource = lib.cleanSource ../../..;
-in
 {
   imports = [
-    "${modulesPath}/installer/cd-dvd/installation-cd-graphical-calamares-gnome.nix"
-  ];
-
-  nixpkgs.overlays = [
-    (import ../overlays/installer-calamares.nix { inherit nixpiSource; })
+    "${modulesPath}/installer/cd-dvd/installation-cd-minimal.nix"
   ];
 
   system.stateVersion = "25.05";
@@ -28,10 +21,13 @@ in
   networking.networkmanager.enable = true;
   time.timeZone = "UTC";
   i18n.defaultLocale = "en_US.UTF-8";
+  services.getty.autologinUser = lib.mkDefault "nixos";
 
   environment.systemPackages = with pkgs; [
     git
     just
     curl
+  ] ++ [
+    installerHelper
   ];
 }
