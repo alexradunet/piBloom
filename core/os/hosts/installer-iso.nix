@@ -27,6 +27,7 @@
     git
     just
     curl
+    newt
   ] ++ [
     installerHelper
   ];

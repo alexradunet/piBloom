@@ -11,9 +11,10 @@ Operators bringing up a fresh NixPI host.
 Before first-boot setup, you need a system installed from the NixPI installer image:
 
 1. Build or download the NixPI installer ISO
-2. Complete the manual installer flow and choose your hostname and primary user
-3. Reboot into the installed system
-4. The installed machine now owns a standard local flake at `/etc/nixos`, but the recommended editable source of truth is the `~/nixpi` git checkout
+2. Boot the installer and run `sudo -i && nixpi-installer`
+3. Choose your hostname and primary user in the terminal wizard
+4. Reboot into the installed system
+5. The installed machine now owns a standard local flake at `/etc/nixos`, but the recommended editable source of truth is the `~/nixpi` git checkout
 
 ## 🛡️ Security Note: NetBird is Mandatory
 

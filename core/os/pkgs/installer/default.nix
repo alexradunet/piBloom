@@ -1,4 +1,4 @@
-{ pkgs, python3, makeWrapper, nixpiSource }:
+{ pkgs, python3, makeWrapper, lib, nixpiSource }:
 
 pkgs.stdenvNoCC.mkDerivation {
   pname = "nixpi-installer";
@@ -13,14 +13,21 @@ pkgs.stdenvNoCC.mkDerivation {
     mkdir -p "$out/bin" "$out/share/nixpi-installer"
     install -m 0644 ${./nixpi-install-module.nix.in} "$out/share/nixpi-installer/nixpi-install-module.nix.in"
     install -m 0644 ${./nixpi_installer.py} "$out/share/nixpi-installer/nixpi_installer.py"
+    install -m 0755 ${./nixpi-installer.sh} "$out/share/nixpi-installer/nixpi-installer.sh"
 
     substituteInPlace "$out/share/nixpi-installer/nixpi_installer.py" \
       --replace-fail "@nixpiSource@" "${nixpiSource}" \
       --replace-fail "@nixpiInstallModuleTemplate@" "$out/share/nixpi-installer/nixpi-install-module.nix.in"
 
+    substituteInPlace "$out/share/nixpi-installer/nixpi-installer.sh" \
+      --replace-fail "@whiptailBin@" "${lib.getExe' pkgs.newt "whiptail"}" \
+      --replace-fail "@helperBin@" "$out/bin/nixpi-installer-apply"
+
     chmod 0755 "$out/share/nixpi-installer/nixpi_installer.py"
-    makeWrapper ${python3}/bin/python3 "$out/bin/nixpi-installer" \
+    makeWrapper ${python3}/bin/python3 "$out/bin/nixpi-installer-apply" \
       --add-flags "$out/share/nixpi-installer/nixpi_installer.py"
+    makeWrapper ${pkgs.bash}/bin/bash "$out/bin/nixpi-installer" \
+      --add-flags "$out/share/nixpi-installer/nixpi-installer.sh"
 
     PYTHONPYCACHEPREFIX="$(mktemp -d)" ${python3}/bin/python3 -m py_compile "$out/share/nixpi-installer/nixpi_installer.py"
 

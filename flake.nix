@@ -234,11 +234,15 @@
                   group = "installer";
                   extraGroups = [ "networkmanager" ];
                 };
-                boot.loader.grub.enable = true;
-                boot.loader.grub.device = "/dev/vda";
+                boot.loader.systemd-boot.enable = true;
+                boot.loader.efi.canTouchEfiVariables = true;
                 fileSystems."/" = {
-                  device = "/dev/vda1";
+                  device = "/dev/vda2";
                   fsType = "ext4";
+                };
+                fileSystems."/boot" = {
+                  device = "/dev/vda1";
+                  fsType = "vfat";
                 };
                 system.stateVersion = "25.05";
               }
