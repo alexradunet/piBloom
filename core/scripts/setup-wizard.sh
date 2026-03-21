@@ -85,6 +85,10 @@ has_full_appliance() {
 	has_runtime_stack && has_matrix_stack && has_service_stack && has_command chromium
 }
 
+has_internet_connection() {
+	ping -c1 -W5 1.1.1.1 &>/dev/null
+}
+
 print_appliance_upgrade_progress() {
 	local status_line=""
 	if [[ -r "$BOOTSTRAP_UPGRADE_STATUS_FILE" ]]; then
@@ -116,6 +120,12 @@ step_appliance() {
 		echo "Standard NixPI appliance is already installed."
 		mark_done appliance
 		return
+	fi
+
+	if ! has_internet_connection; then
+		echo "Internet connection is required before promoting this machine to the full NixPI appliance."
+		echo "Connect to WiFi or Ethernet first, then continue setup."
+		return 1
 	fi
 
 	if ! has_systemd_unit nixpi-bootstrap-upgrade.service; then
@@ -310,7 +320,7 @@ step_password() {
 step_network() {
 	echo ""
 	echo "--- Network ---"
-	if ping -c1 -W5 1.1.1.1 &>/dev/null; then
+	if has_internet_connection; then
 		echo "Network connected."
 		mark_done network
 		return
@@ -343,7 +353,7 @@ step_network() {
 					echo ""
 					nmcli device wifi connect "$ssid" password "$psk" 2>/dev/null || true
 				fi
-				if ping -c1 -W5 1.1.1.1 &>/dev/null; then
+				if has_internet_connection; then
 					echo "Connected."
 					mark_done network
 					return
@@ -671,9 +681,9 @@ main() {
 	fi
 
 	step_done welcome  || step_welcome
+	step_done network  || step_network
 	step_done appliance || step_appliance
 	step_done password || step_password
-	step_done network  || step_network
 	step_done netbird  || step_netbird
 	if step_done matrix; then
 		:
