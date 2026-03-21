@@ -1,8 +1,10 @@
 import importlib.util
 import os
+import shutil
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 
 def load_module():
@@ -49,24 +51,43 @@ class NixpiCalamaresTests(unittest.TestCase):
 
             self.module.NIXPI_SOURCE = str(source_dir)
             writes = []
+            privileged_commands = []
 
-            def fake_host_env_process_output(argv, _stdin, content):
+            def fake_host_env_process_output(argv, _stdin, content=None):
                 writes.append((argv, content))
-                Path(argv[-1]).parent.mkdir(parents=True, exist_ok=True)
-                Path(argv[-1]).write_text(content, encoding="utf-8")
+                raise AssertionError(f"unexpected command: {argv!r}")
+
+            def fake_check_output(argv, stderr=None):
+                privileged_commands.append(argv)
+                if argv[:3] == ["pkexec", "rm", "-rf"]:
+                    shutil.rmtree(argv[-1], ignore_errors=True)
+                    return b""
+                if argv[:3] == ["pkexec", "mkdir", "-p"]:
+                    Path(argv[-1]).mkdir(parents=True, exist_ok=True)
+                    return b""
+                if argv[:3] == ["pkexec", "cp", "-a"]:
+                    shutil.copytree(argv[-2], argv[-1], symlinks=True, dirs_exist_ok=True)
+                    return b""
+                if argv[:4] == ["pkexec", "install", "-D", "-m"]:
+                    Path(argv[-1]).parent.mkdir(parents=True, exist_ok=True)
+                    shutil.copyfile(argv[-2], argv[-1])
+                    return b""
+                raise AssertionError(f"unexpected privileged command: {argv!r}")
 
             cfg = "{\n      ./nixpi-install.nix\n}\n"
-            artifacts = self.module.write_nixpi_install_artifacts(
-                tmpdir,
-                {"username": "alex", "hostname": "pi-box"},
-                cfg,
-                fake_host_env_process_output,
-            )
+            with mock.patch.object(self.module.subprocess, "check_output", side_effect=fake_check_output):
+                artifacts = self.module.write_nixpi_install_artifacts(
+                    tmpdir,
+                    {"username": "alex", "hostname": "pi-box"},
+                    cfg,
+                    fake_host_env_process_output,
+                )
 
             copied = Path(artifacts["nixpi_source_target"]) / "README.md"
             self.assertTrue(copied.exists())
             self.assertEqual(copied.read_text(encoding="utf-8"), "nixpi")
-            self.assertEqual(len(writes), 3)
+            self.assertEqual(len(privileged_commands), 6)
+            self.assertEqual(len(writes), 0)
             self.assertTrue(Path(artifacts["nixpi_install_path"]).exists())
             self.assertTrue(Path(artifacts["nixpi_host_path"]).exists())
             self.assertTrue(Path(artifacts["flake_path"]).exists())

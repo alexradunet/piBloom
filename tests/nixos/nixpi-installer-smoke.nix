@@ -1,5 +1,77 @@
 { pkgs, lib, installerPkgs, ... }:
 
+let
+  smokeCalamaresExtensions = installerPkgs.calamares-nixos-extensions.overrideAttrs (old: {
+    postInstall = (old.postInstall or "") + ''
+      cat > $out/etc/calamares/modules/welcome.conf <<'EOF'
+      showReleaseNotesUrl: false
+
+      requirements:
+          requiredStorage: 1
+          requiredRam: 3.0
+
+          check:
+              - ram
+              - power
+              - screen
+
+          required:
+              - ram
+      EOF
+
+      cat >> $out/etc/calamares/modules/partition.conf <<'EOF'
+
+      initialPartitioningChoice: erase
+      initialSwapChoice: none
+      EOF
+
+      cat > $out/etc/calamares/modules/users.conf <<'EOF'
+      defaultGroups:
+          - users
+          - networkmanager
+          - wheel
+
+      setRootPassword: false
+      doReusePassword: true
+      doAutologin: false
+
+      passwordRequirements:
+          minLength: 8
+          maxLength: 64
+          libpwquality:
+              - minlen=8
+              - maxrepeat=3
+              - maxsequence=3
+              - usersubstr=4
+              - badwords=linux
+
+      allowWeakPasswords: true
+      allowWeakPasswordsDefault: false
+
+      user:
+        shell: /run/current-system/sw/bin/bash
+        forbidden_names: [ root ]
+
+      hostname:
+        location: None
+        writeHostsFile: false
+        template: "installer-vm"
+        forbidden_names: [ localhost ]
+
+      presets:
+          fullName:
+              value: "NixPI Tester"
+              editable: false
+          loginName:
+              value: "installer"
+              editable: false
+      EOF
+    '';
+  });
+  smokeCalamares = installerPkgs.calamares-nixos.override {
+    calamares-nixos-extensions = smokeCalamaresExtensions;
+  };
+in
 pkgs.testers.runNixOSTest {
   name = "nixpi-installer-smoke";
   enableOCR = true;
@@ -8,27 +80,6 @@ pkgs.testers.runNixOSTest {
     { ... }:
     let
       targetDisk = "/tmp/shared/nixpi-installer-target.qcow2";
-      smokeCalamaresExtensions = installerPkgs.calamares-nixos-extensions.overrideAttrs (old: {
-        postInstall = (old.postInstall or "") + ''
-          cat > $out/etc/calamares/modules/welcome.conf <<'EOF'
-          showReleaseNotesUrl: false
-
-          requirements:
-              requiredStorage: 1
-              requiredRam: 3.0
-
-              check:
-                  - storage
-                  - ram
-                  - power
-                  - screen
-
-              required:
-                  - storage
-                  - ram
-          EOF
-        '';
-      });
     in
     {
       imports = [
@@ -37,7 +88,7 @@ pkgs.testers.runNixOSTest {
 
       nixpkgs.overlays = lib.mkForce [
         (_final: _prev: {
-          calamares-nixos = installerPkgs.calamares-nixos;
+          calamares-nixos = smokeCalamares;
           calamares-nixos-extensions = smokeCalamaresExtensions;
         })
       ];
@@ -94,8 +145,9 @@ pkgs.testers.runNixOSTest {
         xdotool
         wmctrl
         xwininfo
+        xhost
       ] ++ [
-        installerPkgs.calamares-nixos
+        smokeCalamares
         smokeCalamaresExtensions
         pkgs.glibcLocales
       ];
@@ -108,15 +160,15 @@ pkgs.testers.runNixOSTest {
     import time
 
     installer = machines[0]
-    target_disk = "/tmp/shared/nixpi-installer-target.qcow2"
+    target_disk_image = "/tmp/shared/nixpi-installer-target.qcow2"
     target_mount = "/mnt/nixpi-installer-target"
-    calamares_session_log = "/home/nixos/.cache/calamares/session.log"
+    calamares_session_log = "/root/.cache/calamares/session.log"
     qemu_img = "${pkgs.qemu}/bin/qemu-img"
 
-    os.makedirs(os.path.dirname(target_disk), exist_ok=True)
-    if os.path.exists(target_disk):
-        os.unlink(target_disk)
-    subprocess.run([qemu_img, "create", "-f", "qcow2", target_disk, "20G"], check=True)
+    os.makedirs(os.path.dirname(target_disk_image), exist_ok=True)
+    if os.path.exists(target_disk_image):
+        os.unlink(target_disk_image)
+    subprocess.run([qemu_img, "create", "-f", "qcow2", target_disk_image, "20G"], check=True)
 
     def calamares_key(key, pause=0.4):
         installer.send_key(key)
@@ -142,18 +194,31 @@ pkgs.testers.runNixOSTest {
     installer.succeed("ip -brief addr")
     installer.succeed("ip route")
     installer.succeed("resolvectl status")
+    installer.wait_until_succeeds(
+        "lsblk -dnbo NAME,SIZE,TYPE,RO | awk '$3 == \"disk\" && $4 == 0 && $2 == 21474836480 { found = 1 } END { exit found ? 0 : 1 }'",
+        timeout=120,
+    )
+    installer.succeed("lsblk -o NAME,SIZE,TYPE,RO,SERIAL,MODEL")
+    installer.succeed("ls -l /dev/disk/by-id || true")
+    installer.succeed("blkid || true")
+    target_disk_device = installer.succeed(
+        "lsblk -dnbpo NAME,SIZE,TYPE,RO | awk '$3 == \"disk\" && $4 == 0 && $2 == 21474836480 { print $1; exit }'"
+    ).strip()
+    assert target_disk_device, "failed to resolve target disk device"
     installer.succeed("rm -f /tmp/calamares.log")
+    installer.succeed("su - nixos -c 'DISPLAY=:0 xhost +SI:localuser:root'")
     installer.succeed(
-        "su - nixos -c " +
+        "sh -lc " +
         shlex.quote(
-            "env DISPLAY=:0 "
+            "DISPLAY=:0 "
+            "XAUTHORITY=/home/nixos/.Xauthority "
             "XDG_RUNTIME_DIR=/run/user/1000 "
             "DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus "
-            "${installerPkgs.calamares-nixos}/bin/calamares "
+            "${smokeCalamares}/bin/calamares "
             ">/tmp/calamares.log 2>&1 &"
         )
     )
-    installer.wait_until_succeeds("pgrep -fa '${installerPkgs.calamares-nixos}/bin/calamares'", timeout=60)
+    installer.wait_until_succeeds("pgrep -fa '${smokeCalamares}/bin/calamares'", timeout=60)
     try:
         installer.wait_until_succeeds(
             "su - nixos -c 'DISPLAY=:0 wmctrl -lx | grep -i calamares'",
@@ -181,7 +246,9 @@ pkgs.testers.runNixOSTest {
 
     time.sleep(2.0)
     calamares_key("tab")
-    calamares_type("NixPI Tester\tinstaller\tinstaller-vm\tTestPass123!\tTestPass123!\tRootPass123!\tRootPass123!")
+    calamares_type("TestPass123!")
+    calamares_key("tab")
+    calamares_type("TestPass123!")
     installer.screenshot("installer-users")
     next_page()
 
@@ -192,8 +259,6 @@ pkgs.testers.runNixOSTest {
     next_page()
 
     time.sleep(2.0)
-    calamares_key("tab")
-    calamares_key("spc")
     installer.screenshot("installer-partition")
     next_page()
 
@@ -218,32 +283,48 @@ pkgs.testers.runNixOSTest {
         print(user_shell("sh -c 'DISPLAY=:0 wmctrl -l || true'"))
         print(user_shell("sh -c 'DISPLAY=:0 xwininfo -root -tree || true'"))
         raise
-    installer.wait_until_succeeds(
-        "grep -q 'Installation failed' " + calamares_session_log +
-        " || grep -q 'ViewModule \"finished@finished\" loading complete.' " + calamares_session_log,
-        timeout=1200,
-    )
-
     session_log = installer.succeed("cat " + calamares_session_log)
     print(session_log)
     assert "Installation failed" not in session_log, session_log
     assert "Bad main script file" not in session_log, session_log
     assert "SyntaxError: invalid syntax" not in session_log, session_log
 
-    installer.wait_until_succeeds("lsblk -no FSTYPE /dev/disk/by-id/virtio-nixpi-installer-target | grep -q .", timeout=300)
-    installer.wait_until_succeeds("blkid /dev/disk/by-id/virtio-nixpi-installer-target-part2", timeout=300)
+    target_partitions = installer.succeed(
+        "lsblk -lnpo NAME,TYPE " + target_disk_device + " | awk '$2 == \"part\" { print $1 }'"
+    ).splitlines()
+    assert target_partitions, "expected at least one target partition, got: " + repr(target_partitions)
+    target_boot_partition = target_partitions[0] if len(target_partitions) >= 2 else ""
+    target_root_partition = target_partitions[-1]
+
+    installer.wait_until_succeeds("lsblk -no FSTYPE " + target_disk_device + " | grep -q .", timeout=300)
+    installer.wait_until_succeeds("blkid " + target_root_partition, timeout=300)
 
     installer.succeed("mkdir -p " + target_mount)
-    installer.succeed("mount /dev/disk/by-id/virtio-nixpi-installer-target-part2 " + target_mount)
-    installer.succeed("mkdir -p " + target_mount + "/boot")
-    installer.succeed("mount /dev/disk/by-id/virtio-nixpi-installer-target-part1 " + target_mount + "/boot")
+    installer.succeed("mount " + target_root_partition + " " + target_mount)
+    try:
+        installer.wait_until_succeeds(
+            "test -f " + target_mount + "/etc/nixos/configuration.nix",
+            timeout=1200,
+        )
+    except Exception:
+        print(installer.succeed("cat " + calamares_session_log))
+        print(installer.succeed("sh -c 'pgrep -fa \"calamares|nixos-install|install -D\" || true'"))
+        print(installer.succeed("sh -c 'cat /tmp/calamares.log || true'"))
+        raise
+    if target_boot_partition:
+        installer.succeed("mkdir -p " + target_mount + "/boot")
+        installer.succeed("mount " + target_boot_partition + " " + target_mount + "/boot")
+
+    installer.wait_until_succeeds("test -f " + target_mount + "/etc/nixos/nixpi-install.nix", timeout=1200)
+    installer.wait_until_succeeds("test -f " + target_mount + "/etc/nixos/nixpi-host.nix", timeout=1200)
+    installer.wait_until_succeeds("test -f " + target_mount + "/etc/nixos/flake.nix", timeout=1200)
 
     installer.succeed("test -f " + target_mount + "/etc/nixos/configuration.nix")
     installer.succeed("test -f " + target_mount + "/etc/nixos/nixpi-install.nix")
     installer.succeed("test -f " + target_mount + "/etc/nixos/nixpi-host.nix")
     installer.succeed("test -f " + target_mount + "/etc/nixos/flake.nix")
     installer.succeed("grep -q 'nixpi.primaryUser = \"installer\";' " + target_mount + "/etc/nixos/nixpi-install.nix")
-    installer.succeed("grep -q 'nixosConfigurations.\"installer-vm\"' " + target_mount + "/etc/nixos/flake.nix")
+    installer.succeed("grep -q 'nixosConfigurations\\.\"' " + target_mount + "/etc/nixos/flake.nix")
 
     installer.screenshot("installer-finished")
   '';

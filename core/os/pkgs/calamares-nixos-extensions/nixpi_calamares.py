@@ -1,5 +1,7 @@
 import os
 import shutil
+import subprocess
+import tempfile
 
 NIXPI_SOURCE = "@nixpiSource@"
 
@@ -97,24 +99,28 @@ def write_nixpi_install_artifacts(root_mount_point, variables, cfg, host_env_pro
     artifacts = prepare_nixpi_install_artifacts(root_mount_point, variables, cfg)
     source_target = artifacts["nixpi_source_target"]
 
-    if os.path.exists(source_target):
-        shutil.rmtree(source_target)
-    shutil.copytree(NIXPI_SOURCE, source_target, symlinks=True)
+    subprocess.check_output(["pkexec", "rm", "-rf", source_target], stderr=subprocess.STDOUT)
+    subprocess.check_output(["pkexec", "mkdir", "-p", source_target], stderr=subprocess.STDOUT)
+    subprocess.check_output(
+        ["pkexec", "cp", "-a", os.path.join(NIXPI_SOURCE, "."), source_target],
+        stderr=subprocess.STDOUT,
+    )
 
-    host_env_process_output(
-        ["cp", "/dev/stdin", artifacts["nixpi_install_path"]],
-        None,
-        artifacts["nixpi_install_module"],
-    )
-    host_env_process_output(
-        ["cp", "/dev/stdin", artifacts["nixpi_host_path"]],
-        None,
-        artifacts["host_cfg"],
-    )
-    host_env_process_output(
-        ["cp", "/dev/stdin", artifacts["flake_path"]],
-        None,
-        artifacts["nixpi_flake"],
-    )
+    for path, content in (
+        (artifacts["nixpi_install_path"], artifacts["nixpi_install_module"]),
+        (artifacts["nixpi_host_path"], artifacts["host_cfg"]),
+        (artifacts["flake_path"], artifacts["nixpi_flake"]),
+    ):
+        with tempfile.NamedTemporaryFile("w", encoding="utf-8", delete=False) as handle:
+            handle.write(content)
+            temp_path = handle.name
+        os.chmod(temp_path, 0o644)
+        try:
+            subprocess.check_output(
+                ["pkexec", "install", "-D", "-m", "0644", temp_path, path],
+                stderr=subprocess.STDOUT,
+            )
+        finally:
+            os.unlink(temp_path)
 
     return artifacts
