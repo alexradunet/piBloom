@@ -93,8 +93,10 @@ step_appliance() {
 	fi
 
 	if ! has_systemd_unit nixpi-bootstrap-upgrade.service; then
-		echo "The automatic appliance upgrade service is not installed." >&2
-		return 1
+		echo "No automatic appliance upgrade service found."
+		echo "Assuming this system was built directly as the standard appliance."
+		mark_done_with appliance "not-needed"
+		return
 	fi
 
 	echo "Promoting this minimal base into the standard NixPI appliance..."

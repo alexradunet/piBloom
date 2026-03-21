@@ -36,8 +36,10 @@ in
       description = "NixPI NixOS update";
       after = [ "network-online.target" ];
       wants = [ "network-online.target" ];
-      serviceConfig = {
+      unitConfig = {
         ConditionPathExists = "${config.nixpi-update.flakeDir}/flake.nix";
+      };
+      serviceConfig = {
         Type = "oneshot";
         RemainAfterExit = false;
         Restart = "no";

@@ -1,5 +1,10 @@
-{ ... }:
+{ pkgs, ... }:
+let
+  setupPackage = pkgs.callPackage ./nixpi/core/os/pkgs/setup {};
+in
 {
+  _module.args = { inherit setupPackage; };
+
   imports = [
     ./nixpi/core/os/modules/options.nix
     ./nixpi/core/os/modules/setup.nix
