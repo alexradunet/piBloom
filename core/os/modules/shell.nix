@@ -25,7 +25,13 @@ let
     [ -f ~/.bashrc ] && . ~/.bashrc
 
     while [ -t 0 ] && [ ! -f "$HOME/.nixpi/.setup-complete" ]; do
-      setup-wizard.sh || true
+      if setup-wizard.sh; then
+        continue
+      fi
+      echo ""
+      echo "Setup paused because the last step failed."
+      echo "Review the error above, fix the issue, then rerun: setup-wizard.sh"
+      break
     done
 
     if [ -t 0 ] && [ -f "$HOME/.nixpi/.setup-complete" ] && [ -z "$PI_SESSION" ] && command -v pi >/dev/null 2>&1 && mkdir /tmp/.nixpi-pi-session 2>/dev/null; then

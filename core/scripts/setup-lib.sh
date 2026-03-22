@@ -84,6 +84,10 @@ matrix_state_clear() {
 	rm -rf "$MATRIX_STATE_DIR"
 }
 
+matrix_state_unset() {
+	rm -f "$MATRIX_STATE_DIR/$1"
+}
+
 # --- Matrix helpers ---
 
 # Generate a secure random password (base64url, 32 chars)
@@ -436,6 +440,9 @@ step_matrix() {
 			fi
 		fi
 		if [[ -z "$bot_result" ]]; then
+			matrix_state_unset registration_token
+			matrix_state_unset bot_token
+			matrix_state_unset bot_user_id
 			bot_result=$(matrix_register "pi" "$bot_password" "$registration_token") || {
 				echo "ERROR: Failed to register or recover @pi:nixpi bot account." >&2
 				return 1
