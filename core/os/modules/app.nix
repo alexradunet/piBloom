@@ -42,6 +42,9 @@ in
     default_pi_settings="${appPackage}/share/nixpi/.pi/settings.json"
 
     install -d -m 0755 -o ${primaryUser} -g "$primary_group" ${primaryHome}
+    install -d -m 0770 -o ${serviceUser} -g ${serviceUser} ${stateDir}
+    install -d -m 0770 -o ${serviceUser} -g ${serviceUser} ${serviceHome}
+    install -d -m 0770 -o ${serviceUser} -g ${serviceUser} ${agentStateDir}
 
     if [ -d ${primaryHome}/.pi ] && [ ! -L ${primaryHome}/.pi ] && [ ! -e ${agentStateDir}/.migration-complete ]; then
       cp -a ${primaryHome}/.pi/. ${agentStateDir}/
