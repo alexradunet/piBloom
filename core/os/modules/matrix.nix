@@ -2,6 +2,7 @@
 { pkgs, config, lib, ... }:
 
 let
+  tomlFormat = pkgs.formats.toml { };
   resolved = import ../lib/resolve-primary-user.nix { inherit lib config; };
   primaryHome = resolved.resolvedPrimaryHome;
   stateDir = config.nixpi.stateDir;
@@ -31,6 +32,25 @@ let
     if builtins.elem uploadSizeSuffix [ "G" "g" ] then 1000 * 1000 * 1000 else
     throw "Unsupported nixpi.matrix.maxUploadSize suffix `${uploadSizeSuffix}`.";
   maxRequestSize = uploadSizeValue * uploadSizeMultiplier;
+  managedGlobalSettingNames = [
+    "server_name"
+    "address"
+    "port"
+    "database_path"
+    "max_request_size"
+    "allow_registration"
+    "registration_token"
+    "allow_federation"
+    "trusted_servers"
+    "allow_announcements_check"
+  ];
+  matrixSettings = config.services.matrix-continuwuity.settings;
+  extraGlobalSettings =
+    lib.filterAttrs (name: _: !(builtins.elem name managedGlobalSettingNames))
+      (matrixSettings.global or { });
+  extraRootSettings = builtins.removeAttrs matrixSettings [ "global" ];
+  extraGlobalSettingsToml = tomlFormat.generate "continuwuity-global-extra.toml" { global = extraGlobalSettings; };
+  extraRootSettingsToml = tomlFormat.generate "continuwuity-extra.toml" extraRootSettings;
 in
 {
   imports = [ ./options.nix ];
@@ -99,6 +119,13 @@ allow_federation = false
 trusted_servers = []
 allow_announcements_check = false
 EOF
+      if [ -s "${extraGlobalSettingsToml}" ]; then
+        sed '1d' "${extraGlobalSettingsToml}" >> /var/lib/continuwuity/continuwuity.toml
+      fi
+      if [ -s "${extraRootSettingsToml}" ]; then
+        printf '\n' >> /var/lib/continuwuity/continuwuity.toml
+        cat "${extraRootSettingsToml}" >> /var/lib/continuwuity/continuwuity.toml
+      fi
       chown root:continuwuity /var/lib/continuwuity/continuwuity.toml
       chmod 0640 /var/lib/continuwuity/continuwuity.toml
     '';

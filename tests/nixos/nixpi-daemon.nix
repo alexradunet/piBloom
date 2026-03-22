@@ -15,6 +15,9 @@ pkgs.testers.runNixOSTest {
       imports = nixPiModulesNoShell ++ [ mkTestFilesystems ];
       _module.args = { inherit piAgent appPackage setupPackage; };
       nixpi.primaryUser = username;
+      services.matrix-continuwuity.settings = {
+        admin_execute = [ "users create-user pi testpass123" ];
+      };
 
       virtualisation.diskSize = 10240;
       virtualisation.memorySize = 2048;
@@ -100,32 +103,17 @@ pkgs.testers.runNixOSTest {
     server.wait_for_unit("multi-user.target", timeout=300)
     server.wait_for_unit("continuwuity.service", timeout=60)
     server.wait_until_succeeds("curl -sf http://localhost:6167/_matrix/client/versions", timeout=60)
-
-    server.succeed(
-        "mkdir -p /home/server/.nixpi && cat > /home/server/.nixpi/prefill.env <<'EOF'\n"
-        + "PREFILL_USERNAME=server\n"
-        + "PREFILL_MATRIX_PASSWORD=serverpass123\n"
-        + "PREFILL_PRIMARY_PASSWORD=serverpass123\n"
-        + "EOF\n"
-        + "chown -R server:server /home/server/.nixpi"
-    )
-    server.succeed("su - server -c 'setup-wizard.sh'")
-    server.succeed("test -f /home/server/.nixpi/.setup-complete")
-    server.succeed("test -f /var/lib/nixpi/agent/matrix-credentials.json")
-
-    server_creds = json.loads(server.succeed("cat /var/lib/nixpi/agent/matrix-credentials.json"))
-    access_token = server_creds["botAccessToken"]
-    user_id = server_creds["botUserId"]
-    assert user_id, "setup-wizard produced an empty botUserId"
-    assert access_token, "setup-wizard produced an empty botAccessToken"
-    whoami = json.loads(
+    login_payload = json.loads(
         server.succeed(
-            "curl -sf -H 'Authorization: Bearer "
-            + access_token
-            + "' http://localhost:6167/_matrix/client/v3/account/whoami"
+            "curl -sf -X POST http://localhost:6167/_matrix/client/v3/login "
+            + "-H 'Content-Type: application/json' "
+            + "-d '{\"type\":\"m.login.password\",\"identifier\":{\"type\":\"m.id.user\",\"user\":\"pi\"},\"password\":\"testpass123\"}'"
         )
     )
-    assert whoami["user_id"] == user_id, "Bot access token does not match bot user"
+    access_token = login_payload["access_token"]
+    user_id = login_payload["user_id"]
+    assert user_id, "Continuwuity login produced an empty user_id"
+    assert access_token, "Continuwuity login produced an empty access_token"
 
     # Start the agent node and provision daemon credentials.
     agent.start()
