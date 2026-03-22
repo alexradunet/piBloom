@@ -247,19 +247,17 @@ load_existing_matrix_credentials() {
 	raw=$(cat "$PI_DIR/matrix-credentials.json" 2>/dev/null || true)
 	[[ -n "$raw" ]] || return 0
 
-	local bot_token bot_user_id bot_password user_user_id user_password registration_token username
+	local bot_token bot_user_id bot_password user_user_id user_password username
 	bot_token=$(jq -r '.botAccessToken // empty' <<< "$raw")
 	bot_user_id=$(jq -r '.botUserId // empty' <<< "$raw")
 	bot_password=$(jq -r '.botPassword // empty' <<< "$raw")
 	user_user_id=$(jq -r '.userUserId // empty' <<< "$raw")
 	user_password=$(jq -r '.userPassword // empty' <<< "$raw")
-	registration_token=$(jq -r '.registrationToken // empty' <<< "$raw")
 	if [[ -n "$bot_token" ]]; then matrix_state_set bot_token "$bot_token"; fi
 	if [[ -n "$bot_user_id" ]]; then matrix_state_set bot_user_id "$bot_user_id"; fi
 	if [[ -n "$bot_password" ]]; then matrix_state_set bot_password "$bot_password"; fi
 	if [[ -n "$user_user_id" ]]; then matrix_state_set user_user_id "$user_user_id"; fi
 	if [[ -n "$user_password" ]]; then matrix_state_set user_password "$user_password"; fi
-	if [[ -n "$registration_token" ]]; then matrix_state_set registration_token "$registration_token"; fi
 	if [[ "$user_user_id" =~ ^@([^:]+): ]]; then
 		username="${BASH_REMATCH[1]}"
 		matrix_state_set username "$username"
@@ -403,14 +401,16 @@ step_matrix() {
 		echo "Resuming Matrix setup for @${username}:nixpi"
 	fi
 
-	# Register bot account
+	# Always prefer the live bootstrap token over cached state. Matrix bootstrap
+	# state can survive retries while the runtime token changes, and reusing a
+	# stale token traps the wizard in a loop.
 	local registration_token
-	registration_token=$(matrix_state_get registration_token)
+	registration_token=$(read_bootstrap_matrix_registration_token)
 	if [[ -z "$registration_token" ]]; then
-		registration_token=$(read_bootstrap_matrix_registration_token)
-		if [[ -n "$registration_token" ]]; then
-			matrix_state_set registration_token "$registration_token"
-		fi
+		registration_token=$(matrix_state_get registration_token)
+	fi
+	if [[ -n "$registration_token" ]]; then
+		matrix_state_set registration_token "$registration_token"
 	fi
 
 	local bot_password bot_token bot_user_id bot_result
@@ -426,7 +426,7 @@ step_matrix() {
 		bot_result=$(matrix_login "pi" "$bot_password" 2>/dev/null || true)
 		if [[ -z "$bot_result" ]]; then
 			bot_result=$(matrix_register "pi" "$bot_password" "$registration_token" 2>/dev/null || true)
-			if [[ -z "$bot_result" ]]; then
+			if [[ -z "$bot_result" && -z "$registration_token" ]]; then
 				local initial_registration_token
 				initial_registration_token=$(read_initial_matrix_registration_token)
 				if [[ -n "$initial_registration_token" && "$initial_registration_token" != "$registration_token" ]]; then
