@@ -18,10 +18,10 @@ Use it to verify that setup, messaging, and recovery paths still match the shipp
 
 For VM validation:
 
-- Use `just vm-install-iso` for the default local-dev path.
-- Use it to validate installer flow, desktop startup, and in-guest NetBird enrollment.
-- Use the printed localhost forwards for host-side access to SSH, Home, Element Web, and Matrix.
-- Do not expect the guest NetBird mesh IP in the default NAT path to behave like a real network peer from the host or LAN.
+- Use `just vm-install-iso` when the host bridge is configured.
+- The canonical default bridge is `br0`; override with `NIXPI_INSTALL_VM_BRIDGE=<bridge-name>` only if your host uses a different bridge.
+- Use it to validate installer flow, desktop startup, and real mesh reachability.
+- Once NetBird is connected, the advertised service URLs should be reachable from any other NetBird peer.
 
 ### First Boot
 
