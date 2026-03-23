@@ -2,7 +2,7 @@
 
 > Image trust and dependency policy
 
-## 🌱 Supply Chain Notes
+## Supply Chain Notes
 
 NixPI relies on Nix inputs and Nixpkgs packages for its built-in service surface.
 
@@ -14,7 +14,7 @@ The important supply-chain boundary is:
 
 Built-in services such as NixPI Home and Element Web are provisioned from those sources rather than from a mutable runtime package catalog.
 
-## 📚 Dependency Sources
+## Dependency Sources
 
 | Source | Purpose |
 |--------|---------|
@@ -29,6 +29,6 @@ Built-in services such as NixPI Home and Element Web are provisioned from those 
 3. Both lockfiles should be committed to version control
 4. Review changes to lockfiles as part of normal PR review
 
-## 🔗 Related
+## Related
 
 - [Security Model](./security-model)

@@ -50,7 +50,7 @@ Prefer tests that protect behavior over tests that mirror structure. When cleanu
 | `nixpi-post-setup-lockdown` | Post-setup | `checks.x86_64-linux.nixos-full` |
 | `nixpi-broker` | Broker | `checks.x86_64-linux.nixos-full` |
 
-### Test Helpers (`tests/helpers/`)
+### Test Helpers
 
 | File | Purpose |
 |------|---------|
@@ -58,9 +58,7 @@ Prefer tests that protect behavior over tests that mirror structure. When cleanu
 | `mock-extension-context.ts` | Mock extension context |
 | `temp-nixpi.ts` | Temporary NixPI directory |
 
----
-
-## 🔍 Coverage Thresholds
+## Coverage Thresholds
 
 From `vitest.config.ts`:
 
@@ -70,9 +68,7 @@ From `vitest.config.ts`:
 | `core/lib/` | 72% | 77% | 57% | 69% |
 | `core/pi/extensions/` | 60% | 60% | 50% | 60% |
 
----
-
-## 🚀 Running Tests
+## Running Tests
 
 ### All Tests
 ```bash
@@ -114,7 +110,7 @@ just check-nixos-destructive # Long-running tests
 
 ---
 
-## 📝 Adding Tests
+## Adding Tests
 
 ### Unit Test Pattern
 
@@ -139,7 +135,6 @@ import { setupTestEnv } from "../helpers/temp-nixpi";
 describe("feature integration", () => {
   it("should work end to end", async () => {
     const env = await setupTestEnv();
-    // Test with real components
     await env.cleanup();
   });
 });
@@ -153,7 +148,7 @@ describe("feature integration", () => {
 
 ---
 
-## 🔗 Related
+## Related
 
 - [Core Library](./core-lib) - Tested library code
 - [Pi Extensions](./pi-extensions) - Tested extensions

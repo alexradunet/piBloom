@@ -22,7 +22,7 @@ Read in this order for most changes:
 4. [Pi Extensions](./pi-extensions)
 5. [Tests](./tests)
 
-## 🔗 Related
+## Related
 
 - [Architecture Overview](../architecture/) - High-level subsystem boundaries
 - [Runtime Flows](../architecture/runtime-flows) - End-to-end flows

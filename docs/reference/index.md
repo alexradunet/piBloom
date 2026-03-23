@@ -2,7 +2,7 @@
 
 > Deep technical documentation
 
-## 🌱 What's In This Section
+## What's In This Section
 
 This section contains detailed reference documentation for NixPI:
 
@@ -11,7 +11,7 @@ This section contains detailed reference documentation for NixPI:
 - Infrastructure configuration
 - Workflow documentation
 
-## 📚 Reference Topics
+## Reference Topics
 
 | Topic | Description |
 |-------|-------------|
@@ -22,9 +22,8 @@ This section contains detailed reference documentation for NixPI:
 | [Supply Chain](./supply-chain) | Dependency trust |
 | [Infrastructure](./infrastructure) | Matrix and NetBird |
 | [Fleet Workflow](./fleet-workflow) | Change proposal workflow |
-| [Emoji Legend](./emoji-legend) | Documentation notation |
 
-## 🔗 Related
+## Related
 
 - [Architecture](../architecture/) - High-level design
 - [Codebase](../codebase/) - Implementation details

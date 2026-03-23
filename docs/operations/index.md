@@ -2,7 +2,7 @@
 
 > Deploy, operate, and maintain NixPI
 
-## 🌱 What's In This Section
+## What's In This Section
 
 This section covers operational procedures for NixPI:
 
@@ -11,7 +11,7 @@ This section covers operational procedures for NixPI:
 - Testing and validation
 - Day-to-day operations
 
-## 📚 Operations Topics
+## Operations Topics
 
 | Topic | Description |
 |-------|-------------|
@@ -19,7 +19,7 @@ This section covers operational procedures for NixPI:
 | [First Boot Setup](./first-boot-setup) | Initial setup procedures |
 | [Live Testing](./live-testing) | Validation checklists |
 
-## 🚀 Quick Reference
+## Quick Reference
 
 ### Common Commands
 
@@ -42,7 +42,7 @@ just check-config    # Validate NixOS config
 just check-boot      # VM boot test
 ```
 
-## 🔗 Related
+## Related
 
 - [Architecture](../architecture/) - System design
 - [Codebase](../codebase/) - Implementation details

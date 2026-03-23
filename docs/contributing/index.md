@@ -2,7 +2,7 @@
 
 > Maintainer and contributor guidelines
 
-## 🌱 What's In This Section
+## What's In This Section
 
 This section contains guidelines for contributing to NixPI:
 
@@ -10,13 +10,13 @@ This section contains guidelines for contributing to NixPI:
 - Code contribution guidelines
 - Review processes
 
-## 📚 Contributing Topics
+## Contributing Topics
 
 | Topic | Description |
 |-------|-------------|
 | [Documentation Maintenance](./docs-maintenance) | Keeping docs in sync with code |
 
-## 🔗 Related
+## Related
 
 - [Codebase](../codebase/) - Understanding the code
 - [Reference](../reference/) - Technical details

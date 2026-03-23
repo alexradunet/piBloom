@@ -101,7 +101,7 @@ If the answer is no, keep it local to the caller.
 
 ---
 
-## 🔄 Related Tests
+## Related Tests
 
 | Test File | Coverage |
 |-----------|----------|
@@ -114,7 +114,7 @@ If the answer is no, keep it local to the caller.
 
 ---
 
-## 🔗 Related
+## Related
 
 - [Pi Extensions](./pi-extensions) - Primary consumers of lib utilities
 - [Daemon](./daemon) - Uses Matrix and filesystem utilities

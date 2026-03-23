@@ -1,7 +1,5 @@
 # Supply Chain Notes
 
-> 📖 [Emoji Legend](LEGEND.md)
-
 NixPI now relies on Nix inputs and Nixpkgs packages for its built-in service surface instead of a separate packaged-service layer.
 
 The important supply-chain boundary is therefore:

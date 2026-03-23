@@ -2,7 +2,7 @@
 
 > Behavior configuration and skill instructions
 
-## 🌱 Why Persona & Skills Exist
+## Why Persona & Skills Exist
 
 Persona and skills shape how Pi behaves when interacting with NixPI. They provide:
 
@@ -11,14 +11,14 @@ Persona and skills shape how Pi behaves when interacting with NixPI. They provid
 
 Together they form the "software" that runs on the "hardware" of extensions.
 
-## 🚀 What They Own
+## What They Own
 
 | Component | Purpose | Location |
 |-----------|---------|----------|
 | Persona files | Identity and behavior | `core/pi/persona/` |
 | Skill files | Instructions and procedures | `core/pi/skills/` |
 
-## 📋 Persona Files
+## Persona Files
 
 Persona files live in `core/pi/persona/` and are loaded into Pi context.
 
@@ -48,7 +48,7 @@ Persona files are injected into Pi context at session start. They:
 
 ---
 
-## 📋 Skills
+## Skills
 
 Skills are markdown instruction files in `core/pi/skills/`.
 
@@ -113,7 +113,7 @@ Skills are registered in `package.json`:
 
 ---
 
-## 🔍 How Persona & Skills Work Together
+## How Persona & Skills Work Together
 
 ### Runtime Flow
 
@@ -143,7 +143,7 @@ Execute with Persona + Skills + Tools
 
 ---
 
-## 🔄 Relationship to Code
+## Relationship To Code
 
 ### Separation of Concerns
 
@@ -173,7 +173,7 @@ Execute with Persona + Skills + Tools
 
 ---
 
-## 📝 Maintenance Guidelines
+## Maintenance Guidelines
 
 ### Persona Maintenance
 
@@ -190,7 +190,7 @@ Execute with Persona + Skills + Tools
 
 ---
 
-## 🔗 Related
+## Related
 
 - [Pi Extensions](./pi-extensions) - Code tools that complement skills
 - [Core Library](./core-lib) - Shared utilities

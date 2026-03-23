@@ -24,7 +24,7 @@ Prefer central defaults over per-agent knobs. The daemon is easier to maintain w
 
 ---
 
-## 🔍 Important File Details
+## Important File Details
 
 ### `core/daemon/index.ts`
 
@@ -227,7 +227,7 @@ proactive:
 
 ---
 
-## 🔄 Related Tests
+## Related Tests
 
 | Test File | Coverage |
 |-----------|----------|
@@ -248,7 +248,7 @@ proactive:
 
 ---
 
-## 🔗 Related
+## Related
 
 - [Reference: Daemon Architecture](../reference/daemon-architecture) - Detailed daemon docs
 - [Architecture: Runtime Flows](../architecture/runtime-flows) - End-to-end flows

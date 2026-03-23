@@ -2,11 +2,11 @@
 
 > Keeping documentation in sync with code
 
-## 🌱 Contributor Contract
+## Contributor Contract
 
 **Rule**: Every new tracked file must be documented in the relevant subsystem inventory page.
 
-## 📝 Why / What / How Template
+## Why / What / How Template
 
 For each major page or section, use this structure:
 
@@ -28,7 +28,7 @@ For each major page or section, use this structure:
 - Control flow
 - Important implementation constraints
 
-## 📋 File Responsibility Entry Format
+## File Responsibility Entry Format
 
 Use this shape consistently in tables or sections:
 
@@ -36,7 +36,7 @@ Use this shape consistently in tables or sections:
 |------|-----|------|-------------|
 | `path/to/file.ts` | Solves X | Owns Y | Entry point, key exports |
 
-## 📄 Subsystem Page Format
+## Subsystem Page Format
 
 Each subsystem page should include:
 
@@ -47,14 +47,14 @@ Each subsystem page should include:
 - Related tests
 - Related docs
 
-## 🔄 Maintenance Rules
+## Maintenance Rules
 
 1. **One owner per file**: One subsystem page owns each tracked file's responsibility entry
 2. **Expanded sections for important files**: High-value files may have expanded subsections, but ownership stays with one subsystem page
 3. **Behavior over line-by-line**: Docs should prefer behavior-level explanation over repeating code line-by-line
 4. **Terse lockfile docs**: Lockfiles, config files, and templates should be documented tersely, not ignored
 
-## 🏗️ Adding New Documentation
+## Adding New Documentation
 
 ### New Subsystem
 
@@ -75,7 +75,7 @@ Each subsystem page should include:
 2. Update file paths if moved
 3. Verify cross-links still work
 
-## ✅ Pre-Commit Checklist
+## Pre-Commit Checklist
 
 Before committing documentation changes:
 
@@ -83,9 +83,8 @@ Before committing documentation changes:
 - [ ] Links to other pages use relative paths
 - [ ] Code blocks have language tags
 - [ ] Tables have aligned columns
-- [ ] Emoji notation follows legend
+- [ ] Section headings and comments follow the canonical docs style
 
-## 🔗 Related
+## Related
 
 - [Codebase Guide](../codebase/)
-- [Reference: Emoji Legend](../reference/emoji-legend)

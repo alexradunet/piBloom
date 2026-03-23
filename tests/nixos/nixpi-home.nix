@@ -1,6 +1,3 @@
-# tests/nixos/nixpi-home.nix
-# Test that NixPI Home and Element Web are provisioned after firstboot
-
 { pkgs, lib, nixPiModulesNoShell, piAgent, appPackage, setupPackage, mkTestFilesystems, ... }:
 
 pkgs.testers.runNixOSTest {

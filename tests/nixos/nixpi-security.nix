@@ -1,7 +1,3 @@
-# tests/nixos/nixpi-security.nix
-# Verify bootstrap SSH access, post-setup SSH shutdown, Matrix registration
-# shutdown, fail2ban, and trusted-interface service exposure policy.
-
 { pkgs, nixPiModulesNoShell, piAgent, appPackage, setupPackage, mkTestFilesystems, ... }:
 
 let
@@ -105,24 +101,17 @@ pkgs.testers.runNixOSTest {
     client.wait_for_unit("multi-user.target", timeout=120)
     client.wait_until_succeeds("ip -4 addr show dev eth1 | grep -q 'inet '", timeout=60)
 
-    # Bootstrap SSH remains reachable before setup completes.
     client.succeed("nc -z nixpi-bootstrap 22")
 
-    # After setup completes, SSH is no longer reachable by default.
     client.succeed("! nc -z -w 2 nixpi-steady 22")
 
-    # Local application access remains available after setup.
     steady.wait_until_succeeds("curl -sf http://127.0.0.1:6167/_matrix/client/versions", timeout=60)
     steady.wait_until_succeeds("curl -sf http://127.0.0.1:8080 | grep -q 'NixPI Home'", timeout=60)
 
-    # Matrix registration is disabled after setup by default.
     steady.succeed("test \"$(curl -s -o /tmp/register.out -w '%{http_code}' -X POST http://127.0.0.1:6167/_matrix/client/v3/register -H 'Content-Type: application/json' -d '{\"username\":\"blocked\",\"password\":\"testpassword123\",\"inhibit_login\":false}')\" != 200")
 
-    # fail2ban is active and protecting SSH.
     steady.succeed("fail2ban-client status sshd | grep -q 'Status for the jail: sshd'")
 
-    # Application ports are blocked from the untrusted peer because the trusted
-    # mesh interface is absent in the test environment.
     blocked_ports = [6167, 8080, 8081, 5000, 8443]
     for host in ["nixpi-bootstrap", "nixpi-steady"]:
         for port in blocked_ports:

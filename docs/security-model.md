@@ -1,13 +1,9 @@
 # NixPI Security Model
 
-> 📖 [Emoji Legend](LEGEND.md)
-
 Audience: operators deploying NixPI and template forkers who need to understand
 the security perimeter and threat model.
 
----
-
-## 🌱 Core Security Model
+## Core Security Model
 
 **NetBird is the load-bearing security boundary.**
 
@@ -22,9 +18,7 @@ networking.firewall.trustedInterfaces = [ "wt0" ];
 The `wt0` interface is the NetBird tunnel interface. Only mesh peers can reach
 NixPI services. Everything behind the mesh is relatively trusted.
 
----
-
-## 🛡️ What NetBird Protects
+## What NetBird Protects
 
 When NetBird is active and the `wt0` interface is up, the following services
 are accessible **only** to peers on the NetBird mesh:
@@ -35,26 +29,20 @@ are accessible **only** to peers on the NetBird mesh:
 | Matrix | 6167 | Homeserver for messaging |
 | element-web | 8081 | Web Matrix client |
 
----
-
-## ⚠️ What Happens If NetBird Is Absent
+## What Happens If NetBird Is Absent
 
 If NetBird is not running or not configured:
 
 1. The `wt0` interface does not exist
 2. The firewall rule `trustedInterfaces = ["wt0"]` provides **no protection**
 3. All NixPI services are exposed to the **local network**
-4. Any device on the same network can:
-   - Access the Matrix homeserver
-   - Interact with Pi in Matrix rooms
-   - Potentially trigger OS tools (`nixos_update`, `systemd_control`)
-     via prompt injection
+4. Any device on the same network can access the Matrix homeserver, interact
+   with Pi in Matrix rooms, and potentially trigger OS tools
+   (`nixos_update`, `systemd_control`) via prompt injection
 
 **This is a complete loss of the security perimeter.**
 
----
-
-## 🎯 Threat Actors Within Scope
+## Threat Actors Within Scope
 
 The security model addresses the following threats:
 
@@ -71,7 +59,7 @@ is fully exposed to the local network.
 
 ---
 
-## 🔐 SSH Access
+## SSH Access
 
 By default:
 - Password authentication is disabled
@@ -92,7 +80,7 @@ chmod 600 ~/.ssh/authorized_keys
 # Then keep SSH disabled post-setup or explicitly opt back in if you need it
 ```
 
-## 🤖 Agent Privilege Boundary
+## Agent Privilege Boundary
 
 - the primary operator account is the normal human and Pi runtime identity
 - interactive Pi state lives in `~/.pi`, while service and secret state lives under `/var/lib/nixpi`
@@ -117,9 +105,7 @@ sudo nixpi-brokerctl revoke-admin
 Bootstrap-only passwordless sudo is also gated on setup state. The narrow
 first-boot helper commands stop working once `~/.nixpi/.setup-complete` exists.
 
----
-
-## 📋 Pre-Deployment Checklist
+## Pre-Deployment Checklist
 
 Before exposing a NixPI host to any network:
 
@@ -128,9 +114,7 @@ Before exposing a NixPI host to any network:
 - [ ] You have verified services are NOT accessible from non-mesh devices
 - [ ] SSH keys are provisioned (recommended)
 
----
-
-## 🔗 Related
+## Related
 
 - [operations/first-boot-setup.md](operations/first-boot-setup.md) — First-boot setup guide
 - [operations/quick-deploy.md](operations/quick-deploy.md) — Build and deployment guide

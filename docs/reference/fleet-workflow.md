@@ -2,11 +2,11 @@
 
 > Local proposal workflow for system changes
 
-## 🌱 Audience
+## Audience
 
 Maintainers using NixPI to prepare local repo changes for later human review and external publish.
 
-## 🌱 Why This Flow Exists
+## Why This Flow Exists
 
 NixPI should be able to propose code and configuration changes locally without being able to publish them autonomously.
 
@@ -23,7 +23,7 @@ While forcing the approval boundary to stay with the human and the external cont
 - Human decides whether to commit and open a PR
 - CI or a separate controller handles publish, merge, and rollout
 
-## 🚀 Local Proposal Flow
+## Local Proposal Flow
 
 NixPI assumes the local working clone lives at:
 
@@ -41,7 +41,7 @@ Recommended workflow:
 4. Decide whether to keep, revise, commit, or discard the change
 5. Use your normal git/GitHub workflow outside NixPI to publish the change
 
-## 📚 Reference
+## Reference
 
 ### NixPI's Role
 
@@ -63,6 +63,6 @@ Recommended workflow:
 - The clone is a working area for proposals and review
 - Remote publishing is handled by the human or an external controller
 
-## 🔗 Related
+## Related
 
 - [Codebase: Pi Extensions - OS](../codebase/pi-extensions)

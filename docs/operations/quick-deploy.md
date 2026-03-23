@@ -2,17 +2,17 @@
 
 > Build, install, and validate NixPI
 
-## 🌱 Audience
+## Audience
 
 Operators and maintainers installing NixPI from the official installer image or validating local builds.
 
-## 🛡️ Security Note: NetBird is Mandatory
+## Security Note: NetBird Is Mandatory
 
 NetBird is the network security boundary for all NixPI services. The firewall trusts only the NetBird interface (`wt0`). Without NetBird running, all services (Matrix, Home, Element Web) are exposed to the local network.
 
 **Complete NetBird setup and verify `wt0` is active before exposing this machine to any network.** See [Security Model](../reference/security-model) for the full threat model.
 
-## 🚀 Installation Workflow
+## Installation Workflow
 
 NixPI ships as a minimal NixOS installer image. It boots to a console and exposes a destructive terminal installer wizard as `nixpi-installer`.
 
@@ -65,7 +65,7 @@ During first boot, the wizard:
 3. Writes the host-specific flake under `/etc/nixos`
 4. Runs `sudo nixos-rebuild switch --flake /etc/nixos#$(hostname -s)` to promote the system into the full appliance
 
-## 💻 Development: Local Builds and VM Testing
+## Development: Local Builds and VM Testing
 
 For development and testing, use the QEMU VM workflow.
 
@@ -97,7 +97,7 @@ just check-boot      # Thorough: boot test in VM
 
 **Default operator user**: the user chosen during `nixpi-installer`. That same primary operator account is the normal local and always-on Pi runtime identity.
 
-## 🔄 OTA Updates
+## OTA Updates
 
 Use `~/nixpi` as the canonical editable source of truth for an installed system. Treat `/etc/nixos` as deployed compatibility state, not the repo you edit or sync.
 
@@ -134,7 +134,7 @@ To roll back:
 sudo nixos-rebuild switch --rollback
 ```
 
-## 🔗 Related
+## Related
 
 - [First Boot Setup](./first-boot-setup)
 - [Live Testing](./live-testing)

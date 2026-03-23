@@ -2,7 +2,7 @@
 
 > Orienting new maintainers to the NixPI codebase
 
-## 🌱 How to Read This Repository
+## How To Read This Repository
 
 NixPI is organized as a multi-layer system. Understanding these layers will help you navigate the codebase effectively.
 
@@ -34,7 +34,7 @@ NixPI/
 └── flake.nix        # Nix entry point
 ```
 
-## 🚀 Common Commands
+## Common Commands
 
 ### Development Workflow
 
@@ -90,7 +90,7 @@ npm run docs:build
 npm run docs:preview
 ```
 
-## 📚 Reading Order for New Maintainers
+## Reading Order For New Maintainers
 
 If you're diving into the codebase, this order will help you build mental models:
 
@@ -112,7 +112,7 @@ If you're diving into the codebase, this order will help you build mental models
    - [Operations](../operations/) for deployment
    - [Reference](../reference/) for deep details
 
-## 🔗 Related
+## Related
 
 - [Architecture Overview](../architecture/)
 - [Codebase Guide](../codebase/)

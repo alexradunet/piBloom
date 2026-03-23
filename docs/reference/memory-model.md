@@ -2,11 +2,11 @@
 
 > How NixPI stores and promotes memory
 
-## 🌱 Audience
+## Audience
 
 Maintainers changing memory tools, storage rules, or retrieval behavior.
 
-## 🌱 Why NixPI Uses Markdown Memory
+## Why NixPI Uses Markdown Memory
 
 NixPI memory is intentionally file-based.
 
@@ -17,7 +17,7 @@ The goal is to keep memory:
 - Lightweight enough for a minimal host footprint
 - Explicit about what is durable versus temporary
 
-## 🗂️ How The Memory Layers Work
+## How The Memory Layers Work
 
 NixPI has two persistent layers:
 
@@ -83,7 +83,7 @@ Poor promotion candidates:
 - Weakly inferred personal facts
 - Incomplete ideas with no durable value
 
-## 📚 Reference
+## Reference
 
 ### Durable Object Required Fields
 
@@ -139,7 +139,7 @@ Poor promotion candidates:
 - Automatic per-turn transcript logging
 - Compaction summaries as canonical long-term memory
 
-## 🔗 Related
+## Related
 
 - [Codebase: Pi Extensions - Objects](../codebase/pi-extensions)
 - [Codebase: Pi Extensions - Episodes](../codebase/pi-extensions)

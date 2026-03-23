@@ -81,7 +81,7 @@ If a helper only exists to format a standard text response or wire a trivial too
 
 ---
 
-## 🔄 Extension Registration
+## Extension Registration
 
 Extensions are registered in `package.json`:
 
@@ -105,7 +105,7 @@ Each extension exports a manifest with:
 - `tools` - Array of tool definitions
 - `hooks` - Lifecycle hooks (optional)
 
-## 🔍 Common Extension Patterns
+## Common Extension Patterns
 
 ### Tool Definition Pattern
 
@@ -136,7 +136,7 @@ export default {
 };
 ```
 
-## 🔄 Related Tests
+## Related Tests
 
 | Test File | Coverage |
 |-----------|----------|
@@ -151,7 +151,7 @@ export default {
 
 ---
 
-## 🔗 Related
+## Related
 
 - [Core Library](./core-lib) - Utilities used by extensions
 - [Tests](./tests) - Test coverage details

@@ -1,10 +1,8 @@
 # NixPI Memory Model
 
-> 📖 [Emoji Legend](LEGEND.md)
-
 Audience: maintainers changing memory tools, storage rules, or retrieval behavior.
 
-## 🌱 Why NixPI Uses Markdown Memory
+## Why NixPI Uses Markdown Memory
 
 NixPI memory is intentionally file-based.
 
@@ -15,7 +13,7 @@ The goal is to keep memory:
 - lightweight enough for a minimal host footprint
 - explicit about what is durable versus temporary
 
-## 🗂️ How The Memory Layers Work
+## How The Memory Layers Work
 
 NixPI has two persistent layers:
 
@@ -81,7 +79,7 @@ Poor promotion candidates:
 - weakly inferred personal facts
 - incomplete ideas with no durable value
 
-## 📚 Reference
+## Reference
 
 Durable object required fields:
 
@@ -135,7 +133,7 @@ Current non-goals:
 - automatic per-turn transcript logging
 - compaction summaries as canonical long-term memory
 
-## 🔗 Related
+## Related
 
 - [../AGENTS.md](../AGENTS.md)
 - [../README.md](../README.md)

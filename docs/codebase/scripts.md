@@ -27,7 +27,7 @@ First boot is now a single flow:
 
 ---
 
-## 📋 When to Run Scripts
+## When To Run Scripts
 
 | Script | Safe to Run | When |
 |--------|-------------|------|
@@ -36,7 +36,7 @@ First boot is now a single flow:
 
 ---
 
-## 🔗 Related
+## Related
 
 - [Operations: Quick Deploy](../operations/quick-deploy) - Deployment procedures
 - [Operations: First Boot](../operations/first-boot-setup) - Setup procedures

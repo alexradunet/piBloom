@@ -2,17 +2,17 @@
 
 > Validating a fresh NixPI release
 
-## 🌱 Audience
+## Audience
 
 Operators validating a fresh NixPI image on real hardware or a realistic VM.
 
-## 🌱 Why This Checklist Exists
+## Why This Checklist Exists
 
 This is the acceptance checklist for first real NixPI runs.
 
 Use it to verify that setup, messaging, and recovery paths still match the shipped documentation.
 
-## 🚀 How To Run The Check
+## How To Run The Check
 
 ### Clean Install
 
@@ -48,7 +48,7 @@ For VM validation:
 1. Interrupt the wizard during Matrix setup, log back in, and confirm setup resumes instead of re-registering from scratch
 2. Corrupt `~/nixpi/guardrails.yaml` and confirm NixPI falls back to the packaged defaults instead of crashing the session startup path
 
-## 📚 Reference
+## Reference
 
 ### Ship Gate
 
@@ -57,7 +57,7 @@ For VM validation:
 - Matrix messaging works end to end
 - Known risks for any optional packaged workloads are documented
 
-## 🔗 Related
+## Related
 
 - [First Boot Setup](./first-boot-setup)
 - [Quick Deploy](./quick-deploy)

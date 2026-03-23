@@ -2,7 +2,7 @@
 
 > Major subsystem boundaries and design principles
 
-## 🌱 Why This Architecture Exists
+## Why This Architecture Exists
 
 NixPI combines several technologies to create a self-hosted AI companion OS. The architecture is shaped by these design goals:
 
@@ -12,7 +12,7 @@ NixPI combines several technologies to create a self-hosted AI companion OS. The
 4. **Minimal base**: Small footprint that users evolve through Pi
 5. **Human-in-the-loop**: Local proposal workflow for system changes
 
-## 🚀 What the Platform Ships
+## What The Platform Ships
 
 ### High-Level Subsystems
 
@@ -32,7 +32,7 @@ NixPI combines several technologies to create a self-hosted AI companion OS. The
 | Element Web | `:8081` | Element Web client |
 | Matrix | `:6167` | Continuwuity homeserver |
 
-## 🧩 How the Layers Connect
+## How The Layers Connect
 
 ### Dependency Flow
 
@@ -67,7 +67,7 @@ NixPI combines several technologies to create a self-hosted AI companion OS. The
 4. **Extensions expose tools**: Pi uses extensions for OS operations
 5. **Scripts drive setup**: First-boot wizard configures the system
 
-## 📡 Data and Control Surfaces
+## Data And Control Surfaces
 
 ### Primary Data Surfaces
 
@@ -88,7 +88,7 @@ NixPI combines several technologies to create a self-hosted AI companion OS. The
 | Matrix rooms | Messaging | Interactive Pi sessions |
 | `nixpi-broker` | Privileged service | Elevated OS operations |
 
-## 🛡️ Security Boundaries
+## Security Boundaries
 
 ### NetBird as Security Perimeter
 
@@ -104,7 +104,7 @@ The `wt0` interface (NetBird WireGuard tunnel) is the only trusted interface in 
 | `/var/lib/nixpi` | Service and secret state owned by the appliance runtime |
 | `root` (via broker) | Elevated operations only |
 
-## 📚 Subsystem Details
+## Subsystem Details
 
 Each subsystem has its own detailed documentation:
 
@@ -113,7 +113,7 @@ Each subsystem has its own detailed documentation:
 - [Pi Extensions](../codebase/pi-extensions) - Tool and command surface
 - [OS Modules](../codebase/os) - NixOS integration
 
-## 🔗 Related
+## Related
 
 - [Runtime Flows](./runtime-flows) - End-to-end flow documentation
 - [Codebase Guide](../codebase/) - File-level documentation

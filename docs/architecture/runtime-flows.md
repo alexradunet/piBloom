@@ -2,14 +2,14 @@
 
 > End-to-end flows through the NixPI system
 
-## 🌱 Why Document Runtime Flows
+## Why Document Runtime Flows
 
 Understanding how control and data flow through NixPI is essential for:
 - Debugging issues that span subsystems
 - Adding new features that integrate correctly
 - Understanding failure modes and recovery paths
 
-## 🚀 Install/Build Flow
+## Install/Build Flow
 
 ### Entry Points
 
@@ -44,7 +44,7 @@ Understanding how control and data flow through NixPI is essential for:
 | `core/os/pkgs/app/default.nix` | Package derivation |
 | `package.json` | Extension manifest, dependencies |
 
-## 💻 Boot/Service Startup Flow
+## Boot/Service Startup Flow
 
 ### System Boot Sequence
 
@@ -89,7 +89,7 @@ multi-user.target
 | `core/daemon/agent-registry.ts` | Agent overlay loading |
 | `core/daemon/multi-agent-runtime.ts` | Runtime orchestration |
 
-## 🧩 First-Boot/Setup Flow
+## First-Boot/Setup Flow
 
 ### Phase 1: Bash Wizard
 
@@ -144,7 +144,7 @@ Yes: Inject persona guidance
 | `core/pi/extensions/persona/` | Persona setup prompt injection |
 | `core/scripts/` | First-boot scripts |
 
-## 📡 Matrix Room Message Flow
+## Matrix Room Message Flow
 
 ### Incoming Message Flow
 
@@ -184,7 +184,7 @@ Response sent via bridge
 | `core/daemon/runtime/pi-room-session.ts` | Session lifecycle |
 | `core/daemon/runtime/matrix-js-sdk-bridge.ts` | Matrix transport |
 
-## 🗂️ Memory/Object Flow
+## Memory/Object Flow
 
 ### Episode Creation Flow
 
@@ -232,7 +232,7 @@ Mark sources superseded
 | `core/pi/extensions/objects/` | Object and promotion tools |
 | `core/lib/frontmatter.ts` | Frontmatter parsing |
 
-## 🔄 Update/Proposal Flow
+## Update/Proposal Flow
 
 ### Local Proposal Flow
 
@@ -270,7 +270,7 @@ Apply on next window or manual trigger
 | `core/os/modules/update.nix` | Update service |
 | `core/os/services/nixpi-update.nix` | Update timer/service |
 
-## 📊 Proactive Job Flow
+## Proactive Job Flow
 
 ### Heartbeat Job Flow
 
@@ -310,7 +310,7 @@ Dispatch proactive turn
 | `core/daemon/proactive.ts` | Dispatch logic |
 | `core/daemon/rate-limiter.ts` | Rate limiting |
 
-## 🔗 Related
+## Related
 
 - [Daemon Architecture](../reference/daemon-architecture) - Detailed daemon documentation
 - [Memory Model](../reference/memory-model) - Memory system details

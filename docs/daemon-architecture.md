@@ -1,10 +1,8 @@
 # Daemon Architecture
 
-> 📖 [Emoji Legend](LEGEND.md)
-
 Audience: maintainers changing daemon behavior or diagnosing room-runtime issues.
 
-## 🌱 Why The Daemon Exists
+## Why The Daemon Exists
 
 `nixpi-daemon.service` is NixPI's always-on room runtime.
 
@@ -15,7 +13,7 @@ It exists to:
 - support simple default-host deployments and optional multi-agent overlays
 - schedule proactive turns without external orchestration
 
-## 📡 How The Daemon Works
+## How The Daemon Works
 
 NixPI runs through one supervisor/runtime path:
 
@@ -147,7 +145,7 @@ States:
 - `open`: Circuit is tripped, jobs are rejected
 - `half-open`: After reset timeout, one job is allowed to test if the issue is resolved
 
-## 📚 Reference
+## Reference
 
 Important implementation files:
 
@@ -165,7 +163,7 @@ Important current failure behavior:
 - malformed agent overlays are skipped, not fatal
 - duplicate-event and cooldown state is bounded and pruned over time
 
-## 🔗 Related
+## Related
 
 - [../AGENTS.md](../AGENTS.md)
 - [../ARCHITECTURE.md](../ARCHITECTURE.md)

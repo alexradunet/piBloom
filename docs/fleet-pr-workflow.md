@@ -1,10 +1,8 @@
 # Fleet Change Workflow
 
-> 📖 [Emoji Legend](LEGEND.md)
-
 Audience: maintainers using NixPI to prepare local repo changes for later human review and external publish.
 
-## 🌱 Why This Flow Exists
+## Why This Flow Exists
 
 NixPI should be able to propose code and configuration changes locally without being able to publish them autonomously.
 
@@ -21,7 +19,7 @@ while forcing the approval boundary to stay with the human and the external cont
 - human decides whether to commit and open a PR
 - CI or a separate controller handles publish, merge, and rollout
 
-## 🚀 Local Proposal Flow
+## Local Proposal Flow
 
 NixPI assumes the local working clone lives at:
 
@@ -39,7 +37,7 @@ Recommended workflow:
 4. Decide whether to keep, revise, commit, or discard the change.
 5. Use your normal git/GitHub workflow outside NixPI to publish the change.
 
-## 📚 Reference
+## Reference
 
 NixPI's role in this model:
 
@@ -61,7 +59,7 @@ Current repo assumptions:
 - the clone is a working area for proposals and review
 - remote publishing is handled by the human or an external controller
 
-## 🔗 Related
+## Related
 
 - [../README.md](../README.md)
 - [../AGENTS.md](../AGENTS.md)

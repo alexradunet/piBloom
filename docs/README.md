@@ -1,14 +1,12 @@
 # NixPI Documentation
 
-> 📖 [Emoji Legend](reference/emoji-legend)
-
 This documentation has been migrated to a VitePress site.
 
-## 🚀 New Documentation Site
+## New Documentation Site
 
 **URL**: [alexradunet.github.io/NixPI](https://alexradunet.github.io/NixPI)
 
-## 📚 Quick Links
+## Quick Links
 
 | Topic | New Location |
 |-------|--------------|
@@ -22,12 +20,12 @@ This documentation has been migrated to a VitePress site.
 | Security Model | [reference/security-model](https://alexradunet.github.io/NixPI/reference/security-model) |
 | Codebase Guide | [codebase/](https://alexradunet.github.io/NixPI/codebase/) |
 
-## 💻 Running Docs Locally
+## Running Docs Locally
 
 ```bash
 npm run docs:dev
 ```
 
-## 📝 Documentation Source
+## Documentation Source
 
 The VitePress pages under `docs/operations/`, `docs/reference/`, `docs/architecture/`, and `docs/codebase/` are the maintained source of truth.

@@ -2,7 +2,7 @@
 
 > Bringing up a fresh NixPI host
 
-## 🌱 Audience
+## Audience
 
 Operators bringing up a fresh NixPI host.
 
@@ -24,7 +24,7 @@ For VM install-flow testing:
 - use this path to validate install flow, Openbox startup, and in-guest NetBird enrollment
 - do not expect guest service URLs or the NetBird mesh IP to behave like a real inbound-reachable peer from the host or LAN in this VM mode
 
-## 🛡️ Security Note: NetBird is Mandatory
+## Security Note: NetBird Is Mandatory
 
 NetBird is the network security boundary for all NixPI services. The firewall configuration (`trustedInterfaces = ["wt0"]`) only protects services when the NetBird interface (`wt0`) is active. Without NetBird:
 
@@ -33,7 +33,7 @@ NetBird is the network security boundary for all NixPI services. The firewall co
 
 **Complete NetBird setup and verify `wt0` is active before exposing this machine to any network.**
 
-## 🌱 Why Setup Is Split In Two
+## Why Setup Is Split In Two
 
 NixPI separates deterministic machine setup from Pi-guided personalization.
 
@@ -43,7 +43,7 @@ That split keeps:
 - Persona customization in Pi where it belongs
 - Interrupted setup resumable without redoing the entire host bootstrap
 
-## 💻 How First Boot Works
+## How First Boot Works
 
 NixPI's first-boot experience has two phases.
 
@@ -91,11 +91,11 @@ During that Pi-side first conversation, Pi should also orient the user to the pl
 - Matrix is the native messaging surface, with `nixpi-daemon.service` keeping Pi active in rooms outside the local terminal session as a system service running under the primary operator account
 - Multi-agent rooms are optional and activate when valid overlays exist in `~/nixpi/Agents/*/AGENTS.md`
 
-## 🔄 Recovery
+## Recovery
 
 If you want to redo persona setup, remove `~/.nixpi/wizard-state/persona-done` and open Pi again.
 
-## 📚 Reference
+## Reference
 
 ### Relevant Files
 
@@ -116,7 +116,7 @@ If you want to redo persona setup, remove `~/.nixpi/wizard-state/persona-done` a
 - The wizard refreshes Matrix policy so public registration is no longer left open after setup
 - The wizard refreshes the built-in service configs so NetBird peers have a stable page listing service URLs and shareable host info
 
-## 🔗 Related
+## Related
 
 - [Quick Deploy](./quick-deploy)
 - [Live Testing](./live-testing)

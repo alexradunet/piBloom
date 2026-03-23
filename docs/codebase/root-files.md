@@ -171,7 +171,7 @@ Do not let root files become secondary architecture documents. If a detail is on
 
 ---
 
-## 🔗 Related
+## Related
 
 - [OS Modules](./os) - NixOS module documentation
 - [Codebase Overview](./) - Return to codebase guide

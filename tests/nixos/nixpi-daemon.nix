@@ -1,13 +1,9 @@
-# tests/nixos/nixpi-daemon.nix
-# Test that the Pi Daemon Matrix agent starts and connects to homeserver
-
 { pkgs, lib, nixPiModulesNoShell, piAgent, appPackage, setupPackage, mkTestFilesystems, mkMatrixAdminSeedConfig, matrixRegisterScript, ... }:
 
 pkgs.testers.runNixOSTest {
   name = "nixpi-daemon";
 
   nodes = {
-    # Matrix homeserver node
     server = { ... }: let
       username = "server";
       homeDir = "/home/${username}";
@@ -26,8 +22,6 @@ pkgs.testers.runNixOSTest {
       i18n.defaultLocale = "en_US.UTF-8";
       networking.networkmanager.enable = true;
       system.stateVersion = "25.05";
-      # nixpkgs.config NOT set here - test framework injects its own pkgs
-      
       boot.loader.systemd-boot.enable = true;
       boot.loader.efi.canTouchEfiVariables = true;
 
@@ -42,7 +36,6 @@ pkgs.testers.runNixOSTest {
       users.groups.${username} = {};
     };
 
-    # Agent node running nixpi-daemon
     agent = { ... }: let
       username = "pi";
       homeDir = "/home/${username}";
@@ -59,12 +52,9 @@ pkgs.testers.runNixOSTest {
       i18n.defaultLocale = "en_US.UTF-8";
       networking.networkmanager.enable = true;
       system.stateVersion = "25.05";
-      # nixpkgs.config NOT set here - test framework injects its own pkgs
-      
       boot.loader.systemd-boot.enable = true;
       boot.loader.efi.canTouchEfiVariables = true;
       systemd.services.continuwuity.wantedBy = lib.mkForce [];
-      # Ensure the primary NixPI user exists with proper setup
       users.users.${username} = {
         isNormalUser = true;
         group = username;
@@ -74,13 +64,11 @@ pkgs.testers.runNixOSTest {
       };
       users.groups.${username} = {};
 
-      # Pre-create setup-complete to skip wizard
       systemd.tmpfiles.rules = [
         "d ${homeDir}/.nixpi 0755 ${username} ${username} -"
         "f ${homeDir}/.nixpi/.setup-complete 0644 ${username} ${username} -"
       ];
 
-      # Create Matrix credentials file for daemon
       system.activationScripts.nixpi-daemon-creds = lib.stringAfter [ "users" ] ''
         install -d -m 0700 -o ${username} -g ${username} ${homeDir}/.pi
       '';
@@ -95,7 +83,6 @@ pkgs.testers.runNixOSTest {
     username = "pi"
     home = "/home/pi"
 
-    # Start the homeserver first.
     server.start()
     server.wait_for_unit("multi-user.target", timeout=300)
     server.wait_for_unit("continuwuity.service", timeout=60)
@@ -106,7 +93,6 @@ pkgs.testers.runNixOSTest {
     assert user_id, "Continuwuity login produced an empty user_id"
     assert access_token, "Continuwuity login produced an empty access_token"
 
-    # Start the agent node and provision daemon credentials.
     agent.start()
     agent.wait_for_unit("multi-user.target", timeout=300)
 

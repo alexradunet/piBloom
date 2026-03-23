@@ -1,6 +1,3 @@
-# tests/nixos/lib.nix
-# Shared helpers for NixPI NixOS integration tests
-
 { pkgs, lib, self }:
 
 {
@@ -60,19 +57,15 @@ EOF
     ];
   };
 
-  # Minimal filesystem configuration for test VMs
   mkTestFilesystems = {
     fileSystems."/" = { device = "/dev/vda"; fsType = "ext4"; };
     fileSystems."/boot" = { device = "/dev/vda1"; fsType = "vfat"; };
   };
 
-  # Reuse the flake's exported module composition so tests stay aligned with
-  # the real desktop/consumer entrypoint.
   nixPiModules = [
     self.nixosModules.nixpi
   ];
 
-  # NixPI modules without nixpi-shell (for tests that define their own operator user)
   nixPiModulesNoShell = [
     self.nixosModules.nixpi-no-shell
   ];
@@ -148,9 +141,7 @@ EOF
     asyncio.run(main())
   '';
 
-  # Test utilities package
   testUtils = pkgs.writeShellScriptBin "nixpi-test-utils" ''
-    # Wait for a systemd unit to be active on the system bus
     wait_for_unit_active() {
       local unit="$1"
       local timeout="''${2:-30}"
@@ -166,7 +157,6 @@ EOF
       done
     }
     
-    # Register a Matrix user on the local Continuwuity instance
     register_matrix_user() {
       local username="$1"
       local password="$2"

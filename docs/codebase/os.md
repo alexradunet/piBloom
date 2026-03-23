@@ -38,7 +38,7 @@ NixOS modules use appPackage
 
 ---
 
-## 📋 Host Configurations (`core/os/hosts/`)
+## Host Configurations (`core/os/hosts/`)
 
 | File | Why | What | How / Notes |
 |------|-----|------|-------------|
@@ -63,7 +63,7 @@ NixOS modules use appPackage
 
 ---
 
-## 🔍 Important File Details
+## Important File Details
 
 ### `core/os/modules/options.nix`
 
@@ -172,7 +172,7 @@ networking.firewall = {
 
 ---
 
-## 🔄 Related Tests
+## Related Tests
 
 | Test Area | Location | Coverage |
 |-----------|----------|----------|
@@ -183,7 +183,7 @@ See [Tests](./tests) for detailed test documentation.
 
 ---
 
-## 🔗 Related
+## Related
 
 - [Architecture Overview](../architecture/) - High-level design
 - [Runtime Flows](../architecture/runtime-flows) - End-to-end flows

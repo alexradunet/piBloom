@@ -2,7 +2,7 @@
 
 > External services and infrastructure
 
-## 🌱 Matrix Infrastructure
+## Matrix Infrastructure
 
 ### Overview
 
@@ -49,7 +49,7 @@ sudo systemctl restart continuwuity
 
 ---
 
-## 🌐 NetBird Infrastructure
+## NetBird Infrastructure
 
 ### Overview
 
@@ -87,9 +87,7 @@ sudo systemctl stop netbird
 sudo systemctl start netbird
 ```
 
----
-
-## 🔗 Related
+## Related
 
 - [Security Model](./security-model)
 - [First Boot Setup](../operations/first-boot-setup)

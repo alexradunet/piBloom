@@ -1,22 +1,8 @@
-# tests/nixos/default.nix
-# NixOS integration test suite for NixPI
-#
-# Usage:
-#   nix build .#checks.x86_64-linux.nixpi-matrix
-#   nix build .#checks.x86_64-linux.nixpi-firstboot
-#   nix build .#checks.x86_64-linux.nixpi-network
-#   nix build .#checks.x86_64-linux.nixpi-daemon
-#   nix build .#checks.x86_64-linux.nixpi-e2e
-#   nix build .#checks.x86_64-linux.nixpi-home
-#
-# Or run all: nix flake check
-
 { pkgs, lib, piAgent, appPackage, self, installerHelper ? null, setupPackage }:
 
 let
-  # Import shared helpers
   testLib = import ./lib.nix { inherit pkgs lib self; };
-  
+
   inherit (testLib)
     nixPiModules
     nixPiModulesNoShell
@@ -26,8 +12,7 @@ let
     matrixRegisterScript
     mkManagedUserConfig
     mkPrefillActivation;
-  
-  # Test function with common dependencies
+
   mkTest = testFile: import testFile {
     inherit
       pkgs
