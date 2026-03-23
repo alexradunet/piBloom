@@ -33,11 +33,11 @@
   console.keyMap = "us";
   networking.hostName = lib.mkDefault "nixpi";
   fileSystems."/" = lib.mkDefault {
-    device = "/dev/vda";
+    device = "/dev/disk/by-label/nixos";
     fsType = "ext4";
   };
   fileSystems."/boot" = lib.mkDefault {
-    device = "/dev/vda1";
+    device = "/dev/disk/by-label/boot";
     fsType = "vfat";
   };
 }
