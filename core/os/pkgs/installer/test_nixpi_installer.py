@@ -53,6 +53,7 @@ class NixpiInstallerTests(unittest.TestCase):
         self.assertIn('users.users."alex".hashedPassword = "$6$fixedhash";', artifacts["nixpi_install_module"])
         self.assertNotIn('users.users."alex".initialPassword', artifacts["nixpi_install_module"])
         self.assertIn('bootstrapPasswordFile = "${config.nixpi.stateDir}/bootstrap/primary-user-password";', artifacts["nixpi_install_module"])
+        self.assertIn("@desktopOpenboxModule@", artifacts["nixpi_install_module"])
         self.assertIn("system.activationScripts.nixpi-bootstrap-primary-password", artifacts["nixpi_install_module"])
         self.assertIn("printf '%s' \"supersecret\" > ${bootstrapPasswordFile}", artifacts["nixpi_install_module"])
         self.assertIn('networking.hostName = "pi-box";', artifacts["configuration_module"])
