@@ -258,5 +258,23 @@ in
         '';
       };
     };
+
+    timezone = lib.mkOption {
+      type = lib.types.str;
+      default = "UTC";
+      description = ''
+        System timezone. Any valid IANA timezone string (e.g. "Europe/Paris").
+        Set interactively by the first-boot setup wizard.
+      '';
+    };
+
+    keyboard = lib.mkOption {
+      type = lib.types.str;
+      default = "us";
+      description = ''
+        Console and X keyboard layout (e.g. "fr", "de", "us").
+        Set interactively by the first-boot setup wizard.
+      '';
+    };
   };
 }

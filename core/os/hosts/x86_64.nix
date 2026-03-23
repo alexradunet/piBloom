@@ -1,6 +1,6 @@
 # core/os/hosts/x86_64.nix
 # Canonical NixPI desktop profile used for dev builds and the installed system shape.
-{ lib, ... }:
+{ lib, config, ... }:
 
 {
   imports = [
@@ -26,11 +26,11 @@
   nixpi.bootstrap.keepSshAfterSetup = lib.mkDefault true;
   nixpi.primaryUser = lib.mkDefault "pi";
 
-  time.timeZone = "UTC";
+  time.timeZone = config.nixpi.timezone;
   i18n.defaultLocale = "en_US.UTF-8";
   networking.networkmanager.enable = true;
-  services.xserver.xkb = { layout = "us"; variant = ""; };
-  console.keyMap = "us";
+  services.xserver.xkb = { layout = config.nixpi.keyboard; variant = ""; };
+  console.keyMap = config.nixpi.keyboard;
   networking.hostName = lib.mkDefault "nixpi";
   fileSystems."/" = lib.mkDefault {
     device = "/dev/disk/by-label/nixos";
