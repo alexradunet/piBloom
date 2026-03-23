@@ -1,6 +1,6 @@
-{ pkgs, lib, nixPiModules, nixPiModulesNoShell, piAgent, appPackage, setupPackage, mkTestFilesystems, ... }:
+{ lib, nixPiModules, nixPiModulesNoShell, piAgent, appPackage, setupPackage, mkTestFilesystems, ... }:
 
-pkgs.testers.runNixOSTest {
+{
   name = "nixpi-matrix";
 
   nodes.server = { ... }: {

@@ -1,6 +1,6 @@
-{ pkgs, nixPiModules, piAgent, appPackage, setupPackage, ... }:
+{ nixPiModules, piAgent, appPackage, setupPackage, ... }:
 
-pkgs.testers.runNixOSTest {
+{
   name = "nixpi-desktop";
 
   nodes.nixpi = { ... }: {

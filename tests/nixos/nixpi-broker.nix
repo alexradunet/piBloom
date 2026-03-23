@@ -1,6 +1,6 @@
-{ pkgs, nixPiModules, mkTestFilesystems, piAgent, appPackage, setupPackage, ... }:
+{ nixPiModules, mkTestFilesystems, piAgent, appPackage, setupPackage, ... }:
 
-pkgs.testers.runNixOSTest {
+{
   name = "nixpi-broker";
 
   nodes = {

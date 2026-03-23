@@ -1,6 +1,6 @@
-{ pkgs, lib, nixPiModulesNoShell, piAgent, appPackage, setupPackage, mkTestFilesystems, ... }:
+{ lib, nixPiModulesNoShell, piAgent, appPackage, setupPackage, mkTestFilesystems, ... }:
 
-pkgs.testers.runNixOSTest {
+{
   name = "nixpi-modular-services";
 
   nodes.nixpi = { ... }: let
