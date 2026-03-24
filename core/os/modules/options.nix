@@ -239,6 +239,141 @@ in
       };
     };
 
+    netbird = {
+      apiTokenFile = lib.mkOption {
+        type = lib.types.nullOr lib.types.path;
+        default = null;
+        description = ''
+          Path to a file containing the NetBird management API personal access
+          token. When null, the provisioner and watcher services are not started.
+          Never store the token in the Nix store.
+        '';
+      };
+
+      apiEndpoint = lib.mkOption {
+        type = lib.types.str;
+        default = "https://api.netbird.io";
+        description = ''
+          Base URL for the NetBird management API. Override in tests to point
+          at a mock server.
+        '';
+      };
+
+      groups = lib.mkOption {
+        type = lib.types.listOf lib.types.str;
+        default = [ "bloom-devices" "admins" "bloom-pi" ];
+        description = ''
+          NetBird groups to ensure exist. "All" is a NetBird built-in and must
+          not appear here — the provisioner skips it automatically.
+          "bloom-pi" is the group the Pi peer joins via its dedicated setup key;
+          it is the destination group in all ACL policies (least-privilege).
+        '';
+      };
+
+      setupKeys = lib.mkOption {
+        type = lib.types.listOf (lib.types.submodule {
+          options = {
+            name       = lib.mkOption { type = lib.types.str; };
+            autoGroups = lib.mkOption { type = lib.types.listOf lib.types.str; };
+            ephemeral  = lib.mkOption { type = lib.types.bool; default = false; };
+            usageLimit = lib.mkOption { type = lib.types.int;  default = 0; };
+          };
+        });
+        default = [
+          { name = "bloom-pi";     autoGroups = [ "bloom-pi" ];             ephemeral = false; usageLimit = 1; }
+          { name = "bloom-device"; autoGroups = [ "bloom-devices" ];        ephemeral = false; usageLimit = 0; }
+          { name = "admin-device"; autoGroups = [ "bloom-devices" "admins" ]; ephemeral = false; usageLimit = 0; }
+        ];
+        description = ''
+          Setup keys to ensure exist in NetBird cloud. Keys are create-only —
+          the NetBird API does not support mutating existing keys. To change a
+          key's config, revoke it in the NetBird dashboard then re-run the
+          provisioner (next nixos-rebuild switch or reboot).
+        '';
+      };
+
+      policies = lib.mkOption {
+        type = lib.types.listOf (lib.types.submodule {
+          options = {
+            name          = lib.mkOption { type = lib.types.str; };
+            sourceGroup   = lib.mkOption { type = lib.types.str; };
+            destGroup     = lib.mkOption { type = lib.types.str; };
+            protocol      = lib.mkOption { type = lib.types.enum [ "tcp" "udp" "icmp" "all" ]; default = "tcp"; };
+            ports         = lib.mkOption { type = lib.types.listOf lib.types.str; default = []; };
+            postureChecks = lib.mkOption { type = lib.types.listOf lib.types.str; default = []; };
+          };
+        });
+        default = [
+          { name = "matrix-access";      sourceGroup = "admins";        destGroup = "bloom-pi"; protocol = "tcp"; ports = [ "6167" ]; postureChecks = []; }
+          { name = "element-web-access"; sourceGroup = "bloom-devices"; destGroup = "bloom-pi"; protocol = "tcp"; ports = [ "8081" ]; postureChecks = []; }
+          { name = "rdp-access";         sourceGroup = "admins";        destGroup = "bloom-pi"; protocol = "tcp"; ports = [ "3389" ]; postureChecks = []; }
+          { name = "ssh-access";         sourceGroup = "admins";        destGroup = "bloom-pi"; protocol = "tcp"; ports = [ "22022" ]; postureChecks = []; }
+        ];
+        description = ''
+          ACL policies to ensure exist. destGroup = "bloom-pi" targets only the
+          Pi peer, ensuring policies apply least-privilege regardless of how
+          many devices are enrolled.
+        '';
+      };
+
+      postureChecks = lib.mkOption {
+        type = lib.types.listOf (lib.types.submodule {
+          options = {
+            name       = lib.mkOption { type = lib.types.str; };
+            minVersion = lib.mkOption { type = lib.types.str; };
+          };
+        });
+        default = [ { name = "min-client-version"; minVersion = "0.61.0"; } ];
+        description = ''
+          Posture checks (minVersion only). Attach by name in policies.postureChecks.
+          Other check types (geo, OS, process) are managed via the NetBird dashboard.
+        '';
+      };
+
+      dns = {
+        domain = lib.mkOption {
+          type = lib.types.str;
+          default = "bloom.local";
+          description = "DNS domain routed through the Pi's NetBird IP by all peers in targetGroups.";
+        };
+        targetGroups = lib.mkOption {
+          type = lib.types.listOf lib.types.str;
+          default = [ "bloom-devices" ];
+          description = "Peer groups that receive the bloom.local DNS route via NetBird nameserver group.";
+        };
+        localForwarderPort = lib.mkOption {
+          type = lib.types.int;
+          default = 22054;
+          description = ''
+            Port of NetBird's local DNS forwarder (default 22054 since v0.59.0).
+            If the client uses a custom CustomDNSAddress, update this to match.
+          '';
+        };
+      };
+
+      ssh = {
+        enable = lib.mkOption {
+          type = lib.types.bool;
+          default = true;
+          description = ''
+            Whether to enable NetBird's built-in SSH daemon on the Pi (port 22022).
+            Authentication uses NetBird peer identity (WireGuard key), not OIDC.
+            Access is gated by the ssh-access ACL policy.
+          '';
+        };
+        userMappings = lib.mkOption {
+          type = lib.types.listOf (lib.types.submodule {
+            options = {
+              netbirdGroup = lib.mkOption { type = lib.types.str; };
+              localUser    = lib.mkOption { type = lib.types.str; };
+            };
+          });
+          default = [ { netbirdGroup = "admins"; localUser = "alex"; } ];
+          description = "Maps a NetBird peer group to the local OS user an SSH session runs as.";
+        };
+      };
+    };
+
     update = {
       onBootSec = lib.mkOption {
         type = lib.types.str;
