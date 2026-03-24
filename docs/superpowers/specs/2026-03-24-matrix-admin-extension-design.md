@@ -24,12 +24,20 @@ A self-contained Pi extension (`matrix-admin`) that calls the Continuwuity Matri
 
 ```
 Pi agent calls matrix_admin tool
-  → extension captures sync `since` token (current timeline position)
+  → GET /sync?timeout=0&filter=admin-room-only  — capture current `since` token (lightweight, no long-poll)
   → POST !admin <command> to admin room via CS API
-  → long-poll /sync with `since` token, filtering to admin room (timeout: 15s)
-  → find first m.room.message from @conduit:nixpi
+  → GET /sync?since=<token>&timeout=15000&filter=admin-room-only  — long-poll for reply
+  → find first m.room.message from @conduit:nixpi in timeline events (by event ordering)
   → return { ok: true, response: "<server reply>" }
 ```
+
+**Since token capture:** A `GET /sync?timeout=0` immediately before the send call returns the current stream position with no waiting. The `since` token is then used on the follow-up long-poll. The narrow race window (between token capture and the send completing) is acceptable: if the server bot somehow replies before the first long-poll is issued, the response event will still appear in the next sync batch because the `since` token predates the send. The extension does not skip events; it reads all timeline events in the batch ordered by server timestamp and returns the first one from `@conduit:nixpi`.
+
+**Response correlation:** The extension correlates responses by event ordering, not content matching. It takes the first `m.room.message` event from `@conduit:nixpi` that arrives after the `since` token. Concurrent calls are serialised via a per-extension mutex (see Concurrency section below).
+
+### Concurrency
+
+Concurrent `matrix_admin` calls are serialised with a single async mutex held for the duration of each call (token capture → send → poll → return). If a second call arrives while one is in flight, it queues and runs after the first completes. This prevents `since` token overlap and response cross-contamination. The timeout applies per call, not globally.
 
 ### Credentials
 
@@ -37,7 +45,9 @@ Uses `@pi:nixpi`'s existing access token from `~/.pi/matrix-credentials.json`. N
 
 ### Admin Room Discovery
 
-On first use, the extension scans joined rooms for `#admins:nixpi`, caches the result in `~/.pi/matrix-admin.json`. Subsequent calls use the cached room ID directly.
+On first use, the extension resolves `#admins:nixpi` via `GET /_matrix/client/v3/directory/room/%23admins%3Anixpi` to obtain the canonical room ID, then caches it in `~/.pi/matrix-admin.json`. Subsequent calls use the cached room ID directly.
+
+**Cache invalidation:** If a send call returns a 403 or 404 (room not found / not joined), the extension discards the cached room ID, re-runs discovery once, updates the cache, and retries the send. If discovery also fails, it returns `{ ok: false, error: "admin room not found" }`.
 
 ---
 
@@ -137,7 +147,7 @@ core/pi/extensions/index.ts   — register the matrix-admin extension
 | `users force-demote <@u:nixpi> <roomId>` | Drop power level to default | |
 | `users make-user-admin <@u:nixpi>` | Grant server-admin privileges | ⚠️ |
 | `users redact-event <@u:nixpi> <eventId>` | Force-redact an event | |
-| `users force-join-list-of-local-users <roomId>` | Bulk force-join (codeblock, requires `--yes-i-want-to-do-this`) | ⚠️ |
+| `users force-join-list-of-local-users <roomId> --yes-i-want-to-do-this` | Bulk force-join (codeblock); extension appends flag automatically when this command is used | ⚠️ |
 | `users force-join-all-local-users <roomId>` | Join all local users to room | ⚠️ |
 
 ### `!admin rooms`
@@ -209,11 +219,22 @@ core/pi/extensions/index.ts   — register the matrix-admin extension
 
 ### `!admin token`
 
-Registration token management (create, list, revoke) — used to control who can self-register.
+| Command | Description | Dangerous |
+|---|---|---|
+| `token list` | List all registration tokens | |
+| `token create` | Create a new registration token | |
+| `token create --token <t>` | Create token with specific value | |
+| `token create --uses-allowed <n>` | Create token limited to N uses | |
+| `token create --expiry-time <ts>` | Create token with expiry timestamp | |
+| `token destroy --token <t>` | Permanently delete a token | ⚠️ |
+| `token disable --token <t>` | Disable a token without deleting | |
+| `token enable --token <t>` | Re-enable a disabled token | |
 
 ### `!admin check` / `!admin debug` / `!admin query`
 
-Low-level integrity checks, PDU debugging, and raw DB queries. Available to the agent but not documented in agent instructions — use only when explicitly requested by the user.
+These namespaces are pass-through: the extension accepts any `command` string starting with `check`, `debug`, or `query` and forwards it without validation. No commands in these namespaces are pre-catalogued in `commands.ts`. None are listed in agent instructions — use only when explicitly requested by the user.
+
+Dangerous flag: `debug force-set-room-state-from-server` and `query raw raw-del` should be treated as ⚠️ if the agent ever surfaces them.
 
 ---
 
@@ -224,8 +245,10 @@ Low-level integrity checks, PDU debugging, and raw DB queries. Available to the 
 | Timeout (no reply within 15s) | `{ ok: false, error: "timeout" }` |
 | HTTP error sending message | `{ ok: false, error: "send failed: <status>" }` |
 | Server bot replies with error text | `{ ok: true, response: "<error text>" }` — agent reads and reports |
-| Admin room ID not found | `{ ok: false, error: "admin room not found" }` |
+| Admin room ID not found / not joined | Retry discovery once, update cache; if still fails: `{ ok: false, error: "admin room not found" }` |
 | `await_response: false` | Send and return `{ ok: true }` immediately |
+| Credentials file missing or malformed | `{ ok: false, error: "credentials unavailable: <reason>" }` — thrown at extension init |
+| Concurrent call while one is in flight | Queued behind mutex; runs after current call completes |
 
 ---
 
