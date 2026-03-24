@@ -46,7 +46,12 @@ export function readCanonicalRepoMetadata(
 	) {
 		throw new Error(`Invalid canonical repo metadata in ${resolvedMetadataPath}`);
 	}
-	return assertCanonicalMetadataPath(parsed, validatedUser);
+	const metadata: CanonicalRepoMetadata = {
+		path: parsed.path,
+		origin: parsed.origin,
+		branch: parsed.branch,
+	};
+	return assertCanonicalMetadataPath(metadata, validatedUser);
 }
 
 export function writeCanonicalRepoMetadata(

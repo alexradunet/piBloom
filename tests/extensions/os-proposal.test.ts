@@ -70,7 +70,7 @@ describe("os local Nix proposal handler", () => {
 		expect(result.content[0].text).not.toContain(CANONICAL_REPO_DIR);
 		expect(result.content[0].text).toContain("Branch: main");
 		expect(result.content[0].text).toContain("M flake.nix");
-		expect(result.details?.repoDir).toBe(PROPOSAL_REPO_DIR);
+		expect((result.details as { repoDir?: string } | undefined)?.repoDir).toBe(PROPOSAL_REPO_DIR);
 	});
 
 	it("runs both flake and config validation in the local repo", async () => {

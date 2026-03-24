@@ -18,7 +18,7 @@ log() {
 
 WIZARD_STATE="$HOME/.nixpi/wizard-state"
 SYSTEM_READY="$WIZARD_STATE/system-ready"
-NIXPI_DIR="${NIXPI_DIR:-$HOME/nixpi}"
+NIXPI_DIR="${NIXPI_DIR:-/srv/nixpi}"
 NIXPI_CONFIG="${NIXPI_CONFIG_DIR:-${NIXPI_STATE_DIR:-$HOME/.config/nixpi}/services}"
 PI_DIR="${NIXPI_PI_DIR:-$HOME/.pi}"
 MATRIX_HOMESERVER="http://localhost:6167"
@@ -128,6 +128,10 @@ has_internet_connection() {
 	ping -c1 -W5 1.1.1.1 &>/dev/null
 }
 
+bootstrap_repo_is_local() {
+	[[ "$NIXPI_BOOTSTRAP_REPO" == file://* ]] || [[ "$NIXPI_BOOTSTRAP_REPO" == /* ]]
+}
+
 has_wifi_device() {
 	command -v nmcli >/dev/null 2>&1 || return 1
 	nmcli -t -f TYPE device status 2>/dev/null | grep -q '^wifi$'
@@ -177,7 +181,11 @@ print_recent_appliance_log() {
 }
 
 clone_nixpi_checkout() {
-	local actual_remote actual_branch
+	local actual_remote actual_branch repo_preexisted=0
+
+	if [[ -e "$NIXPI_DIR" ]]; then
+		repo_preexisted=1
+	fi
 
 	if [[ -d "$NIXPI_DIR/.git" ]]; then
 		actual_remote="$(git -C "$NIXPI_DIR" remote get-url origin 2>/dev/null || true)"
@@ -196,14 +204,21 @@ clone_nixpi_checkout() {
 		return 0
 	fi
 
-	if [[ -e "$NIXPI_DIR" ]] && [[ -n "$(ls -A "$NIXPI_DIR" 2>/dev/null || true)" ]]; then
-		echo "Refusing to overwrite existing non-git directory: ${NIXPI_DIR}" >&2
+	if [[ "$repo_preexisted" -eq 1 ]]; then
+		echo "canonical repo checkout is missing .git: ${NIXPI_DIR}" >&2
 		return 1
 	fi
 
-	mkdir -p "$(dirname "$NIXPI_DIR")"
-	rm -rf "$NIXPI_DIR"
-	nix --extra-experimental-features 'nix-command flakes' run nixpkgs#git -- clone --branch "$NIXPI_BOOTSTRAP_BRANCH" "$NIXPI_BOOTSTRAP_REPO" "$NIXPI_DIR"
+	root_command /run/current-system/sw/bin/nixpi-bootstrap-ensure-repo-target "$NIXPI_DIR" "$(whoami)"
+	if [[ ! -d "$NIXPI_DIR" ]] || [[ ! -w "$NIXPI_DIR" ]]; then
+		echo "Canonical repo target is not writable: ${NIXPI_DIR}" >&2
+		return 1
+	fi
+	if command -v git >/dev/null 2>&1; then
+		git clone --branch "$NIXPI_BOOTSTRAP_BRANCH" "$NIXPI_BOOTSTRAP_REPO" "$NIXPI_DIR"
+	else
+		nix --extra-experimental-features 'nix-command flakes' run nixpkgs#git -- clone --branch "$NIXPI_BOOTSTRAP_BRANCH" "$NIXPI_BOOTSTRAP_REPO" "$NIXPI_DIR"
+	fi
 }
 
 promote_full_appliance() {
@@ -219,10 +234,15 @@ promote_full_appliance() {
 		return 1
 	fi
 
-	write_appliance_status "Preparing the canonical ~/nixpi checkout..."
+	write_appliance_status "Preparing the canonical /srv/nixpi checkout..."
 	if ! root_command nixpi-bootstrap-prepare-repo "$NIXPI_DIR" "$NIXPI_BOOTSTRAP_REPO" "$NIXPI_BOOTSTRAP_BRANCH" "$primary_user" 2>&1 | tee -a "$BOOTSTRAP_UPGRADE_LOG_FILE"; then
-		write_appliance_status "Failed to prepare the canonical ~/nixpi checkout."
+		write_appliance_status "Failed to prepare the canonical /srv/nixpi checkout."
 		return 1
+	fi
+
+	if bootstrap_repo_is_local; then
+		write_appliance_status "Canonical repo prepared from local source. Rebuild deferred."
+		return 0
 	fi
 
 	write_appliance_status "Building and activating the full NixPI appliance..."
@@ -245,7 +265,7 @@ step_appliance() {
 		return
 	fi
 
-	if ! has_internet_connection; then
+	if ! has_internet_connection && ! bootstrap_repo_is_local; then
 		if [[ "$NONINTERACTIVE_SETUP" -eq 1 ]]; then
 			echo "Internet connection is required before promoting this machine to the full NixPI appliance."
 			echo "Deferring appliance upgrade because setup is running in noninteractive mode."
@@ -260,7 +280,7 @@ step_appliance() {
 
 	echo "Promoting this minimal base into the standard NixPI appliance..."
 	echo "This can take several minutes on slower hardware."
-	echo "A local checkout will be cloned into ~/nixpi and used as the canonical NixPI repo."
+	echo "A canonical checkout will be cloned into /srv/nixpi."
 
 	local current_hostname current_user
 	current_hostname=$(hostnamectl --static 2>/dev/null || hostname -s)
@@ -278,7 +298,7 @@ step_appliance() {
 }
 
 prepare_local_state() {
-	mkdir -p "$WIZARD_STATE" "$NIXPI_DIR"
+	mkdir -p "$WIZARD_STATE"
 	rm -f "$LEGACY_SETUP_STATE"
 	if [[ ! -f "$PI_DIR/settings.json" && -f /usr/local/share/nixpi/.pi/settings.json ]]; then
 		mkdir -p "$PI_DIR"
@@ -837,19 +857,23 @@ step_services() {
 step_bootc_switch() {
 	echo ""
 	echo "--- Update Guidance ---"
-	echo "NixPI now runs from the local checkout at ~/nixpi."
+	echo "NixPI now runs from the canonical checkout at /srv/nixpi."
 	echo ""
 	echo "To refresh the local checkout later:"
-	echo "  cd ~/nixpi"
+	echo "  cd /srv/nixpi"
+	echo "  git switch main"
 	echo "  git pull --ff-only"
 	echo ""
 	echo "To rebuild from the canonical checkout:"
-	echo "  cd ~/nixpi"
+	echo "  cd /srv/nixpi"
+	echo "  git switch main"
 	echo "  sudo nixos-rebuild switch --flake /etc/nixos#nixpi"
 	echo ""
 	echo "If you need to clone the checkout again manually:"
-	echo "  nix --extra-experimental-features 'nix-command flakes' run nixpkgs#git -- clone --branch ${NIXPI_BOOTSTRAP_BRANCH} ${NIXPI_BOOTSTRAP_REPO} ~/nixpi"
-	echo "  cd ~/nixpi"
+	echo "  sudo install -d -o $USER -g $USER -m 0755 /srv/nixpi"
+	echo "  git clone --branch ${NIXPI_BOOTSTRAP_BRANCH} ${NIXPI_BOOTSTRAP_REPO} /srv/nixpi"
+	echo "  cd /srv/nixpi"
+	echo "  git switch main"
 	echo "  sudo nixos-rebuild switch --rollback"
 	echo ""
 	mark_done bootc_switch
@@ -858,6 +882,9 @@ step_bootc_switch() {
 # --- Finalization ---
 
 finalize() {
+	if [[ -e "$HOME/nixpi" && ! -d "$HOME/nixpi/.git" ]]; then
+		rm -rf "$HOME/nixpi"
+	fi
 	if [[ -f /usr/local/share/nixpi/.pi/settings.json ]]; then
 		mkdir -p "$PI_DIR" 2>/dev/null || true
 		if [[ ! -f "$PI_DIR/settings.json" ]]; then

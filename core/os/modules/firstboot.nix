@@ -3,6 +3,8 @@
 let
   primaryUser = config.nixpi.primaryUser;
   primaryHome = "/home/${primaryUser}";
+  canonicalRepoDir = "/srv/nixpi";
+  canonicalRepoMetadataPath = "/etc/nixpi/canonical-repo.json";
   stateDir = config.nixpi.stateDir;
   netbirdApiTokenFile =
     if config.nixpi.netbird.apiTokenFile != null then
@@ -27,6 +29,28 @@ let
   bootstrapReadMatrixSecret = bootstrapAction "read-matrix-secret" "/run/current-system/sw/bin/sh -c 'tr -d \"\\n\" < ${matrixRegistrationSecretFile}'";
   bootstrapReadPrimaryPassword = bootstrapAction "read-primary-password" "/run/current-system/sw/bin/sh -c 'tr -d \"\\n\" < ${bootstrapPrimaryPasswordFile}'";
   bootstrapRemovePrimaryPassword = bootstrapAction "remove-primary-password" "/run/current-system/sw/bin/rm -f ${bootstrapPrimaryPasswordFile}";
+  bootstrapEnsureRepoTarget = pkgs.writeShellScriptBin "nixpi-bootstrap-ensure-repo-target" ''
+    set -euo pipefail
+    if [ -f "${systemReadyFile}" ]; then
+      echo "NixPI bootstrap access is disabled after setup completes" >&2
+      exit 1
+    fi
+
+    repo_dir="''${1:-}"
+    primary_user="''${2:-}"
+    if [ -z "$repo_dir" ] || [ -z "$primary_user" ]; then
+      echo "usage: nixpi-bootstrap-ensure-repo-target <repo_dir> <primary_user>" >&2
+      exit 1
+    fi
+
+    install -d -m 0755 /srv
+    if [ ! -e "$repo_dir" ]; then
+      install -d -o "$primary_user" -g "$primary_user" -m 0755 "$repo_dir"
+    else
+      chown "$primary_user:$primary_user" "$repo_dir"
+      chmod 0755 "$repo_dir"
+    fi
+  '';
   bootstrapPrepareRepo = pkgs.writeShellScriptBin "nixpi-bootstrap-prepare-repo" ''
     set -euo pipefail
     if [ -f "${systemReadyFile}" ]; then
@@ -61,6 +85,13 @@ let
     fi
 
     install -d -m 0755 /etc/nixos
+    if [ ! -f /etc/nixos/hardware-configuration.nix ]; then
+      cat > /etc/nixos/hardware-configuration.nix <<EOF
+{ ... }:
+{
+}
+EOF
+    fi
 
     cat > /etc/nixos/configuration.nix <<EOF
 { ... }:
@@ -73,28 +104,48 @@ let
 }
 EOF
 
+    cat > /etc/nixos/nixpi-branch-guard.nix <<EOF
+{ ... }:
+let
+  currentBranch = builtins.replaceStrings [ "ref: refs/heads/" "\n" ] [ "" "" ] (builtins.readFile "$repo_dir/.git/HEAD");
+in {
+  assertions = [
+    {
+      assertion = currentBranch == "$branch";
+      message = "Supported rebuilds require $repo_dir to be on $branch";
+    }
+  ];
+}
+EOF
+
     cat > /etc/nixos/flake.nix <<EOF
 {
   description = "NixPI installed host";
 
-  inputs = {
-    nixpi.url = "path:$repo_dir";
-    nixpkgs.follows = "nixpi/nixpkgs";
-  };
+  inputs.nixpkgs.url = "path:${pkgs.path}";
 
-  outputs = { nixpi, nixpkgs, ... }:
+  outputs = { nixpkgs, ... }:
     let
       system = "${pkgs.stdenv.hostPlatform.system}";
+      repoDir = $repo_dir;
+      pkgs = import nixpkgs {
+        inherit system;
+        config.allowUnfree = true;
+      };
+      piAgent = pkgs.callPackage (repoDir + "/core/os/pkgs/pi") {};
+      appPackage = pkgs.callPackage (repoDir + "/core/os/pkgs/app") {
+        inherit piAgent;
+      };
+      setupPackage = pkgs.callPackage (repoDir + "/core/os/pkgs/setup") {};
     in {
       nixosConfigurations.nixpi = nixpkgs.lib.nixosSystem {
         inherit system;
         specialArgs = {
-          piAgent = nixpi.packages.\''${system}.pi;
-          appPackage = nixpi.packages.\''${system}.app;
-          setupPackage = nixpi.packages.\''${system}.nixpi-setup;
+          inherit piAgent appPackage setupPackage;
         };
         modules = [
           ./configuration.nix
+          ./nixpi-branch-guard.nix
           {
             nixpkgs.hostPlatform = system;
             nixpkgs.config.allowUnfree = true;
@@ -105,21 +156,27 @@ EOF
 }
 EOF
 
-    metadata_dir="/home/$primary_user/.nixpi"
-    metadata_path="$metadata_dir/canonical-repo.json"
-    install -d -m 0755 -o "$primary_user" -g "$primary_user" "$metadata_dir"
-    cat > "$metadata_path" <<EOF
+    rm -f /etc/nixos/flake.lock
+
+    install -d -m 0755 /etc/nixpi
+    cat > "${canonicalRepoMetadataPath}" <<EOF
 {
   "path": "$repo_dir",
   "origin": "$remote_url",
   "branch": "$branch"
 }
 EOF
-    chown "$primary_user:$primary_user" "$metadata_path"
-    chmod 0644 "$metadata_path"
+    chown root:root "${canonicalRepoMetadataPath}"
+    chmod 0644 "${canonicalRepoMetadataPath}"
   '';
   bootstrapNixosRebuildSwitch = pkgs.writeShellScriptBin "nixpi-bootstrap-nixos-rebuild-switch" ''
     set -euo pipefail
+    current_branch="$(${pkgs.git}/bin/git -C ${canonicalRepoDir} branch --show-current 2>/dev/null || true)"
+    if [ "$current_branch" != "main" ]; then
+      echo "Supported rebuilds require ${canonicalRepoDir} to be on main" >&2
+      exit 1
+    fi
+
     if [ -f "${systemReadyFile}" ]; then
       echo "NixPI bootstrap access is disabled after setup completes" >&2
       exit 1
@@ -321,6 +378,7 @@ in
     bootstrapReadMatrixSecret
     bootstrapReadPrimaryPassword
     bootstrapRemovePrimaryPassword
+    bootstrapEnsureRepoTarget
     bootstrapPrepareRepo
     bootstrapNixosRebuildSwitch
     bootstrapMatrixJournal
@@ -346,6 +404,7 @@ in
       { command = "/run/current-system/sw/bin/nixpi-bootstrap-read-matrix-secret"; options = [ "NOPASSWD" ]; }
       { command = "/run/current-system/sw/bin/nixpi-bootstrap-read-primary-password"; options = [ "NOPASSWD" ]; }
       { command = "/run/current-system/sw/bin/nixpi-bootstrap-remove-primary-password"; options = [ "NOPASSWD" ]; }
+      { command = "/run/current-system/sw/bin/nixpi-bootstrap-ensure-repo-target *"; options = [ "NOPASSWD" ]; }
       { command = "/run/current-system/sw/bin/nixpi-bootstrap-prepare-repo *"; options = [ "NOPASSWD" ]; }
       { command = "/run/current-system/sw/bin/nixpi-bootstrap-nixos-rebuild-switch"; options = [ "NOPASSWD" ]; }
       { command = "/run/current-system/sw/bin/nixpi-bootstrap-matrix-journal"; options = [ "NOPASSWD" ]; }
