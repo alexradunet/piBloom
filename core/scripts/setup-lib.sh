@@ -292,10 +292,13 @@ load_existing_matrix_credentials() {
 
 write_service_home_runtime() {
 	local mesh_ip="$1" mesh_fqdn="$2"
-	local mesh_host page_url generated_at
+	local mesh_host page_url home_direct_url element_web_url matrix_url generated_at
 	mesh_host="${mesh_fqdn:-$mesh_ip}"
 	[[ -n "$mesh_host" ]] || mesh_host="localhost"
 	page_url="http://${mesh_host}"
+	home_direct_url="http://${mesh_host}:8080/"
+	element_web_url="https://${mesh_host}:8443/"
+	matrix_url="https://${mesh_host}:8443"
 	generated_at=$(date -Iseconds)
 
 	local template="/usr/local/share/nixpi/home-template.html"
@@ -303,8 +306,9 @@ write_service_home_runtime() {
 	sed \
 		-e "s|@@MESH_HOST@@|${mesh_host}|g" \
 		-e "s|@@PAGE_URL@@|${page_url}|g" \
-		-e "s|@@ELEMENT_WEB_URL@@|http://${mesh_host}:8081|g" \
-		-e "s|@@MATRIX_URL@@|http://${mesh_host}:6167|g" \
+		-e "s|@@HOME_DIRECT_URL@@|${home_direct_url}|g" \
+		-e "s|@@ELEMENT_WEB_URL@@|${element_web_url}|g" \
+		-e "s|@@MATRIX_URL@@|${matrix_url}|g" \
 		-e "s|@@GENERATED_AT@@|${generated_at}|g" \
 		"$template" > "$NIXPI_CONFIG/home/index.html"
 }
@@ -321,7 +325,7 @@ write_element_web_runtime_config() {
 	primary_matrix_url="http://localhost:6167"
 
 	if [[ -n "$primary_host" ]]; then
-		primary_matrix_url="http://${primary_host}:6167"
+		primary_matrix_url="https://${primary_host}:8443"
 	fi
 
 	mkdir -p "$NIXPI_CONFIG/element-web"
@@ -419,6 +423,103 @@ bootstrap_first_matrix_user() {
 	fi
 
 	root_command nixpi-bootstrap-matrix-execute "users create-user $username $password"
+}
+
+matrix_urlencode() {
+	jq -rn --arg value "$1" '$value|@uri'
+}
+
+matrix_get_room_id_by_alias() {
+	local room_alias="$1" access_token="$2"
+	local encoded_alias
+	encoded_alias=$(matrix_urlencode "$room_alias")
+	curl -sf "${MATRIX_HOMESERVER}/_matrix/client/v3/directory/room/${encoded_alias}" \
+		-H "Authorization: Bearer ${access_token}" \
+		| jq -r '.room_id // empty'
+}
+
+matrix_join_room_with_token() {
+	local room_alias="$1" access_token="$2"
+	local encoded_alias body_file status body
+	encoded_alias=$(matrix_urlencode "$room_alias")
+	body_file=$(mktemp)
+	status=$(curl -sS -o "$body_file" -w "%{http_code}" -X POST \
+		"${MATRIX_HOMESERVER}/_matrix/client/v3/join/${encoded_alias}" \
+		-H "Authorization: Bearer ${access_token}" \
+		-H "Content-Type: application/json" \
+		-d '{}' || true)
+	body=$(cat "$body_file")
+	rm -f "$body_file"
+
+	if [[ "$status" == "200" ]] || [[ "$status" == "201" ]]; then
+		return 0
+	fi
+
+	if jq -e '.errcode == "M_ALREADY_JOINED"' >/dev/null 2>&1 <<< "$body"; then
+		return 0
+	fi
+
+	return 1
+}
+
+matrix_user_joined_room() {
+	local access_token="$1" room_id="$2"
+	local joined_rooms
+	joined_rooms=$(curl -sf "${MATRIX_HOMESERVER}/_matrix/client/v3/joined_rooms" \
+		-H "Authorization: Bearer ${access_token}" 2>/dev/null || true)
+	[[ -n "$joined_rooms" ]] || return 1
+	jq -e --arg room_id "$room_id" '(.joined_rooms // []) | index($room_id) != null' >/dev/null 2>&1 <<< "$joined_rooms"
+}
+
+ensure_pi_bot_admin_room_membership() {
+	local bot_user_id="$1" bot_token="$2"
+	local server_name admin_alias admin_room_id
+
+	if [[ ! "$bot_user_id" =~ ^@[^:]+:(.+)$ ]]; then
+		echo "WARNING: Could not determine Matrix server name from ${bot_user_id}; skipping Pi admin room bootstrap." >&2
+		return 0
+	fi
+
+	server_name="${BASH_REMATCH[1]}"
+	admin_alias="#admins:${server_name}"
+	admin_room_id=$(matrix_get_room_id_by_alias "$admin_alias" "$bot_token" 2>/dev/null || true)
+	if [[ -z "$admin_room_id" ]]; then
+		echo "Admin room ${admin_alias} not available yet; skipping Pi admin room bootstrap."
+		return 0
+	fi
+
+	if matrix_user_joined_room "$bot_token" "$admin_room_id"; then
+		echo "Pi bot already joined ${admin_alias}."
+		return 0
+	fi
+
+	echo "Ensuring Pi bot can access ${admin_alias}..."
+	if matrix_join_room_with_token "$admin_alias" "$bot_token"; then
+		return 0
+	fi
+
+	if ! command -v nixpi-bootstrap-matrix-execute >/dev/null 2>&1; then
+		echo "ERROR: nixpi-bootstrap-matrix-execute is unavailable for Pi admin room bootstrap." >&2
+		return 1
+	fi
+
+	echo "Admin room is invite-only; force-joining ${bot_user_id} through the homeserver console..."
+	if command -v nixpi-bootstrap-matrix-systemctl >/dev/null 2>&1; then
+		root_command nixpi-bootstrap-matrix-systemctl stop continuwuity.service >/dev/null 2>&1 || true
+	else
+		root_command systemctl stop continuwuity.service >/dev/null 2>&1 || true
+	fi
+
+	root_command nixpi-bootstrap-matrix-execute "users force-join-room ${bot_user_id} ${admin_room_id}" || return 1
+	start_matrix_homeserver
+	wait_for_matrix_homeserver || return 1
+
+	if matrix_user_joined_room "$bot_token" "$admin_room_id"; then
+		return 0
+	fi
+
+	echo "ERROR: Pi bot still is not joined to ${admin_alias} after force-join." >&2
+	return 1
 }
 
 step_matrix() {
@@ -571,6 +672,8 @@ step_matrix() {
 	bot_user_id=$(jq -r '.user_id // empty' <<< "$bot_result")
 	matrix_state_set bot_token "$bot_token"
 	matrix_state_set bot_user_id "$bot_user_id"
+
+	ensure_pi_bot_admin_room_membership "$bot_user_id" "$bot_token" || return 1
 
 	# Store credentials
 	mkdir -p "$PI_DIR"

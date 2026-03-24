@@ -32,6 +32,7 @@
       shell = pkgs.bash;
     };
     users.groups.${username} = {};
+    environment.systemPackages = [ pkgs.curl pkgs.jq ];
     systemd.tmpfiles.rules = [
       "d ${homeDir}/.nixpi 0755 ${username} ${username} -"
       "f ${homeDir}/.nixpi/prefill.env 0644 ${username} ${username} -"
@@ -50,6 +51,9 @@
   };
 
   testScript = ''
+    import json
+    import urllib.parse
+
     nixpi = machines[0]
     home = "/home/pi"
     username = "pi"
@@ -77,8 +81,11 @@
     print(log_content)
     print("=== End of log ===")
     assert "NixPI Wizard Started" in log_content, "Wizard log missing start marker"
-    assert "no WiFi hardware detected, skipping WiFi preference" in log_content, (
-        "Firstboot log missing no-WiFi bootstrap path"
+    assert "Timezone: UTC [default for noninteractive setup]" in log_content, (
+        "Firstboot log missing noninteractive timezone default"
+    )
+    assert "Keyboard layout: us [default for noninteractive setup]" in log_content, (
+        "Firstboot log missing noninteractive keyboard default"
     )
     assert "command not found" not in log_content, "Wizard log contains shell execution errors"
     assert "setup complete" in log_content.lower(), "Firstboot log missing completion marker"
@@ -91,8 +98,40 @@
 
     nixpi.succeed("test -d " + home + "/.pi")
     nixpi.succeed("test -f " + home + "/.pi/settings.json")
+    nixpi.succeed("test -f " + home + "/.pi/matrix-credentials.json")
     nixpi.succeed("test ! -L " + home + "/.pi")
     nixpi.succeed("test \"$(stat -c %U " + home + "/.pi)\" = pi")
+
+    creds = json.loads(nixpi.succeed("cat " + home + "/.pi/matrix-credentials.json"))
+    bot_token = creds["botAccessToken"]
+    bot_user_id = creds["botUserId"]
+    server_name = bot_user_id.split(":", 1)[1]
+    admin_alias = f"#admins:{server_name}"
+    admin_alias_path = urllib.parse.quote(admin_alias, safe="")
+    room_info = json.loads(
+        nixpi.succeed(
+            "curl -sf -H "
+            + "'Authorization: Bearer "
+            + bot_token
+            + "' "
+            + "'http://127.0.0.1:6167/_matrix/client/v3/directory/room/"
+            + admin_alias_path
+            + "'"
+        )
+    )
+    admin_room_id = room_info["room_id"]
+    joined_rooms = json.loads(
+        nixpi.succeed(
+            "curl -sf -H "
+            + "'Authorization: Bearer "
+            + bot_token
+            + "' "
+            + "'http://127.0.0.1:6167/_matrix/client/v3/joined_rooms'"
+        )
+    )
+    assert admin_room_id in joined_rooms["joined_rooms"], (
+        f"Pi bot {bot_user_id} was not joined to {admin_alias}: {joined_rooms}"
+    )
 
     nixpi.succeed(
         "su - pi -c '. ~/.bashrc; test \"$PI_CODING_AGENT_DIR\" = /home/pi/.pi; "
