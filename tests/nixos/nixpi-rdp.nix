@@ -33,9 +33,6 @@
     nixpi.wait_for_unit("xrdp.service", timeout=60)
     nixpi.wait_for_unit("xrdp-sesman.service", timeout=60)
 
-    nixpi.succeed("systemctl is-active xrdp.service")
-    nixpi.succeed("systemctl is-active xrdp-sesman.service")
-
     # Verify port 3389 is listening
     nixpi.wait_until_succeeds("ss -tlnp | grep -q ':3389'", timeout=30)
   '';
