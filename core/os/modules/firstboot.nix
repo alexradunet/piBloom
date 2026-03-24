@@ -1,4 +1,4 @@
-{ config, pkgs, lib, ... }:
+{ config, pkgs, lib, piAgent, appPackage, setupPackage, ... }:
 
 let
   primaryUser = config.nixpi.primaryUser;
@@ -97,7 +97,6 @@ EOF
 { ... }:
 {
   imports = [
-    $repo_dir/core/os/hosts/x86_64.nix
     ./hardware-configuration.nix
     ./nixpi-host.nix
   ];
@@ -127,23 +126,17 @@ EOF
   outputs = { nixpkgs, ... }:
     let
       system = "${pkgs.stdenv.hostPlatform.system}";
-      repoDir = $repo_dir;
-      pkgs = import nixpkgs {
-        inherit system;
-        config.allowUnfree = true;
-      };
-      piAgent = pkgs.callPackage (repoDir + "/core/os/pkgs/pi") {};
-      appPackage = pkgs.callPackage (repoDir + "/core/os/pkgs/app") {
-        inherit piAgent;
-      };
-      setupPackage = pkgs.callPackage (repoDir + "/core/os/pkgs/setup") {};
+      repoDir = /srv/nixpi;
     in {
       nixosConfigurations.nixpi = nixpkgs.lib.nixosSystem {
         inherit system;
         specialArgs = {
-          inherit piAgent appPackage setupPackage;
+          piAgent = ${piAgent};
+          appPackage = ${appPackage};
+          setupPackage = ${setupPackage};
         };
         modules = [
+          (repoDir + "/core/os/hosts/x86_64.nix")
           ./configuration.nix
           ./nixpi-branch-guard.nix
           {
