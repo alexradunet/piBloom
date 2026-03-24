@@ -36,6 +36,7 @@ let
     nixpi-e2e                  = runTest ./nixpi-e2e.nix;
     nixpi-home                 = runTest ./nixpi-home.nix;
     nixpi-desktop              = runTest ./nixpi-desktop.nix;
+    nixpi-rdp                  = runTest ./nixpi-rdp.nix;
     nixpi-security             = runTest ./nixpi-security.nix;
     nixpi-modular-services     = runTest ./nixpi-modular-services.nix;
     nixpi-matrix-bridge        = runTest ./nixpi-matrix-bridge.nix;

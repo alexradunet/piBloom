@@ -347,6 +347,7 @@
             { name = "nixpi-e2e"; path = nixosTests.nixpi-e2e; }
             { name = "nixpi-home"; path = nixosTests.nixpi-home; }
             { name = "nixpi-desktop"; path = nixosTests.nixpi-desktop; }
+            { name = "nixpi-rdp"; path = nixosTests.nixpi-rdp; }
             { name = "nixpi-security"; path = nixosTests.nixpi-security; }
             { name = "nixpi-modular-services"; path = nixosTests.nixpi-modular-services; }
             { name = "nixpi-matrix-bridge"; path = nixosTests.nixpi-matrix-bridge; }
