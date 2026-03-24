@@ -1,7 +1,7 @@
 # Matrix Admin Extension Design
 
 **Date:** 2026-03-24
-**Status:** Approved
+**Status:** Ready for implementation
 **Topic:** Give the pi agent the ability to issue Continuwuity admin commands from within Matrix
 
 ---
@@ -72,7 +72,7 @@ output: {
 }
 ```
 
-The `command` value is everything after `!admin `. The extension prepends the prefix automatically. Codeblock formatting via `body` is always applied before the send, regardless of `await_response`.
+The `command` value is everything after `!admin `. The extension prepends the prefix automatically. Codeblock formatting via `body` is always applied before the send, regardless of `await_response`. If `body` is passed for a command that does not require a codeblock, it is still appended as a codeblock — it is the caller's responsibility to pass `body` only for appropriate commands.
 
 ### Codeblock Commands
 
@@ -126,6 +126,8 @@ core/pi/extensions/index.ts   — register the matrix-admin extension
   "adminRoomId": "!abc123:nixpi"
 }
 ```
+
+The `~/.pi/` directory is guaranteed to exist before the extension runs — it is created during first-boot setup and also holds `matrix-credentials.json`. The extension does not need to create it.
 
 ---
 
@@ -195,20 +197,20 @@ core/pi/extensions/index.ts   — register the matrix-admin extension
 
 ### `!admin federation`
 
-| Command | Description |
-|---|---|
-| `federation incoming-federation` | List rooms handling incoming PDU |
-| `federation disable-room <roomId>` | Disable incoming federation for room |
-| `federation enable-room <roomId>` | Re-enable federation for room |
-| `federation fetch-support-well-known <server>` | Fetch `/.well-known/matrix/support` |
-| `federation remote-user-in-rooms <@u:server>` | List shared rooms with remote user |
+| Command | Description | Dangerous |
+|---|---|---|
+| `federation incoming-federation` | List rooms handling incoming PDU | |
+| `federation disable-room <roomId>` | Disable incoming federation for room | ⚠️ |
+| `federation enable-room <roomId>` | Re-enable federation for room | |
+| `federation fetch-support-well-known <server>` | Fetch `/.well-known/matrix/support` | |
+| `federation remote-user-in-rooms <@u:server>` | List shared rooms with remote user | |
 
 ### `!admin media`
 
 | Command | Description | Dangerous |
 |---|---|---|
 | `media delete <mxc or eventId>` | Delete single media file | |
-| `media delete-list` | Delete codeblock list of MXC URLs (codeblock) | ⚠️ |
+| `media delete-list` | Delete list of MXC URLs (codeblock) | ⚠️ |
 | `media delete-past-remote-media -b <duration>` | Delete remote media older than duration | ⚠️ |
 | `media delete-all-from-user <@u:nixpi>` | Delete all local media from user | ⚠️ |
 | `media delete-all-from-server <server>` | Delete all remote media from server | ⚠️ |
@@ -250,11 +252,13 @@ Dangerous flag: `debug force-set-room-state-from-server` and `query raw raw-del`
 |---|---|
 | Timeout (no reply within 15s) | `{ ok: false, error: "timeout" }` |
 | HTTP error sending message | `{ ok: false, error: "send failed: <status>" }` |
+| Since token capture fails (non-200) | `{ ok: false, error: "sync failed: <status>" }` — abort, do not send |
+| Long-poll sync returns HTTP error | `{ ok: false, error: "sync error: <status>" }` — do not retry |
 | Server bot replies with error text | `{ ok: true, response: "<error text>" }` — agent reads and reports |
 | Admin room ID not found / not joined | Retry discovery once, update cache; if still fails: `{ ok: false, error: "admin room not found" }` |
-| `await_response: false` | Send and return `{ ok: true }` immediately |
-| Credentials file missing or malformed | `{ ok: false, error: "credentials unavailable: <reason>" }` — thrown at extension init |
-| Concurrent call while one is in flight | Queued behind mutex; runs after current call completes |
+| `await_response: false` | Send and return `{ ok: true }` immediately; `timeout_ms` is ignored |
+| Credentials file missing or malformed | Fatal throw at extension init — tool is not registered; startup error is logged |
+| Concurrent call while one is in flight | Queued behind mutex; runs after current call completes; timeout clock starts at mutex acquisition |
 
 ---
 
@@ -302,5 +306,5 @@ Pass the command string exactly as shown below (without the `!admin` prefix).
 2. **Integration test** — register a test user via `users create-user`, verify it appears in `users list-users`, deactivate it
 3. **Timeout test** — simulate no server reply; verify graceful `{ ok: false, error: "timeout" }` return
 4. **Admin room discovery** — clear cache, verify room is found and cached on first call
-5. **Dangerous command guard** — verify agent instructions are correct in loaded AGENTS.md
+5. **Dangerous command guard** — parse AGENTS.md and assert each ⚠️ command from the catalogue appears in the dangerous list in agent instructions
 6. **Concurrency** — fire two simultaneous calls; verify responses are not cross-contaminated and both complete successfully with correct responses
