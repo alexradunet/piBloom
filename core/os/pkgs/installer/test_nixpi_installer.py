@@ -1,6 +1,7 @@
 import importlib.util
 import json
 import os
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
@@ -137,6 +138,168 @@ class NixpiInstallerTests(unittest.TestCase):
 
             payload = json.loads(print_mock.call_args[0][0])
             self.assertEqual(payload["hostname"], "pi-box")
+
+
+class SetupWizardCheckoutTests(unittest.TestCase):
+    def setUp(self):
+        self.repo_root = Path(__file__).resolve().parents[4]
+        self.setup_wizard_path = self.repo_root / "core/scripts/setup-wizard.sh"
+
+    def _init_git_repo(self, path, *, branch="main", bare=False):
+        path.mkdir(parents=True, exist_ok=True)
+        subprocess.run(["git", "init", f"--initial-branch={branch}", str(path)], check=True)
+        if bare:
+            return
+        subprocess.run(["git", "-C", str(path), "config", "user.name", "Test User"], check=True)
+        subprocess.run(["git", "-C", str(path), "config", "user.email", "test@example.com"], check=True)
+        (path / "README.md").write_text("test\n", encoding="utf-8")
+        subprocess.run(["git", "-C", str(path), "add", "README.md"], check=True)
+        subprocess.run(["git", "-C", str(path), "commit", "-m", "init"], check=True)
+
+    def _clone_repo(self, remote, destination, *, branch="main"):
+        subprocess.run(
+            ["git", "clone", "--branch", branch, str(remote), str(destination)],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+
+    def _run_clone_checkout(self, home_dir, nixpi_dir, remote, branch):
+        fake_bin = home_dir / "bin"
+        fake_bin.mkdir()
+        fake_setup_lib = home_dir / "setup-lib.sh"
+        fake_setup_lib.write_text(
+            "\n".join(
+                [
+                    "#!/usr/bin/env bash",
+                    "mark_done() { :; }",
+                    "mark_done_with() { :; }",
+                    "read_checkpoint_data() { :; }",
+                    "root_command() { \"$@\"; }",
+                    "write_element_web_runtime_config() { :; }",
+                    "write_service_home_runtime() { :; }",
+                    "install_home_infrastructure() { return 0; }",
+                    "netbird_fqdn() { :; }",
+                    "print_service_access_summary() { :; }",
+                    "read_bootstrap_primary_password() { :; }",
+                ]
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        fake_setup_lib.chmod(0o755)
+
+        fake_nix = fake_bin / "nix"
+        fake_nix.write_text(
+            "\n".join(
+                [
+                    "#!/usr/bin/env bash",
+                    "set -euo pipefail",
+                    "if [[ \"$1\" == \"--extra-experimental-features\" ]]; then",
+                    "  shift 2",
+                    "fi",
+                    "if [[ \"$1\" != \"run\" || \"$2\" != \"nixpkgs#git\" || \"$3\" != \"--\" ]]; then",
+                    "  echo \"unexpected nix invocation: $*\" >&2",
+                    "  exit 1",
+                    "fi",
+                    "shift 3",
+                    "exec git \"$@\"",
+                ]
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        fake_nix.chmod(0o755)
+
+        command = f"""
+set -euo pipefail
+export HOME={home_dir}
+export PATH={fake_bin}:$PATH
+export SETUP_LIB={fake_setup_lib}
+export NIXPI_DIR={nixpi_dir}
+export NIXPI_BOOTSTRAP_REPO={remote}
+export NIXPI_BOOTSTRAP_BRANCH={branch}
+source <(sed '$d' {self.setup_wizard_path})
+clone_nixpi_checkout
+"""
+        return subprocess.run(
+            ["bash", "-lc", command],
+            capture_output=True,
+            text=True,
+        )
+
+    def test_clone_nixpi_checkout_rejects_existing_non_git_directory(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            home_dir = root / "home"
+            nixpi_dir = home_dir / "nixpi"
+            nixpi_dir.mkdir(parents=True)
+            (nixpi_dir / "not-a-repo.txt").write_text("content\n", encoding="utf-8")
+
+            remote = root / "remote.git"
+            self._init_git_repo(remote, bare=True)
+
+            result = self._run_clone_checkout(home_dir, nixpi_dir, remote, "main")
+            output = result.stdout + result.stderr
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("Refusing to overwrite existing non-git directory", output)
+
+    def test_clone_nixpi_checkout_accepts_matching_existing_checkout(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            home_dir = root / "home"
+            remote_src = root / "remote-src"
+            remote = root / "remote.git"
+            nixpi_dir = home_dir / "nixpi"
+
+            self._init_git_repo(remote_src, branch="main")
+            subprocess.run(["git", "clone", "--bare", str(remote_src), str(remote)], check=True)
+            self._clone_repo(remote, nixpi_dir, branch="main")
+
+            result = self._run_clone_checkout(home_dir, nixpi_dir, remote, "main")
+
+            self.assertEqual(result.returncode, 0, msg=result.stderr)
+            self.assertIn(f"Using existing checkout at {nixpi_dir}.", result.stdout)
+
+    def test_clone_nixpi_checkout_rejects_wrong_remote(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            home_dir = root / "home"
+            remote_src = root / "remote-src"
+            good_remote = root / "good-remote.git"
+            wrong_remote = root / "wrong-remote.git"
+            nixpi_dir = home_dir / "nixpi"
+
+            self._init_git_repo(remote_src, branch="main")
+            subprocess.run(["git", "clone", "--bare", str(remote_src), str(good_remote)], check=True)
+            subprocess.run(["git", "clone", "--bare", str(remote_src), str(wrong_remote)], check=True)
+            self._clone_repo(wrong_remote, nixpi_dir, branch="main")
+
+            result = self._run_clone_checkout(home_dir, nixpi_dir, good_remote, "main")
+            output = result.stdout + result.stderr
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("Existing checkout has unexpected origin URL", output)
+
+    def test_clone_nixpi_checkout_rejects_wrong_branch(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            home_dir = root / "home"
+            remote_src = root / "remote-src"
+            remote = root / "remote.git"
+            nixpi_dir = home_dir / "nixpi"
+
+            self._init_git_repo(remote_src, branch="main")
+            subprocess.run(["git", "clone", "--bare", str(remote_src), str(remote)], check=True)
+            self._clone_repo(remote, nixpi_dir, branch="main")
+            subprocess.run(["git", "-C", str(nixpi_dir), "checkout", "-b", "feature"], check=True)
+
+            result = self._run_clone_checkout(home_dir, nixpi_dir, remote, "main")
+            output = result.stdout + result.stderr
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("Existing checkout is on branch", output)
 
 
 if __name__ == "__main__":

@@ -28,6 +28,7 @@ BOOTSTRAP_STATE_DIR="$HOME/.nixpi/bootstrap"
 BOOTSTRAP_UPGRADE_STATUS_FILE="${BOOTSTRAP_STATE_DIR}/full-appliance-upgrade.status"
 BOOTSTRAP_UPGRADE_LOG_FILE="${BOOTSTRAP_STATE_DIR}/full-appliance-upgrade.log"
 NIXPI_BOOTSTRAP_REPO="${NIXPI_BOOTSTRAP_REPO:-https://github.com/alexradunet/nixpi.git}"
+NIXPI_BOOTSTRAP_BRANCH="${NIXPI_BOOTSTRAP_BRANCH:-main}"
 
 # --- Prefill (for VM/dev use) ---
 # Create ~/.nixpi/prefill.env on your host to skip manual prompts.
@@ -52,7 +53,7 @@ if [[ -f "$PREFILL_FILE" ]]; then
 fi
 
 # Load shared function library.
-SETUP_LIB="$(dirname "$0")/setup-lib.sh"
+SETUP_LIB="${SETUP_LIB:-$(dirname "$0")/setup-lib.sh}"
 if [[ ! -f "$SETUP_LIB" ]]; then
 	SETUP_LIB="/run/current-system/sw/bin/setup-lib.sh"
 fi
@@ -176,7 +177,21 @@ print_recent_appliance_log() {
 }
 
 clone_nixpi_checkout() {
+	local actual_remote actual_branch
+
 	if [[ -d "$NIXPI_DIR/.git" ]]; then
+		actual_remote="$(git -C "$NIXPI_DIR" remote get-url origin 2>/dev/null || true)"
+		if [[ "$actual_remote" != "$NIXPI_BOOTSTRAP_REPO" ]]; then
+			echo "Existing checkout has unexpected origin URL: ${actual_remote:-<missing>} (expected ${NIXPI_BOOTSTRAP_REPO})" >&2
+			return 1
+		fi
+
+		actual_branch="$(git -C "$NIXPI_DIR" branch --show-current 2>/dev/null || true)"
+		if [[ "$actual_branch" != "$NIXPI_BOOTSTRAP_BRANCH" ]]; then
+			echo "Existing checkout is on branch ${actual_branch:-<detached>} (expected ${NIXPI_BOOTSTRAP_BRANCH})" >&2
+			return 1
+		fi
+
 		echo "Using existing checkout at ${NIXPI_DIR}."
 		return 0
 	fi
@@ -188,7 +203,7 @@ clone_nixpi_checkout() {
 
 	mkdir -p "$(dirname "$NIXPI_DIR")"
 	rm -rf "$NIXPI_DIR"
-	nix --extra-experimental-features 'nix-command flakes' run nixpkgs#git -- clone "$NIXPI_BOOTSTRAP_REPO" "$NIXPI_DIR"
+	nix --extra-experimental-features 'nix-command flakes' run nixpkgs#git -- clone --branch "$NIXPI_BOOTSTRAP_BRANCH" "$NIXPI_BOOTSTRAP_REPO" "$NIXPI_DIR"
 }
 
 promote_full_appliance() {
@@ -204,14 +219,14 @@ promote_full_appliance() {
 		return 1
 	fi
 
-	write_appliance_status "Writing the local /etc/nixos system flake..."
-	if ! root_command nixpi-bootstrap-install-host-flake "$NIXPI_DIR" "$hostname" "$primary_user" 2>&1 | tee -a "$BOOTSTRAP_UPGRADE_LOG_FILE"; then
-		write_appliance_status "Failed to write the local /etc/nixos flake."
+	write_appliance_status "Preparing the canonical ~/nixpi checkout..."
+	if ! root_command nixpi-bootstrap-prepare-repo "$NIXPI_DIR" "$NIXPI_BOOTSTRAP_REPO" "$NIXPI_BOOTSTRAP_BRANCH" "$primary_user" 2>&1 | tee -a "$BOOTSTRAP_UPGRADE_LOG_FILE"; then
+		write_appliance_status "Failed to prepare the canonical ~/nixpi checkout."
 		return 1
 	fi
 
 	write_appliance_status "Building and activating the full NixPI appliance..."
-	if ! root_command nixpi-bootstrap-nixos-rebuild-switch "$hostname" 2>&1 | tee -a "$BOOTSTRAP_UPGRADE_LOG_FILE"; then
+	if ! root_command nixpi-bootstrap-nixos-rebuild-switch 2>&1 | tee -a "$BOOTSTRAP_UPGRADE_LOG_FILE"; then
 		write_appliance_status "Promotion failed. Review ${BOOTSTRAP_UPGRADE_LOG_FILE}."
 		return 1
 	fi
@@ -245,7 +260,7 @@ step_appliance() {
 
 	echo "Promoting this minimal base into the standard NixPI appliance..."
 	echo "This can take several minutes on slower hardware."
-	echo "A local checkout will be cloned into ~/nixpi and activated through /etc/nixos."
+	echo "A local checkout will be cloned into ~/nixpi and used as the canonical NixPI repo."
 
 	local current_hostname current_user
 	current_hostname=$(hostnamectl --static 2>/dev/null || hostname -s)
@@ -400,7 +415,7 @@ step_locale() {
 	root_command nixpi-bootstrap-write-host-nix "$hostname" "$primary_user" "$tz" "$kb"
 
 	echo "Applying locale settings (this may take a minute)..."
-	root_command nixpi-bootstrap-nixos-rebuild-switch "$hostname" || {
+	root_command nixpi-bootstrap-nixos-rebuild-switch || {
 		echo "warning: nixos-rebuild failed; locale settings saved but not applied yet." >&2
 	}
 
@@ -822,17 +837,18 @@ step_services() {
 step_bootc_switch() {
 	echo ""
 	echo "--- Update Guidance ---"
-	echo "NixPI now runs from the local checkout at ~/nixpi and a host-specific flake in /etc/nixos."
+	echo "NixPI now runs from the local checkout at ~/nixpi."
 	echo ""
 	echo "To refresh the local checkout later:"
 	echo "  cd ~/nixpi"
 	echo "  git pull --ff-only"
 	echo ""
-	echo "To apply local changes manually:"
-	echo "  sudo nixos-rebuild switch --flake /etc/nixos#$(hostname -s)"
+	echo "To rebuild from the canonical checkout:"
+	echo "  cd ~/nixpi"
+	echo "  sudo nixos-rebuild switch --flake /etc/nixos#nixpi"
 	echo ""
 	echo "If you need to clone the checkout again manually:"
-	echo "  nix --extra-experimental-features 'nix-command flakes' run nixpkgs#git -- clone ${NIXPI_BOOTSTRAP_REPO} ~/nixpi"
+	echo "  nix --extra-experimental-features 'nix-command flakes' run nixpkgs#git -- clone --branch ${NIXPI_BOOTSTRAP_BRANCH} ${NIXPI_BOOTSTRAP_REPO} ~/nixpi"
 	echo "  cd ~/nixpi"
 	echo "  sudo nixos-rebuild switch --rollback"
 	echo ""
@@ -936,7 +952,7 @@ finalize() {
 			echo "  Use /model in Pi to select a model."
 		fi
 	else
-		echo "  Next: restore ~/nixpi and rebuild via /etc/nixos if you want the full NixPI profile again."
+		echo "  Next: restore ~/nixpi and rebuild from the canonical checkout if you want the full NixPI profile again."
 	fi
 	echo "========================================="
 	echo ""

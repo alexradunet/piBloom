@@ -25,7 +25,7 @@ Performs a destructive UEFI install with:
 
 The installer creates a minimal bootable NixPI base. The first-boot setup
 wizard handles WiFi, internet validation, and promotion into the full
-appliance profile.
+appliance profile using the canonical checkout at /home/\$USER/nixpi.
 EOF
 }
 
@@ -343,6 +343,7 @@ run_install_steps() {
     --password "$PRIMARY_PASSWORD_VALUE" \
     >/tmp/nixpi-installer-artifacts.json
   log_step "Installer artifacts written to /tmp/nixpi-installer-artifacts.json"
+  log_step "First boot will prepare the canonical repo checkout at /home/$PRIMARY_USER_VALUE/nixpi"
 
   echo "=== [4/5] Installing NixOS (this may take 10-20 minutes) ==="
   if [[ -n "$SYSTEM_CLOSURE" ]]; then

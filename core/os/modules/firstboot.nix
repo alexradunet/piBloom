@@ -27,36 +27,46 @@ let
   bootstrapReadMatrixSecret = bootstrapAction "read-matrix-secret" "/run/current-system/sw/bin/sh -c 'tr -d \"\\n\" < ${matrixRegistrationSecretFile}'";
   bootstrapReadPrimaryPassword = bootstrapAction "read-primary-password" "/run/current-system/sw/bin/sh -c 'tr -d \"\\n\" < ${bootstrapPrimaryPasswordFile}'";
   bootstrapRemovePrimaryPassword = bootstrapAction "remove-primary-password" "/run/current-system/sw/bin/rm -f ${bootstrapPrimaryPasswordFile}";
-  bootstrapInstallHostFlake = pkgs.writeShellScriptBin "nixpi-bootstrap-install-host-flake" ''
+  bootstrapPrepareRepo = pkgs.writeShellScriptBin "nixpi-bootstrap-prepare-repo" ''
     set -euo pipefail
     if [ -f "${systemReadyFile}" ]; then
       echo "NixPI bootstrap access is disabled after setup completes" >&2
       exit 1
     fi
 
-    nixpi_dir="''${1:-}"
-    hostname="''${2:-}"
-    primary_user="''${3:-}"
-    if [ -z "$nixpi_dir" ] || [ -z "$hostname" ] || [ -z "$primary_user" ]; then
-      echo "usage: nixpi-bootstrap-install-host-flake <nixpi_dir> <hostname> <primary_user>" >&2
+    repo_dir="''${1:-}"
+    remote_url="''${2:-}"
+    branch="''${3:-}"
+    primary_user="''${4:-}"
+    if [ -z "$repo_dir" ] || [ -z "$remote_url" ] || [ -z "$branch" ] || [ -z "$primary_user" ]; then
+      echo "usage: nixpi-bootstrap-prepare-repo <repo_dir> <remote_url> <branch> <primary_user>" >&2
+      exit 1
+    fi
+
+    if [ ! -d "$repo_dir/.git" ]; then
+      echo "canonical repo checkout is missing .git: $repo_dir" >&2
+      exit 1
+    fi
+
+    actual_remote="$(${pkgs.git}/bin/git -C "$repo_dir" remote get-url origin 2>/dev/null || true)"
+    if [ "$actual_remote" != "$remote_url" ]; then
+      echo "canonical repo origin mismatch: expected $remote_url, got ''${actual_remote:-<missing>}" >&2
+      exit 1
+    fi
+
+    actual_branch="$(${pkgs.git}/bin/git -C "$repo_dir" branch --show-current 2>/dev/null || true)"
+    if [ "$actual_branch" != "$branch" ]; then
+      echo "canonical repo branch mismatch: expected $branch, got ''${actual_branch:-<detached>}" >&2
       exit 1
     fi
 
     install -d -m 0755 /etc/nixos
 
-    cat > /etc/nixos/nixpi-host.nix <<EOF
-{ ... }:
-{
-  networking.hostName = "$hostname";
-  nixpi.primaryUser = "$primary_user";
-}
-EOF
-
     cat > /etc/nixos/configuration.nix <<EOF
 { ... }:
 {
   imports = [
-    $nixpi_dir/core/os/hosts/x86_64.nix
+    $repo_dir/core/os/hosts/x86_64.nix
     ./hardware-configuration.nix
     ./nixpi-host.nix
   ];
@@ -68,7 +78,7 @@ EOF
   description = "NixPI installed host";
 
   inputs = {
-    nixpi.url = "path:$nixpi_dir";
+    nixpi.url = "path:$repo_dir";
     nixpkgs.follows = "nixpi/nixpkgs";
   };
 
@@ -76,7 +86,7 @@ EOF
     let
       system = "${pkgs.stdenv.hostPlatform.system}";
     in {
-      nixosConfigurations."$hostname" = nixpkgs.lib.nixosSystem {
+      nixosConfigurations.nixpi = nixpkgs.lib.nixosSystem {
         inherit system;
         specialArgs = {
           piAgent = nixpi.packages.\''${system}.pi;
@@ -94,6 +104,19 @@ EOF
     };
 }
 EOF
+
+    metadata_dir="/home/$primary_user/.nixpi"
+    metadata_path="$metadata_dir/canonical-repo.json"
+    install -d -m 0755 -o "$primary_user" -g "$primary_user" "$metadata_dir"
+    cat > "$metadata_path" <<EOF
+{
+  "path": "$repo_dir",
+  "origin": "$remote_url",
+  "branch": "$branch"
+}
+EOF
+    chown "$primary_user:$primary_user" "$metadata_path"
+    chmod 0644 "$metadata_path"
   '';
   bootstrapNixosRebuildSwitch = pkgs.writeShellScriptBin "nixpi-bootstrap-nixos-rebuild-switch" ''
     set -euo pipefail
@@ -102,13 +125,7 @@ EOF
       exit 1
     fi
 
-    hostname="''${1:-}"
-    if [ -z "$hostname" ]; then
-      echo "usage: nixpi-bootstrap-nixos-rebuild-switch <hostname>" >&2
-      exit 1
-    fi
-
-    exec /run/current-system/sw/bin/nixos-rebuild switch --impure --flake "/etc/nixos#$hostname"
+    exec /run/current-system/sw/bin/nixos-rebuild switch --impure --flake "/etc/nixos#nixpi"
   '';
   bootstrapMatrixJournal = bootstrapAction "matrix-journal" "/run/current-system/sw/bin/journalctl -u continuwuity --no-pager";
   bootstrapNetbird = bootstrapAction "netbird-up" "/run/current-system/sw/bin/netbird up";
@@ -304,7 +321,7 @@ in
     bootstrapReadMatrixSecret
     bootstrapReadPrimaryPassword
     bootstrapRemovePrimaryPassword
-    bootstrapInstallHostFlake
+    bootstrapPrepareRepo
     bootstrapNixosRebuildSwitch
     bootstrapMatrixJournal
     bootstrapNetbird
@@ -329,8 +346,8 @@ in
       { command = "/run/current-system/sw/bin/nixpi-bootstrap-read-matrix-secret"; options = [ "NOPASSWD" ]; }
       { command = "/run/current-system/sw/bin/nixpi-bootstrap-read-primary-password"; options = [ "NOPASSWD" ]; }
       { command = "/run/current-system/sw/bin/nixpi-bootstrap-remove-primary-password"; options = [ "NOPASSWD" ]; }
-      { command = "/run/current-system/sw/bin/nixpi-bootstrap-install-host-flake *"; options = [ "NOPASSWD" ]; }
-      { command = "/run/current-system/sw/bin/nixpi-bootstrap-nixos-rebuild-switch *"; options = [ "NOPASSWD" ]; }
+      { command = "/run/current-system/sw/bin/nixpi-bootstrap-prepare-repo *"; options = [ "NOPASSWD" ]; }
+      { command = "/run/current-system/sw/bin/nixpi-bootstrap-nixos-rebuild-switch"; options = [ "NOPASSWD" ]; }
       { command = "/run/current-system/sw/bin/nixpi-bootstrap-matrix-journal"; options = [ "NOPASSWD" ]; }
       { command = "/run/current-system/sw/bin/nixpi-bootstrap-matrix-systemctl stop continuwuity.service"; options = [ "NOPASSWD" ]; }
       { command = "/run/current-system/sw/bin/nixpi-bootstrap-matrix-systemctl start continuwuity.service"; options = [ "NOPASSWD" ]; }

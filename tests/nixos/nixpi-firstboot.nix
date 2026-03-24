@@ -101,6 +101,16 @@
     nixpi.succeed("test -f " + home + "/.pi/matrix-credentials.json")
     nixpi.succeed("test ! -L " + home + "/.pi")
     nixpi.succeed("test \"$(stat -c %U " + home + "/.pi)\" = pi")
+    nixpi.succeed("test -d " + home + "/nixpi/.git")
+    nixpi.fail("test -e /var/lib/nixpi/pi-nixpi")
+    nixpi.succeed("test -f " + home + "/.nixpi/canonical-repo.json")
+
+    canonical_repo = json.loads(nixpi.succeed("cat " + home + "/.nixpi/canonical-repo.json"))
+    assert canonical_repo == {
+        "path": "/home/pi/nixpi",
+        "origin": "https://github.com/alexradunet/nixpi.git",
+        "branch": "main",
+    }, canonical_repo
 
     creds = json.loads(nixpi.succeed("cat " + home + "/.pi/matrix-credentials.json"))
     bot_token = creds["botAccessToken"]
