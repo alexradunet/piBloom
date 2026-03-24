@@ -71,6 +71,14 @@ The system should store or derive three values:
 - canonical remote URL
 - canonical branch, defaulting to `main`
 
+The remote policy should be explicit and strict:
+
+- each installation stores one expected remote URL and one expected branch
+- `/home/$USER/nixpi` is valid only if its `origin` URL matches the configured remote URL exactly
+- the checked-out branch must match the configured branch
+- users may install from upstream or from a fork, but the selected remote becomes the one
+  canonical remote for that machine until intentionally reconfigured
+
 The installer or first-boot process creates that clone and all supported operational flows act
 on it. Runtime code should resolve the canonical repo path through one shared API rather than
 constructing paths ad hoc or falling back to state-dir clones.
@@ -92,6 +100,13 @@ This component is responsible for creating `/home/$USER/nixpi` from the configur
 branch during installation or first boot. It must fail clearly if the clone cannot be created
 or validated.
 
+If `/home/$USER/nixpi` already exists:
+
+- accept it only if it is a Git repository whose `origin` URL and checked-out branch exactly
+  match the configured remote and branch
+- otherwise stop and require explicit operator correction rather than mutating or replacing the
+  directory implicitly
+
 ### Canonical repo path API
 
 One library function or module should define the supported repo path based on the primary user.
@@ -101,6 +116,12 @@ All code that needs the working repo should consume that API instead of hardcodi
 
 Validation should confirm that `/home/$USER/nixpi` exists, is a Git repository, and matches the
 expected remote policy for the install. Unsupported legacy paths should not be silently used.
+
+For this design, “matches the expected remote policy” means:
+
+- `origin` equals the configured remote URL
+- the checkout is on the configured branch
+- the repository path is exactly `/home/$USER/nixpi`
 
 ### Update and rebuild flows
 
@@ -127,7 +148,7 @@ On installation:
 1. choose or receive the canonical remote URL and branch
 2. determine the primary user
 3. clone the repository into `/home/$USER/nixpi`
-4. validate that the checkout is usable
+4. validate `origin`, branch, and path against configured values
 5. continue setup using that clone as the source of truth
 
 During normal operation:
@@ -156,7 +177,8 @@ The system should stop with a clear error when:
 1. `/home/$USER/nixpi` does not exist when required
 2. `/home/$USER/nixpi` exists but is not a Git repository
 3. the configured clone step fails during install or first boot
-4. the existing checkout does not match the expected remote policy for that installation
+4. the existing checkout does not match the configured `origin` URL or branch for that
+   installation
 5. code attempts to use `~/.nixpi/pi-nixpi` or `/var/lib/nixpi/pi-nixpi` as a working repo
 
 Errors should report the expected canonical path and, when relevant, the expected remote and
@@ -184,7 +206,9 @@ Verify:
 
 - successful clone into `/home/$USER/nixpi`
 - failure when the target directory already exists but is not a Git repo
+- acceptance when an existing checkout exactly matches configured `origin` and branch
 - failure when clone validation finds the wrong remote
+- failure when clone validation finds the wrong branch
 
 ### Runtime and operations tests
 
