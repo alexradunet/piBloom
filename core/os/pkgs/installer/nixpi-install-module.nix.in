@@ -20,6 +20,7 @@ in
   environment.systemPackages = [ @setupPackage@ ];
 
   nixpi.primaryUser = "@@username@@";
+  nixpi.security.ssh.passwordAuthentication = true;
   users.users."@@username@@".hashedPassword = @@passwordHash@@;
 
   system.activationScripts.nixpi-bootstrap-primary-password = ''

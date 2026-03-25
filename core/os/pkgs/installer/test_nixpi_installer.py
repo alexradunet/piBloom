@@ -57,6 +57,7 @@ class NixpiInstallerTests(unittest.TestCase):
         self.assertIn("@desktopXfceModule@", artifacts["nixpi_install_module"])
         self.assertIn("system.activationScripts.nixpi-bootstrap-primary-password", artifacts["nixpi_install_module"])
         self.assertIn("printf '%s' \"supersecret\" > ${bootstrapPasswordFile}", artifacts["nixpi_install_module"])
+        self.assertIn('nixpi.security.ssh.passwordAuthentication = true;', artifacts["nixpi_install_module"])
         self.assertIn('networking.hostName = "pi-box";', artifacts["configuration_module"])
         self.assertIn("./hardware-configuration.nix", artifacts["configuration_module"])
         self.assertIn("./nixpi-install.nix", artifacts["configuration_module"])
