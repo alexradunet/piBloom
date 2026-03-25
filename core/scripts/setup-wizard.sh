@@ -95,11 +95,13 @@ has_full_appliance() {
 }
 
 configured_primary_user() {
-	read_nixos_assignment 'nixpi\.primaryUser' /etc/nixos/nixpi-host.nix /etc/nixos/nixpi-install.nix
+	read_nixos_assignment 'nixpi\.primaryUser' /etc/nixos/nixpi-host.nix /etc/nixos/nixpi-install.nix && return 0
+	read_nixos_option_string 'nixpi.primaryUser'
 }
 
 configured_hostname() {
-	read_nixos_assignment 'networking\.hostName' /etc/nixos/nixpi-host.nix /etc/nixos/nixpi-install.nix
+	read_nixos_assignment 'networking\.hostName' /etc/nixos/nixpi-host.nix /etc/nixos/nixpi-install.nix && return 0
+	read_nixos_option_string 'networking.hostName'
 }
 
 read_nixos_assignment() {
@@ -119,6 +121,40 @@ read_nixos_assignment() {
 			return 0
 		fi
 	done
+
+	return 1
+}
+
+read_nixos_option_string() {
+	local option_name="$1"
+	command -v nixos-option >/dev/null 2>&1 || return 1
+
+	local option_output value
+	option_output="$(nixos-option "$option_name" 2>/dev/null || true)"
+	[[ -n "$option_output" ]] || return 1
+
+	value="$(
+		printf '%s\n' "$option_output" \
+			| sed -n 's/^[[:space:]]*Value:[[:space:]]*"\(.*\)"[[:space:]]*$/\1/p' \
+			| head -n 1
+	)"
+	if [[ -n "$value" ]]; then
+		printf '%s' "$value"
+		return 0
+	fi
+
+	value="$(
+		printf '%s\n' "$option_output" \
+			| awk '
+				/^[[:space:]]*Value:[[:space:]]*$/ { capture = 1; next }
+				capture && match($0, /"([^"]+)"/, match_value) { print match_value[1]; exit }
+				capture && /^[^[:space:]]/ { exit }
+			'
+	)"
+	if [[ -n "$value" ]]; then
+		printf '%s' "$value"
+		return 0
+	fi
 
 	return 1
 }
