@@ -17,7 +17,6 @@ The codebase accumulated over-abstraction, speculative features, and inconsisten
 - Monolithic shell scripts (1,111 + 813 lines) with scattered state files
 - NixOS modules without `default.nix` aggregators, requiring callers to list every file
 - matrix-js-sdk wrapped behind a contract interface with no alternative implementation
-- `WantedBy = default.target` throughout (causes services to run on emergency boots)
 - No persistent `deviceId` or crypto store — new Matrix device registered on every daemon restart
 
 ---
@@ -26,28 +25,33 @@ The codebase accumulated over-abstraction, speculative features, and inconsisten
 
 ### 2.1 Delete thin orchestration layers
 
-**Delete `router.ts`** — inline `routeRoomEnvelope` logic directly into `AgentSupervisor.handleEnvelope()`. It is three conditionals, not a module. The abstraction adds a call frame without enabling testability or reuse.
+**Delete `router.ts`** (166 lines) — inline its routing logic directly into `AgentSupervisor.handleEnvelope()`. The file contains 9 functions, the `RoomEnvelope` type, `classifySender`, `extractMentions`, and `RouteDecision` — all of which move into `agent-supervisor.ts`. The separation adds a call frame without enabling independent testability or reuse.
 
 **Delete `multi-agent-runtime.ts`** — it is a 116-line wiring shell. Move all wiring to `main.ts` as a `bootstrap()` factory function. `main.ts` becomes the explicit composition root: the one place that calls `new` on external dependencies.
 
+**Delete `lifecycle.ts` / `startWithRetry`** — subsumed by the new `withRetry` utility (Section 2.3). `lifecycle.ts` handles process-level reconnect; `withRetry` is more general and replaces it.
+
 ### 2.2 Flatten the Matrix bridge
 
-**Delete `contracts/matrix.ts` (`MatrixBridge` interface)** — no alternative implementation exists or is planned. The abstraction doubles maintenance surface without benefit.
+**Delete `contracts/matrix.ts`** — it exports `MatrixBridge`, `MatrixIdentity`, and `MatrixTextEvent`. No alternative implementation exists or is planned. After deletion:
+- `MatrixBridge` is replaced by the existing `MatrixBridgeLike` interface already in `agent-supervisor.ts` (keep it, rename to `MatrixClient` for clarity)
+- `MatrixIdentity` moves to a new `core/lib/types.ts` (shared domain types with no dependencies)
+- `MatrixTextEvent` is inlined at its call site or also moved to `types.ts`
 
 **Use the matrix-js-sdk client directly**, injected as a constructor argument to `AgentSupervisor` for testability. Import as `import * as sdk from "matrix-js-sdk"` — never mix named and default imports from different paths (known bundler issue, GitHub #4597).
 
 **Fix daemon startup sequence:**
-1. Call `await client.initRustCrypto()` before `startClient()` (replaces deprecated `initCrypto()`)
-2. Wait for `ClientEvent.Sync` state `"PREPARED"` before processing any messages
-3. Persist `deviceId` and crypto store path to `/var/lib/bloom-matrix/` — currently a new Matrix device is registered on every restart
+1. Call `await client.initRustCrypto({ storePath })` before `startClient()` — replaces deprecated `initCrypto()`. Use `@matrix-org/matrix-sdk-crypto-nodejs` as the crypto store backend (Node.js compatible, no browser APIs).
+2. Implement session restore per identity: for each `MatrixIdentity` in `options.identities`, check `/var/lib/bloom-matrix/<agentId>/session.json` for a saved `{ userId, deviceId, accessToken }`. If present, pass `deviceId` and `accessToken` to `createClient()` to restore the session. If absent (first run or new agent), perform a fresh login and write the result to that agent's `session.json`.
+3. Wait for `ClientEvent.Sync` state `"PREPARED"` before processing any messages — avoids acting on stale history during initial sync.
 
-**Handle Matrix 429 rate limiting:** read `err.data?.retry_after_ms` and use it as the delay floor.
+**Handle Matrix 429 rate limiting:** read `err.data?.retry_after_ms` and use it as the delay floor in `shouldRetry`.
 
 ### 2.3 Replace circuit breaker with retry
 
 **Delete `rate-limiter.ts`** circuit breaker state machine (closed/open/half-open, 139 lines).
 
-**Replace with `withRetry<T>(fn, opts)`** utility (~40 lines):
+**Replace with `withRetry<T>(fn, opts)`** utility (~40 lines) in `core/lib/retry.ts`:
 
 ```typescript
 async function withRetry<T>(fn: () => Promise<T>, opts?: RetryOptions): Promise<T>
@@ -59,14 +63,15 @@ interface RetryOptions {
   jitter?: boolean;         // default: true — ±50% jitter to prevent thundering herd
   shouldRetry?: (error: unknown) => boolean;
   onRetry?: (attempt: number, delayMs: number, error: unknown) => void;
+  onError?: () => Promise<void>; // teardown hook called before each retry (e.g., runtime.stop())
 }
 ```
 
 Delay formula: `min(baseMs * 2^attempt, maxDelayMs) * (0.5 + random() * 0.5)`
 
-`shouldRetry` must filter out non-retryable errors: 4xx HTTP responses, auth failures, validation errors. Only retry transient errors (5xx, ETIMEDOUT, ECONNREFUSED, 429).
+`shouldRetry` must filter out non-retryable errors: 4xx HTTP responses, auth failures, validation errors. Only retry transient errors (5xx, ETIMEDOUT, ECONNREFUSED, 429). For 429, use `err.data?.retry_after_ms` as the delay if present.
 
-Place `withRetry` in `core/lib/retry.ts`. It has no dependencies and is trivially testable.
+`retry.ts` has no dependencies and is trivially testable in isolation.
 
 ### 2.4 Merge room state into AgentSupervisor
 
@@ -76,19 +81,21 @@ Move the three maps (`processedEvents`, `rootReplies`, `lastReplyAtByRoomAgent`)
 
 ### 2.5 Split and simplify `core/lib/shared.ts`
 
-Split the 441-line file into three focused modules:
+Split the 441-line file into focused modules. Full symbol assignment:
 
-| File | Contents | Lines (est.) |
-|---|---|---|
-| `core/lib/logging.ts` | `createLogger()` | ~30 |
-| `core/lib/validation.ts` | `guardServiceName()`, regex utils | ~20 |
-| `core/lib/interactions.ts` | Interaction system (in-memory only) | ~120 |
+| Target file | Symbols |
+|---|---|
+| `core/lib/logging.ts` | `createLogger()` |
+| `core/lib/validation.ts` | `guardServiceName()` |
+| `core/lib/interactions.ts` | `InteractionRecord`, `requestInteraction`, `resolveInteractionReply`, `formatResumeMessage`, `getPendingInteractions`, `requireConfirmation`, `requestSelection`, `requestTextInput` |
+| `core/lib/types.ts` | `MatrixIdentity`, `MatrixTextEvent` (both moved from `contracts/matrix.ts`), shared domain types |
+| `core/lib/utils.ts` | `truncate()`, `errorResult()`, `nowIso()` |
 
-**Simplify the interaction system:** drop file-based persistence. The `InteractionStore` currently writes JSON to disk with schema validation, token deduplication, and record trimming. In practice, extensions use `ctx.ui` directly when UI is available. Replace with a simple in-memory `Map<token, InteractionRecord>` scoped to the daemon session. Remove the `InteractionRecordSchema` TypeBox validation and `getStorePath` file discovery logic.
+**Simplify the interaction system:** drop file-based persistence. The `InteractionStore` currently writes JSON to disk with schema validation, token deduplication, and record trimming. In practice, extensions use `ctx.ui` directly when UI is available. Replace with a simple in-memory `Map<token, InteractionRecord>` scoped to the daemon session. Remove `InteractionRecordSchema` TypeBox validation and `getStorePath` file discovery logic.
 
 ### 2.6 Delete `defineTool()`
 
-`core/lib/extension-tools.ts` exports an identity function:
+`core/lib/extension-tools.ts` exports an identity function with zero runtime value:
 
 ```typescript
 export function defineTool(tool: RegisteredExtensionTool): RegisteredExtensionTool {
@@ -96,22 +103,24 @@ export function defineTool(tool: RegisteredExtensionTool): RegisteredExtensionTo
 }
 ```
 
-Delete it. Replace all 5 call sites with plain object literals passed directly to `registerTools()`.
+Delete the file. Replace all call sites (across 5 extension files, ~21 total occurrences) with plain object literals passed directly to `registerTools()`.
 
 ### 2.7 Result: daemon file count
 
 | Before | After |
 |---|---|
 | `multi-agent-runtime.ts` (116L) | deleted |
-| `router.ts` (166L) | deleted, inlined |
+| `router.ts` (166L) | deleted, inlined into `agent-supervisor.ts` |
 | `rate-limiter.ts` (139L) | deleted |
-| `room-state.ts` (129L) | deleted, inlined |
+| `room-state.ts` (129L) | deleted, inlined into `agent-supervisor.ts` |
+| `lifecycle.ts` | deleted, subsumed by `retry.ts` |
 | `contracts/matrix.ts` | deleted |
 | `matrix-js-sdk-bridge.ts` (221L) | slimmed (~80L, no contract) |
-| `shared.ts` (441L) | split into 3 files |
-| `extension-tools.ts` (23L) | deleted |
+| `shared.ts` (441L) | split into 5 focused files |
+| `extension-tools.ts` (22L) | deleted |
 | — | `retry.ts` (~40L, new) |
-| `agent-supervisor.ts` (364L) | grows to ~450L but is now the single routing authority |
+| — | `types.ts` (~30L, new) |
+| `agent-supervisor.ts` (364L) | grows to ~480L — single routing authority |
 
 Call depth: 4 layers → 2 layers (`AgentSupervisor` → SDK client).
 
@@ -121,13 +130,13 @@ Call depth: 4 layers → 2 layers (`AgentSupervisor` → SDK client).
 
 ### 3.1 Eliminate all activationScripts
 
-`system.activationScripts` is officially deprecated upstream (nixpkgs #475305, Dec 2025). Replace all usages:
+`system.activationScripts` is officially deprecated upstream (nixpkgs #475305, Dec 2025). Three modules currently use it (`desktop-xfce.nix`, `app.nix`, `shell.nix`). Replace all usages:
 
 | Current use | Replacement |
 |---|---|
 | Directory creation | `systemd.tmpfiles.rules` — e.g., `"d /var/lib/nixpi 0750 nixpi nixpi -"` |
 | First-boot setup | `Type=oneshot` systemd service with sentinel |
-| System markers | Written by the oneshot service on success |
+| System markers | Written by the oneshot service `ExecStartPost` on success |
 | Password file cleanup | `ExecStartPost` on the relevant service |
 
 ### 3.2 First-boot services: sentinel pattern
@@ -137,7 +146,7 @@ Replace firstboot activation scripts with a `Type=oneshot` systemd service chain
 ```nix
 systemd.services.bloom-firstboot = {
   description = "Bloom OS first-boot initialization";
-  wantedBy = [ "multi-user.target" ];    # not default.target
+  wantedBy = [ "multi-user.target" ];
   unitConfig.ConditionPathExists = "!/var/lib/nixpi/.initialized";
   serviceConfig = {
     Type = "oneshot";
@@ -152,7 +161,7 @@ systemd.services.bloom-firstboot = {
 - Use `ConditionPathExists=!/var/lib/nixpi/.initialized` (not `ConditionFirstBoot` — not yet a NixOS first-class option, nixpkgs #293112)
 - Sentinel written in `ExecStartPost` — only on success, so failed runs retry on next boot
 - `RemainAfterExit=true` keeps the unit `active (exited)` so dependents can see it
-- `WantedBy = [ "multi-user.target" ]` throughout — never `default.target` (triggers on emergency boots)
+- `wantedBy = [ "multi-user.target" ]` throughout
 
 ### 3.3 Consolidate state directory
 
@@ -184,11 +193,9 @@ Split `core/os/modules/firstboot.nix` (430 lines, mixes 4 concerns) into:
 
 ### 3.5 Prune options.nix
 
-Audit all 60+ options in `core/os/modules/options.nix`. Remove any option that:
-- Has no consumer in any module or host configuration
-- Has only a default value and is never overridden
+Narrow scope: remove only options that are **obviously dead** — options with no override in any host file and no consumer in any module. Do not attempt a full audit pre-release. Walk `core/os/modules/options.nix` and grep for each option name across the codebase; remove those with zero hits outside their declaration.
 
-Keep the file but split it following the module-splitting pattern: each feature area gets its own `options.nix` co-located with its `service.nix`.
+Split surviving options so each feature area's `options.nix` is co-located with its `service.nix` rather than all options living in a single 413-line file.
 
 ### 3.6 Module layout: default.nix aggregators
 
@@ -216,10 +223,6 @@ core/os/modules/
 - Ensure `inputs.nixpkgs.follows` is set on all secondary inputs
 - Verify `flake.lock` is committed and intentionally pinned
 - All new `.nix` files must be `git add`-ed before evaluation
-
-### 3.8 Fix WantedBy throughout
-
-Search all `.nix` files for `"default.target"` in `wantedBy` and replace with `"multi-user.target"`. This is a correctness fix — `default.target` causes services to run during emergency and single-user boots.
 
 ---
 
@@ -252,7 +255,7 @@ To keep release risk contained:
 - **`netbird-provisioner.nix`** — complex but self-contained and working
 - **`broker.nix`** — well-designed privilege escalation, no changes
 - **Extension business logic** — functional correctness is not in question
-- **Matrix seen-event deduplication** — solves a real problem, keep it (just move it inside `AgentSupervisor`)
+- **Matrix seen-event deduplication** — solves a real problem, keep it (move inside `AgentSupervisor`)
 - **Agent registry and frontmatter parsing** — sound design, leave it
 - **`proactive.ts`** — leave job collection separation for now
 
@@ -260,18 +263,18 @@ To keep release risk contained:
 
 ## 6. Success Criteria
 
-- [ ] No `activationScripts` in any NixOS module
-- [ ] No `WantedBy = [ "default.target" ]` in any service
-- [ ] `router.ts`, `multi-agent-runtime.ts`, `rate-limiter.ts`, `room-state.ts`, `contracts/matrix.ts`, `extension-tools.ts` deleted
-- [ ] `shared.ts` replaced by `logging.ts`, `validation.ts`, `interactions.ts`
-- [ ] `withRetry` in place of circuit breaker, with Matrix 429 handling
-- [ ] `deviceId` and crypto store persisted to `/var/lib/bloom-matrix/`
-- [ ] `initRustCrypto()` called before `startClient()`
+- [ ] No `activationScripts` in any NixOS module (`desktop-xfce.nix`, `app.nix`, `shell.nix` migrated)
+- [ ] `router.ts`, `multi-agent-runtime.ts`, `rate-limiter.ts`, `room-state.ts`, `lifecycle.ts`, `contracts/matrix.ts`, `extension-tools.ts` deleted
+- [ ] `shared.ts` replaced by `logging.ts`, `validation.ts`, `interactions.ts`, `types.ts`, `utils.ts`
+- [ ] `withRetry` in place of circuit breaker, with Matrix 429 `retry_after_ms` handling
+- [ ] Session restore implemented: `deviceId` + `accessToken` persisted to `/var/lib/bloom-matrix/session.json`
+- [ ] `initRustCrypto({ storePath })` called before `startClient()`
 - [ ] `ClientEvent.Sync` `"PREPARED"` gate before processing messages
 - [ ] `firstboot.nix` split into 4 focused files under `firstboot/`
 - [ ] Single state directory `/var/lib/nixpi/state/` with no legacy state files
 - [ ] `default.nix` aggregators at all module directory levels
-- [ ] `setup-wizard.sh` split into 4 phase scripts + slim orchestrator
+- [ ] `setup-wizard.sh` split into 4 phase scripts + slim orchestrator (~80L)
 - [ ] `flake.nix` has `specialArgs` and all inputs follow nixpkgs
 - [ ] Repository builds cleanly: `nix flake check` passes
-- [ ] No unused NixOS options remaining in `options.nix`
+- [ ] Obviously dead NixOS options removed from `options.nix`
+- [ ] `defineTool` removed from all ~21 call sites across 5 extension files
