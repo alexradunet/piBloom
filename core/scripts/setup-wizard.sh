@@ -94,6 +94,12 @@ has_full_appliance() {
 	has_runtime_stack && has_matrix_stack && has_service_stack && has_command chromium
 }
 
+configured_primary_user() {
+	grep 'nixpi\.primaryUser' /etc/nixos/nixpi-host.nix 2>/dev/null \
+		| sed 's/.*= "\(.*\)".*/\1/' \
+		| head -n 1
+}
+
 refresh_group_session_if_needed() {
 	local target_path="$1"
 	[[ "$target_path" == /var/lib/* ]] || return 0
@@ -296,6 +302,23 @@ step_appliance() {
 
 	echo "Standard NixPI appliance is ready."
 	mark_done appliance
+
+	local target_user
+	target_user=$(configured_primary_user)
+	if [[ -n "$target_user" && "$target_user" != "$current_user" ]]; then
+		echo ""
+		echo "Appliance promotion switched the primary user from ${current_user} to ${target_user}."
+		echo "This terminal is still running under the old bootstrap account."
+		echo "Open a new terminal as ${target_user}, then rerun: setup-wizard.sh"
+		exit 0
+	fi
+	if ! getent passwd "$current_user" >/dev/null 2>&1; then
+		echo ""
+		echo "Appliance promotion removed the bootstrap account backing this terminal."
+		echo "Open a new terminal as ${target_user:-the configured primary user}, then rerun: setup-wizard.sh"
+		exit 0
+	fi
+
 	refresh_group_session_if_needed "$PI_DIR"
 }
 
