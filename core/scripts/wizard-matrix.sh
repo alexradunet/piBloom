@@ -12,8 +12,6 @@ print_service_access_summary() {
 	if [[ -n "$canonical_host" ]]; then
 		echo "    NixPI Home   - https://${canonical_host}/"
 		echo "    Share this   - send other NetBird peers the NixPI Home URL"
-		echo "    Element Web  - https://${canonical_host}/element/"
-		echo "    Element Web  - preconfigured for this NixPI server"
 	elif [[ "$access_mode" == "not-ready" ]]; then
 		echo "    Canonical host - not ready yet (finish NetBird setup)"
 	fi
@@ -137,63 +135,6 @@ step_netbird() {
 	done
 }
 
-step_matrix() {
-	echo ""
-	echo "--- Matrix Credentials ---"
-	echo "Pi uses a bot account on matrix.org to send you messages."
-	echo "Register a bot account at https://app.element.io and generate an access token."
-	echo ""
-
-	if [[ "$NONINTERACTIVE_SETUP" -eq 1 ]]; then
-		if [[ -n "${PREFILL_MATRIX_BOT_USER_ID:-}" && -n "${PREFILL_MATRIX_BOT_ACCESS_TOKEN:-}" ]]; then
-			local bot_user_id="$PREFILL_MATRIX_BOT_USER_ID"
-			local bot_access_token="$PREFILL_MATRIX_BOT_ACCESS_TOKEN"
-		else
-			echo "Skipping Matrix credentials in noninteractive mode."
-			mark_done_with matrix "skipped"
-			return
-		fi
-	else
-		local bot_user_id bot_access_token
-		while true; do
-			read -rp "Bot Matrix user ID (e.g. @mypi:matrix.org): " bot_user_id
-			if [[ -z "$bot_user_id" ]]; then
-				echo "User ID cannot be empty."
-				continue
-			fi
-			if [[ ! "$bot_user_id" =~ ^@[^:]+:.+$ ]]; then
-				echo "User ID must be in the format @username:server (e.g. @mypi:matrix.org)."
-				continue
-			fi
-			break
-		done
-		while true; do
-			read -rsp "Bot access token: " bot_access_token
-			echo ""
-			if [[ -z "$bot_access_token" ]]; then
-				echo "Access token cannot be empty."
-				continue
-			fi
-			break
-		done
-	fi
-
-	mkdir -p "$PI_DIR"
-	cat > "$PI_DIR/matrix-credentials.json" <<-CREDS
-	{
-	  "homeserver": "https://matrix.org",
-	  "botUserId": "${bot_user_id}",
-	  "botAccessToken": "${bot_access_token}"
-	}
-	CREDS
-	chmod 600 "$PI_DIR/matrix-credentials.json"
-
-	echo ""
-	echo "Matrix credentials saved."
-	echo "DM ${bot_user_id} from any Matrix client to talk to Pi."
-	mark_done_with matrix "$bot_user_id"
-}
-
 step_services() {
 	echo ""
 	echo "--- Built-In Services ---"
@@ -202,20 +143,6 @@ step_services() {
 		mark_done_with services "skipped"
 		return
 	fi
-	local mesh_ip mesh_fqdn
-	mesh_ip=$(read_checkpoint_data netbird)
-	mesh_fqdn=$(netbird_fqdn)
-
-	echo "  Refreshing built-in service configs..."
-	write_element_web_runtime_config
-	write_service_home_runtime "$mesh_ip" "$mesh_fqdn"
-	if install_home_infrastructure; then
-		echo "  NixPI Home ready."
-	else
-		echo "  NixPI Home setup failed."
-	fi
-	root_command nixpi-bootstrap-service-systemctl restart nixpi-home.service || echo "  home restart failed."
-	root_command nixpi-bootstrap-service-systemctl restart nixpi-element-web.service || echo "  element restart failed."
-	write_service_home_runtime "$mesh_ip" "$mesh_fqdn"
-	mark_done_with services "home element-web"
+	root_command nixpi-bootstrap-service-systemctl restart nixpi-chat.service || echo "  chat restart failed."
+	mark_done_with services "chat"
 }

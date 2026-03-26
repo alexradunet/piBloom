@@ -57,12 +57,12 @@ finalize() {
 		root_command nixpi-bootstrap-sshd-systemctl stop sshd.service || echo "warning: failed to stop sshd.service" >&2
 	fi
 	touch "$SYSTEM_READY"
-	if has_systemd_unit nixpi-daemon.service; then
-		if ! root_command nixpi-finalize-service-systemctl enable nixpi-daemon.service; then
-			echo "warning: failed to enable nixpi-daemon.service during wizard finalization" >&2
+	if has_systemd_unit nixpi-chat.service; then
+		if ! root_command nixpi-finalize-service-systemctl enable nixpi-chat.service; then
+			echo "warning: failed to enable nixpi-chat.service during wizard finalization" >&2
 		fi
-		if ! root_command nixpi-finalize-service-systemctl restart nixpi-daemon.service; then
-			echo "warning: failed to start nixpi-daemon.service during wizard finalization" >&2
+		if ! root_command nixpi-finalize-service-systemctl restart nixpi-chat.service; then
+			echo "warning: failed to start nixpi-chat.service during wizard finalization" >&2
 		fi
 	fi
 	if has_systemd_unit display-manager.service; then
@@ -73,16 +73,10 @@ finalize() {
 	mesh_ip=$(read_checkpoint_data netbird)
 	local mesh_fqdn
 	mesh_fqdn=$(netbird_fqdn)
-	local matrix_user
-	matrix_user=$(read_checkpoint_data matrix)
 	local services
 	services=$(read_checkpoint_data services)
 	local ai_provider
 	ai_provider=$(read_checkpoint_data ai)
-	local network_activity_room=""
-	if [[ -f /var/lib/nixpi/netbird-watcher/matrix-token ]]; then
-		network_activity_room="#network-activity:$(hostname -s)"
-	fi
 
 	local netbird_connected=false
 	if command -v netbird >/dev/null 2>&1; then
@@ -111,15 +105,12 @@ finalize() {
 
 	[[ -n "$mesh_ip" ]] && echo "  Mesh IP: ${mesh_ip} (access from any NetBird peer)"
 	[[ -n "$mesh_fqdn" ]] && echo "  NetBird name: ${mesh_fqdn}"
-	[[ -n "$matrix_user" ]] && echo "  Matrix user: @${matrix_user}:nixpi"
-	[[ -n "$network_activity_room" ]] && echo "  Network activity room: ${network_activity_room}"
 	if [[ "$services" != "skipped" ]]; then
-		echo "  Built-in services: ${services:-home chat}"
+		echo "  Built-in services: ${services:-chat}"
 		echo ""
 		print_service_access_summary "$services" "$mesh_ip" "$mesh_fqdn"
 		echo ""
 	fi
-	[[ -n "$network_activity_room" ]] && echo "  Future NetBird peer events will appear there."
 	echo ""
 	if has_command pi; then
 		echo "  Starting Pi — your AI companion."

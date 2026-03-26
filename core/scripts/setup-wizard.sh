@@ -70,7 +70,7 @@ has_runtime_stack() {
 }
 
 has_service_stack() {
-	[[ -f /usr/local/share/nixpi/home-template.html ]] && has_systemd_unit nixpi-home.service && has_systemd_unit nixpi-element-web.service
+	has_systemd_unit nixpi-chat.service
 }
 
 has_git() {
@@ -221,7 +221,6 @@ main() {
 	step_done appliance || step_appliance
 	refresh_group_session_if_needed "$PI_DIR"
 	step_done netbird || step_netbird
-	step_done matrix || step_matrix
 	step_done git || step_git
 	step_done ai || step_ai
 	step_done services || step_services

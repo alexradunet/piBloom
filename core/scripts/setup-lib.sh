@@ -2,8 +2,7 @@
 # setup-lib.sh — Shared function library for setup-wizard.sh.
 # Source this file; do not execute directly.
 #
-# Provides: checkpoint management, NetBird utilities,
-#           built-in service runtime generation.
+# Provides: checkpoint management, NetBird utilities.
 #
 # Required env vars (callers must set before sourcing):
 #   WIZARD_STATE        — path to checkpoint directory (e.g. ~/.nixpi/wizard-state)
@@ -123,63 +122,6 @@ read_bootstrap_primary_password() {
 }
 
 
-write_service_home_runtime() {
-	local _mesh_ip="$1" _mesh_fqdn="$2"
-	local canonical_host mode page_url element_web_url generated_at access_message
-	canonical_host=$(canonical_service_host)
-	mode=$(canonical_access_mode)
-
-	if [[ -n "$canonical_host" ]]; then
-		page_url="https://${canonical_host}/"
-		element_web_url="https://${canonical_host}/element/"
-	else
-		page_url="http://localhost/"
-		element_web_url="http://localhost/"
-	fi
-
-	case "$mode" in
-		healthy)
-			access_message="Use the NetBird hostname below as the one canonical access path for Home, Element Web, and Matrix."
-			;;
-		degraded)
-			access_message="Canonical NetBird access is temporarily unavailable on this box. Recover locally via http://localhost/ without changing the canonical host."
-			;;
-		*)
-			access_message="Canonical NetBird access is not ready yet. Finish NetBird setup, then use localhost only as an on-box recovery path."
-			;;
-	esac
-	generated_at=$(date -Iseconds)
-
-	local template="/usr/local/share/nixpi/home-template.html"
-	mkdir -p "$NIXPI_CONFIG/home"
-	sed \
-		-e "s|@@CANONICAL_HOST@@|${canonical_host:-not available}|g" \
-		-e "s|@@PAGE_URL@@|${page_url}|g" \
-		-e "s|@@ELEMENT_WEB_URL@@|${element_web_url}|g" \
-		-e "s|@@ACCESS_MESSAGE@@|${access_message}|g" \
-		-e "s|@@GENERATED_AT@@|${generated_at}|g" \
-		"$template" > "$NIXPI_CONFIG/home/index.html"
-}
-
-install_home_infrastructure() {
-	mkdir -p "$NIXPI_CONFIG/home"
-}
-
-write_element_web_runtime_config() {
-	mkdir -p "$NIXPI_CONFIG/element-web"
-	cat > "$NIXPI_CONFIG/element-web/config.json" <<'EOF'
-{
-  "default_server_config": {
-    "m.homeserver": {
-      "base_url": "https://matrix.org",
-      "server_name": "matrix.org"
-    }
-  },
-  "disable_custom_urls": true,
-  "brand": "NixPI Element Web"
-}
-EOF
-}
 
 
 
