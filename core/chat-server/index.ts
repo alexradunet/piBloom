@@ -65,7 +65,8 @@ export function createChatServer(opts: ChatServerOptions): http.Server {
     if (req.method === "GET") {
       let filePath = path.join(opts.staticDir, url.pathname === "/" ? "index.html" : url.pathname);
       // Prevent path traversal
-      if (!filePath.startsWith(opts.staticDir)) {
+      const root = opts.staticDir.endsWith(path.sep) ? opts.staticDir : opts.staticDir + path.sep;
+      if (!filePath.startsWith(root)) {
         res.writeHead(403).end();
         return;
       }
