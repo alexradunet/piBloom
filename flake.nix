@@ -350,7 +350,6 @@
             { name = "nixpi-install-wizard"; path = nixosTests.nixpi-install-wizard; }
             { name = "nixpi-network"; path = nixosTests.nixpi-network; }
             { name = "nixpi-e2e"; path = nixosTests.nixpi-e2e; }
-            { name = "nixpi-home"; path = nixosTests.nixpi-home; }
             { name = "nixpi-desktop"; path = nixosTests.nixpi-desktop; }
             { name = "nixpi-rdp"; path = nixosTests.nixpi-rdp; }
             { name = "nixpi-security"; path = nixosTests.nixpi-security; }
