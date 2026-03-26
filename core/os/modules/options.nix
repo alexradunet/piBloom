@@ -116,7 +116,6 @@ in
       allowedUnits = lib.mkOption {
         type = lib.types.listOf lib.types.str;
         default = [
-          "nixpi-daemon.service"
           "netbird.service"
           "nixpi-home.service"
           "nixpi-element-web.service"

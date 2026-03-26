@@ -48,15 +48,6 @@ EOF
     chmod 644 ${homeDir}/.nixpi/prefill.env
   '';
 
-  mkMatrixAdminSeedConfig = {
-    username,
-    password,
-  }: {
-    services.matrix-continuwuity.settings.admin_execute = [
-      "users create ${username} ${password}"
-    ];
-  };
-
   mkTestFilesystems = {
     fileSystems."/" = { device = "/dev/vda"; fsType = "ext4"; };
     fileSystems."/boot" = { device = "/dev/vda1"; fsType = "vfat"; };
@@ -196,75 +187,4 @@ EOF
     }
   '';
 
-  matrixRegisterScript = ''
-    import json
-
-    def register_matrix_user(machine, homeserver, username, password, token=""):
-        if not token:
-            token = machine.succeed("cat /var/lib/nixpi/secrets/matrix-registration-shared-secret").strip()
-        response = machine.succeed(
-            "curl -s -X POST " + homeserver + "/_matrix/client/v3/register "
-            + "-H 'Content-Type: application/json' "
-            + "-d '{\"username\":\"" + username + "\",\"password\":\"" + password + "\",\"inhibit_login\":false}'"
-        )
-        data = json.loads(response)
-        if "access_token" in data:
-            return data
-        for _ in range(4):
-            session = data.get("session")
-            assert session, "Matrix registration challenge missing session: " + response
-
-            completed = set(data.get("completed", []))
-            auth = None
-            for flow in data.get("flows", []):
-                for stage in flow.get("stages", []):
-                    if stage in completed:
-                        continue
-                    if stage == "m.login.registration_token" and token:
-                        auth = {"type": stage, "session": session, "token": token}
-                        break
-                    if stage == "m.login.dummy":
-                        auth = {"type": stage, "session": session}
-                        break
-                if auth:
-                    break
-            if not auth and token and "m.login.registration_token" not in completed:
-                auth = {"type": "m.login.registration_token", "session": session, "token": token}
-            if not auth and "m.login.dummy" not in completed:
-                auth = {"type": "m.login.dummy", "session": session}
-            assert auth, "Matrix registration challenge advertised no supported auth stages: " + response
-
-            payload = json.dumps({
-                "username": username,
-                "password": password,
-                "inhibit_login": False,
-                "auth": auth,
-            })
-            response = machine.succeed(
-                "curl -sf -X POST " + homeserver + "/_matrix/client/v3/register "
-                + "-H 'Content-Type: application/json' "
-                + "-d '" + payload + "'"
-            )
-            data = json.loads(response)
-            if "access_token" in data:
-                return data
-
-        raise AssertionError("Matrix registration did not complete: " + response)
-
-    def login_matrix_user(machine, homeserver, username, password):
-        payload = json.dumps({
-            "type": "m.login.password",
-            "identifier": {
-                "type": "m.id.user",
-                "user": username,
-            },
-            "password": password,
-        })
-        response = machine.succeed(
-            "curl -sf -X POST " + homeserver + "/_matrix/client/v3/login "
-            + "-H 'Content-Type: application/json' "
-            + "-d '" + payload + "'"
-        )
-        return json.loads(response)
-  '';
 }

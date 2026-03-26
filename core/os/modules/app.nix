@@ -17,10 +17,8 @@ in
     "L+ /usr/local/share/nixpi - - - - ${appPackage}/share/nixpi"
     "d /etc/nixpi/appservices 0755 root root -"
     "d ${stateDir} 0770 ${primaryUser} ${primaryUser} -"
-    "d ${stateDir}/nixpi-daemon 0770 ${primaryUser} ${primaryUser} -"
     "d ${stateDir}/services 0770 ${primaryUser} ${primaryUser} -"
     "d ${stateDir}/services/home 0770 ${primaryUser} ${primaryUser} -"
-    "d ${stateDir}/services/element-web 0770 ${primaryUser} ${primaryUser} -"
   ];
 
   systemd.services.nixpi-app-setup = {
@@ -47,12 +45,4 @@ in
     };
   };
 
-  system.services.nixpi-daemon = {
-    imports = [ (lib.modules.importApply ../services/nixpi-daemon.nix { inherit pkgs; }) ];
-    nixpi-daemon = {
-      package = appPackage;
-      inherit primaryUser stateDir agentStateDir;
-      path = [ piAgent pkgs.nodejs ];
-    };
-  };
 }

@@ -166,11 +166,7 @@ in
       { command = "/run/current-system/sw/bin/nixpi-bootstrap-netbird-systemctl * netbird.service"; options = [ "NOPASSWD" ]; }
       { command = "/run/current-system/sw/bin/nixpi-bootstrap-service-systemctl restart nixpi-home.service"; options = [ "NOPASSWD" ]; }
       { command = "/run/current-system/sw/bin/nixpi-bootstrap-service-systemctl restart nixpi-element-web.service"; options = [ "NOPASSWD" ]; }
-      { command = "/run/current-system/sw/bin/nixpi-bootstrap-service-systemctl enable nixpi-daemon.service"; options = [ "NOPASSWD" ]; }
-      { command = "/run/current-system/sw/bin/nixpi-bootstrap-service-systemctl restart nixpi-daemon.service"; options = [ "NOPASSWD" ]; }
       { command = "/run/current-system/sw/bin/nixpi-bootstrap-service-systemctl start display-manager.service"; options = [ "NOPASSWD" ]; }
-      { command = "/run/current-system/sw/bin/nixpi-finalize-service-systemctl enable nixpi-daemon.service"; options = [ "NOPASSWD" ]; }
-      { command = "/run/current-system/sw/bin/nixpi-finalize-service-systemctl restart nixpi-daemon.service"; options = [ "NOPASSWD" ]; }
       { command = "/run/current-system/sw/bin/nixpi-finalize-service-systemctl start display-manager.service"; options = [ "NOPASSWD" ]; }
       { command = "/run/current-system/sw/bin/nixpi-bootstrap-sshd-systemctl stop sshd.service"; options = [ "NOPASSWD" ]; }
       { command = "/run/current-system/sw/bin/nixpi-bootstrap-passwd"; options = [ "NOPASSWD" ]; }

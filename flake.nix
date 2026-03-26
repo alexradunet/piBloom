@@ -349,7 +349,6 @@
             { name = "nixpi-firstboot"; path = nixosTests.nixpi-firstboot; }
             { name = "nixpi-install-wizard"; path = nixosTests.nixpi-install-wizard; }
             { name = "nixpi-network"; path = nixosTests.nixpi-network; }
-            { name = "nixpi-daemon"; path = nixosTests.nixpi-daemon; }
             { name = "nixpi-e2e"; path = nixosTests.nixpi-e2e; }
             { name = "nixpi-home"; path = nixosTests.nixpi-home; }
             { name = "nixpi-desktop"; path = nixosTests.nixpi-desktop; }

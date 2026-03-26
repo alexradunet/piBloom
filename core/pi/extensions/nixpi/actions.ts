@@ -9,14 +9,85 @@ import { run } from "../../../lib/exec.js";
 import { textToolResult } from "../../../lib/utils.js";
 import { readPackageVersion, resolvePackageDir, safePath } from "../../../lib/filesystem.js";
 import { stringifyFrontmatter } from "../../../lib/frontmatter.js";
-import {
-	generateAgentInstructionsMarkdown,
-	type MatrixCredentials,
-	matrixAgentCredentialsPath,
-	matrixCredentialsPath,
-	provisionMatrixAgentAccount,
-} from "../../../lib/matrix.js";
 import { errorResult, nowIso, truncate } from "../../../lib/utils.js";
+
+// ---------------------------------------------------------------------------
+// Minimal Matrix types/helpers (inlined after matrix.ts removal)
+// ---------------------------------------------------------------------------
+
+interface MatrixCredentials {
+	homeserver: string;
+	botUserId: string;
+	botAccessToken: string;
+	botPassword: string;
+	userUserId?: string;
+	userPassword?: string;
+	registrationToken?: string;
+}
+
+interface MatrixAgentCredentials {
+	homeserver: string;
+	userId: string;
+	accessToken: string;
+	password: string;
+	username: string;
+}
+
+function matrixCredentialsPath(): string {
+	return path.join(os.homedir(), ".pi", "matrix-credentials.json");
+}
+
+function matrixAgentCredentialsPath(agentId: string, homeDir = os.homedir()): string {
+	const dir = process.env.NIXPI_PI_DIR
+		? path.join(process.env.NIXPI_PI_DIR, "matrix-agents")
+		: path.join(homeDir, ".pi", "matrix-agents");
+	return path.join(dir, `${agentId}.json`);
+}
+
+interface GenerateAgentInstructionsMarkdownOptions {
+	id: string;
+	name: string;
+	username: string;
+	description: string;
+	rolePrompt: string;
+	model?: string;
+	thinking?: string;
+	respondMode?: string;
+}
+
+function generateAgentInstructionsMarkdown(options: GenerateAgentInstructionsMarkdownOptions): string {
+	const frontmatter: Record<string, unknown> = {
+		id: options.id,
+		name: options.name,
+		matrix: {
+			username: options.username,
+			autojoin: true,
+		},
+		...(options.model ? { model: options.model } : {}),
+		...(options.thinking ? { thinking: options.thinking } : {}),
+		respond: {
+			mode: options.respondMode ?? "mentioned",
+			allow_agent_mentions: true,
+			max_public_turns_per_root: 2,
+			cooldown_ms: 1500,
+		},
+		description: options.description,
+	};
+	const body = `# ${options.name}\n\n${options.rolePrompt}\n`;
+	return stringifyFrontmatter(frontmatter, body);
+}
+
+type ProvisionMatrixAgentAccountResult =
+	| { ok: true; credentials: MatrixAgentCredentials }
+	| { ok: false; error: string };
+
+async function provisionMatrixAgentAccount(_opts: {
+	homeserver: string;
+	username: string;
+	registrationToken: string;
+}): Promise<ProvisionMatrixAgentAccountResult> {
+	return { ok: false, error: "Matrix provisioning not available" };
+}
 import { readBlueprintVersions } from "./actions-blueprints.js";
 
 const NIXPI_DIRS = ["Persona", "Skills", "Evolutions", "Objects", "Episodes", "Agents", "audit"];

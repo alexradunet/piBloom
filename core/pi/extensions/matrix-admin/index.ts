@@ -1,13 +1,21 @@
 import * as fs from "node:fs";
+import * as path from "node:path";
 import { Type } from "@sinclair/typebox";
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import { registerTools } from "../../../lib/utils.js";
 import { getPiDir } from "../../../lib/filesystem.js";
-import { matrixCredentialsPath } from "../../../lib/matrix.js";
-import type { MatrixCredentials } from "../../../lib/matrix.js";
 import { isDangerous } from "./commands.js";
 import { MatrixAdminClient } from "./client.js";
-import * as path from "node:path";
+
+interface MatrixCredentials {
+  homeserver: string;
+  botAccessToken: string;
+  botUserId: string;
+}
+
+function matrixCredentialsPath(): string {
+  return path.join(getPiDir(), "matrix-credentials.json");
+}
 
 function matrixAdminConfigPath(): string {
   return path.join(getPiDir(), "matrix-admin.json");
