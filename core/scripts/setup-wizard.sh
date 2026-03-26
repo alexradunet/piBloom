@@ -93,7 +93,7 @@ configured_primary_user() {
 }
 
 configured_hostname() {
-	read_nixos_assignment 'networking\.hostName' /etc/nixos/nixpi-host.nix /etc/nixos/nixpi-install.nix && return 0
+	read_nixos_assignment 'networking\.hostName' /etc/nixos/nixpi-host.nix /etc/nixos/nixpi-install.nix /etc/nixos/configuration.nix && return 0
 	read_nixos_option_string 'networking.hostName'
 }
 
