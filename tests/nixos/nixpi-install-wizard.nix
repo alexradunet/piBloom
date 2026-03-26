@@ -66,14 +66,22 @@ in
           chmod 0600 "${config.nixpi.stateDir}/bootstrap/primary-user-password"
         '';
 
-      # Write nixpi-install.nix so configured_hostname / configured_primary_user work.
+      # Write config files mirroring what the installer actually generates:
+      # - configuration.nix holds networking.hostName (written by upsert_hostname)
+      # - nixpi-install.nix holds nixpi.primaryUser (written from the install template)
       system.activationScripts.nixpi-install-nix =
         lib.stringAfter [ "users" ] ''
           install -d -m 0755 /etc/nixos
+          cat > /etc/nixos/configuration.nix <<'EOF'
+{ ... }:
+{
+  imports = [ ./nixpi-install.nix ];
+  networking.hostName = "${hostName}";
+}
+EOF
           cat > /etc/nixos/nixpi-install.nix <<'EOF'
 { ... }:
 {
-  networking.hostName = "${hostName}";
   nixpi.primaryUser = "${username}";
 }
 EOF
