@@ -11,10 +11,6 @@ let
       nixPiModules
       nixPiModulesNoShell
       mkTestFilesystems
-      mkMatrixAdminSeedConfig
-      mkMatrixMultiSeedConfig
-      matrixTestClient
-      matrixRegisterScript
       mkManagedUserConfig
       mkPrefillActivation;
   };
@@ -30,7 +26,6 @@ let
   };
 
   tests = {
-    nixpi-matrix               = runTest ./nixpi-matrix.nix;
     nixpi-firstboot            = runTest ./nixpi-firstboot.nix;
     nixpi-network              = runTest ./nixpi-network.nix;
     nixpi-daemon               = runTest ./nixpi-daemon.nix;
@@ -40,8 +35,6 @@ let
     nixpi-rdp                  = runTest ./nixpi-rdp.nix;
     nixpi-security             = runTest ./nixpi-security.nix;
     nixpi-modular-services     = runTest ./nixpi-modular-services.nix;
-    nixpi-matrix-bridge        = runTest ./nixpi-matrix-bridge.nix;
-    nixpi-matrix-reply         = runTest ./nixpi-matrix-reply.nix;
     nixpi-bootstrap-mode       = runTest ./nixpi-bootstrap-mode.nix;
     nixpi-post-setup-lockdown  = runTest ./nixpi-post-setup-lockdown.nix;
     nixpi-broker               = runTest ./nixpi-broker.nix;
@@ -52,7 +45,6 @@ let
   };
 
   smokeAliases = {
-    smoke-matrix    = tests.nixpi-matrix;
     smoke-firstboot        = tests.nixpi-firstboot;
     smoke-install-wizard   = tests.nixpi-install-wizard;
     smoke-security  = tests.nixpi-security;
