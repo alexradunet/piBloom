@@ -8,7 +8,8 @@ let
   mkNode =
     { prefillEnv ? ''
         PREFILL_USERNAME=testuser
-        PREFILL_MATRIX_PASSWORD=testpassword123
+        PREFILL_MATRIX_BOT_USER_ID=@testpi:matrix.org
+        PREFILL_MATRIX_BOT_ACCESS_TOKEN=test_token_123
         NIXPI_BOOTSTRAP_REPO=${bootstrapRepoUrl}
       ''
     , hostName ? "nixpi-firstboot-test"
@@ -125,7 +126,6 @@ in
 
   testScript = ''
     import json
-    import urllib.parse
 
     bootstrap_missing_git = machines[0]
     bootstrap_wrong_origin = machines[1]
@@ -138,10 +138,8 @@ in
     nixpi.wait_for_unit("network-online.target", timeout=60)
     nixpi.wait_for_unit("netbird.service", timeout=60)
 
-    nixpi.succeed("systemctl stop continuwuity.service")
     nixpi.succeed("su - pi -c 'setup-wizard.sh'")
 
-    nixpi.wait_for_unit("continuwuity.service", timeout=120)
     nixpi.succeed("test -f " + home + "/.nixpi/wizard-state/system-ready")
     nixpi.fail("test -f " + home + "/.nixpi/.setup-complete")
     nixpi.succeed("test -f " + home + "/.nixpi/prefill.env")
@@ -191,35 +189,9 @@ in
     nixpi.succeed("su - pi -c 'cd /srv/nixpi && git switch main'")
 
     creds = json.loads(nixpi.succeed("cat " + home + "/.pi/matrix-credentials.json"))
-    bot_token = creds["botAccessToken"]
-    bot_user_id = creds["botUserId"]
-    server_name = bot_user_id.split(":", 1)[1]
-    admin_alias = f"#admins:{server_name}"
-    admin_alias_path = urllib.parse.quote(admin_alias, safe="")
-    room_info = json.loads(
-        nixpi.succeed(
-            "curl -sf -H "
-            + "'Authorization: Bearer "
-            + bot_token
-            + "' "
-            + "'http://127.0.0.1:6167/_matrix/client/v3/directory/room/"
-            + admin_alias_path
-            + "'"
-        )
-    )
-    admin_room_id = room_info["room_id"]
-    joined_rooms = json.loads(
-        nixpi.succeed(
-            "curl -sf -H "
-            + "'Authorization: Bearer "
-            + bot_token
-            + "' "
-            + "'http://127.0.0.1:6167/_matrix/client/v3/joined_rooms'"
-        )
-    )
-    assert admin_room_id in joined_rooms["joined_rooms"], (
-        f"Pi bot {bot_user_id} was not joined to {admin_alias}: {joined_rooms}"
-    )
+    assert creds["homeserver"] == "https://matrix.org", f"Unexpected homeserver: {creds.get('homeserver')}"
+    assert creds["botUserId"] == "@testpi:matrix.org", f"Unexpected botUserId: {creds.get('botUserId')}"
+    assert creds["botAccessToken"] == "test_token_123", f"Unexpected botAccessToken"
 
     nixpi.succeed(
         "su - pi -c '. ~/.bashrc; test \"$PI_CODING_AGENT_DIR\" = /home/pi/.pi; "
@@ -230,7 +202,6 @@ in
     bootstrap_missing_git.wait_for_unit("multi-user.target", timeout=300)
     bootstrap_missing_git.wait_for_unit("network-online.target", timeout=60)
     bootstrap_missing_git.wait_for_unit("netbird.service", timeout=60)
-    bootstrap_missing_git.succeed("systemctl stop continuwuity.service")
     bootstrap_missing_git.fail("su - pi -c 'setup-wizard.sh' > /tmp/bootstrap-missing-git.log 2>&1")
     bootstrap_missing_git.succeed("grep -Eq 'Refusing to overwrite existing non-git directory|canonical repo checkout is missing \\.git' /home/pi/.nixpi/bootstrap/full-appliance-upgrade.log")
 
@@ -238,7 +209,6 @@ in
     bootstrap_wrong_origin.wait_for_unit("multi-user.target", timeout=300)
     bootstrap_wrong_origin.wait_for_unit("network-online.target", timeout=60)
     bootstrap_wrong_origin.wait_for_unit("netbird.service", timeout=60)
-    bootstrap_wrong_origin.succeed("systemctl stop continuwuity.service")
     bootstrap_wrong_origin.succeed("test -d /srv/nixpi/.git")
     bootstrap_wrong_origin.fail("su - pi -c 'setup-wizard.sh' > /tmp/bootstrap-wrong-origin.log 2>&1")
     bootstrap_wrong_origin.succeed("grep -Eq 'unexpected origin URL|canonical repo origin mismatch' /home/pi/.nixpi/bootstrap/full-appliance-upgrade.log")

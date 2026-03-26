@@ -1,42 +1,10 @@
-{ lib, nixPiModulesNoShell, piAgent, appPackage, setupPackage, mkTestFilesystems, mkMatrixAdminSeedConfig, matrixRegisterScript, ... }:
+{ lib, nixPiModulesNoShell, piAgent, appPackage, setupPackage, mkTestFilesystems, ... }:
 
 {
   name = "nixpi-daemon";
 
   nodes = {
-    server = { pkgs, ... }: let
-      username = "server";
-      homeDir = "/home/${username}";
-    in {
-      imports = nixPiModulesNoShell ++ [ mkTestFilesystems (mkMatrixAdminSeedConfig {
-        username = username;
-        password = "testpass123";
-      }) ];
-      _module.args = { inherit piAgent appPackage setupPackage; };
-      nixpi.primaryUser = username;
-      virtualisation.diskSize = 10240;
-      virtualisation.memorySize = 2048;
-
-      networking.hostName = "nixpi-server";
-      time.timeZone = "UTC";
-      i18n.defaultLocale = "en_US.UTF-8";
-      networking.networkmanager.enable = true;
-      system.stateVersion = "25.05";
-      boot.loader.systemd-boot.enable = true;
-      boot.loader.efi.canTouchEfiVariables = true;
-
-      users.users.${username} = {
-        isNormalUser = true;
-        group = username;
-        extraGroups = [ "wheel" "networkmanager" ];
-        home = homeDir;
-        shell = pkgs.bash;
-        initialPassword = "serverpass123";
-      };
-      users.groups.${username} = {};
-    };
-
-    agent = { pkgs, ... }: let
+    nixpi = { pkgs, ... }: let
       username = "pi";
       homeDir = "/home/${username}";
     in {
@@ -54,7 +22,6 @@
       system.stateVersion = "25.05";
       boot.loader.systemd-boot.enable = true;
       boot.loader.efi.canTouchEfiVariables = true;
-      systemd.services.continuwuity.wantedBy = lib.mkForce [];
       users.users.${username} = {
         isNormalUser = true;
         group = username;
@@ -77,78 +44,53 @@
   };
 
   testScript = ''
-    ${matrixRegisterScript}
+    import json
 
-    agent = machines[0]
-    server = machines[1]
+    nixpi = machines[0]
     username = "pi"
     home = "/home/pi"
 
-    server.start()
-    server.wait_for_unit("multi-user.target", timeout=300)
-    server.wait_for_unit("continuwuity.service", timeout=60)
-    server.wait_until_succeeds("curl -sf http://localhost:6167/_matrix/client/versions", timeout=60)
-    # admin_execute may create the user asynchronously after server startup; poll until login works
-    server.wait_until_succeeds(
-        "curl -sf -X POST http://localhost:6167/_matrix/client/v3/login"
-        + " -H 'Content-Type: application/json'"
-        + " -d '{\"type\":\"m.login.password\",\"identifier\":{\"type\":\"m.id.user\",\"user\":\"server\"},\"password\":\"testpass123\"}'"
-        + " | grep -q 'access_token'",
-        timeout=60,
-    )
-    login_payload = login_matrix_user(server, "http://localhost:6167", "server", "testpass123")
-    access_token = login_payload["access_token"]
-    user_id = login_payload["user_id"]
-    assert user_id, "Continuwuity login produced an empty user_id"
-    assert access_token, "Continuwuity login produced an empty access_token"
+    nixpi.start()
+    nixpi.wait_for_unit("multi-user.target", timeout=300)
 
-    agent.start()
-    agent.wait_for_unit("multi-user.target", timeout=300)
-
-    agent.succeed("mkdir -p /home/pi/.pi")
-    agent.succeed(
-        "cat > "
-        + "/home/pi/.pi/matrix-credentials.json <<'CREDS'\n"
+    nixpi.succeed("mkdir -p /home/pi/.pi")
+    nixpi.succeed(
+        "cat > /home/pi/.pi/matrix-credentials.json <<'CREDS'\n"
         + "{\n"
-        + '  "homeserver": "http://server:6167",\n'
-        + '  "botUserId": "'
-        + user_id
-        + '",\n'
-        + '  "botAccessToken": "'
-        + access_token
-        + '",\n'
-        + '  "botPassword": "testpass123"\n'
+        + '  "homeserver": "https://matrix.org",\n'
+        + '  "botUserId": "@testdaemon:matrix.org",\n'
+        + '  "botAccessToken": "test_access_token_daemon"\n'
         + "}\n"
         + "CREDS"
     )
-    agent.succeed("chown -R pi:pi /home/pi/.pi")
+    nixpi.succeed("chown -R pi:pi /home/pi/.pi")
 
-    agent.succeed(
+    nixpi.succeed(
         "mkdir -p " + home + "/.nixpi/wizard-state && touch " + home + "/.nixpi/wizard-state/system-ready && chown -R "
         + username + ":" + username + " " + home + "/.nixpi"
     )
-    agent.succeed("mkdir -p /srv/nixpi && chown -R " + username + ":" + username + " /srv/nixpi")
+    nixpi.succeed("mkdir -p /srv/nixpi && chown -R " + username + ":" + username + " /srv/nixpi")
 
-    agent.succeed("systemctl start nixpi-daemon.service || true")
+    nixpi.succeed("systemctl start nixpi-daemon.service || true")
 
-    agent.succeed("test -f /etc/systemd/system/nixpi-daemon.service")
-    agent.succeed("test -d /usr/local/share/nixpi")
-    agent.succeed("test -f /usr/local/share/nixpi/dist/core/daemon/index.js")
+    nixpi.succeed("test -f /etc/systemd/system/nixpi-daemon.service")
+    nixpi.succeed("test -d /usr/local/share/nixpi")
+    nixpi.succeed("test -f /usr/local/share/nixpi/dist/core/daemon/index.js")
 
-    agent.wait_until_succeeds(
+    nixpi.wait_until_succeeds(
         "systemctl is-active nixpi-daemon.service | grep -Eq 'active|activating'",
         timeout=30,
     )
-    daemon_status = agent.succeed("systemctl is-active nixpi-daemon.service || true").strip()
-    journal = agent.succeed("journalctl -u nixpi-daemon.service -n 20 --no-pager || true")
+    daemon_status = nixpi.succeed("systemctl is-active nixpi-daemon.service || true").strip()
+    journal = nixpi.succeed("journalctl -u nixpi-daemon.service -n 20 --no-pager || true")
     print("nixpi-daemon status: " + daemon_status)
     print("nixpi-daemon journal: " + journal)
     assert daemon_status in ["active", "activating"], "Unexpected nixpi-daemon status: " + daemon_status
 
-    service_unit = agent.succeed("systemctl cat nixpi-daemon.service")
-    exec_start = agent.succeed("systemctl show -p ExecStart --value nixpi-daemon.service")
-    environment = agent.succeed("systemctl show -p Environment --value nixpi-daemon.service")
-    working_directory = agent.succeed("systemctl show -p WorkingDirectory --value nixpi-daemon.service").strip()
+    service_unit = nixpi.succeed("systemctl cat nixpi-daemon.service")
+    exec_start = nixpi.succeed("systemctl show -p ExecStart --value nixpi-daemon.service")
+    environment = nixpi.succeed("systemctl show -p Environment --value nixpi-daemon.service")
+    working_directory = nixpi.succeed("systemctl show -p WorkingDirectory --value nixpi-daemon.service").strip()
     assert "node" in exec_start and "/usr/local/share/nixpi/dist/core/daemon/index.js" in exec_start, \
         "Unexpected ExecStart in nixpi-daemon service: " + exec_start
     assert "NIXPI_DIR=/home/pi/nixpi" in environment, "Expected NIXPI_DIR workspace environment in nixpi-daemon service"
@@ -156,13 +98,13 @@
     assert "PI_CODING_AGENT_DIR=/home/pi/.pi" in environment, \
         "Expected PI_CODING_AGENT_DIR environment in nixpi-daemon service"
     assert working_directory == "/srv/nixpi", "Unexpected WorkingDirectory: " + working_directory
-    agent.succeed("ls -la /usr/local/share/nixpi/")
+    nixpi.succeed("ls -la /usr/local/share/nixpi/")
 
-    agent.succeed("test -f /home/pi/.pi/matrix-credentials.json")
-    creds = json.loads(agent.succeed("cat /home/pi/.pi/matrix-credentials.json"))
-    assert creds["homeserver"] == "http://server:6167", "Credentials missing homeserver"
-    assert creds["botUserId"] == user_id, "Credentials missing botUserId"
-    assert creds["botAccessToken"] == access_token, "Credentials missing botAccessToken"
+    nixpi.succeed("test -f /home/pi/.pi/matrix-credentials.json")
+    creds = json.loads(nixpi.succeed("cat /home/pi/.pi/matrix-credentials.json"))
+    assert creds["homeserver"] == "https://matrix.org", "Credentials missing homeserver"
+    assert creds["botUserId"] == "@testdaemon:matrix.org", "Credentials missing botUserId"
+    assert creds["botAccessToken"] == "test_access_token_daemon", "Credentials missing botAccessToken"
 
     print("All nixpi-daemon tests passed!")
     print("Note: Full daemon connection test requires complete Matrix network setup")

@@ -95,7 +95,6 @@ in
 
     bootstrap.start()
     bootstrap.wait_for_unit("multi-user.target", timeout=300)
-    bootstrap.wait_for_unit("continuwuity.service", timeout=60)
     bootstrap.wait_for_unit("fail2ban.service", timeout=60)
     bootstrap.wait_until_succeeds("test ! -f /home/pi/.nixpi/wizard-state/system-ready", timeout=30)
 

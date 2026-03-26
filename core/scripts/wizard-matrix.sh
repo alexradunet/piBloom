@@ -14,7 +14,6 @@ print_service_access_summary() {
 		echo "    Share this   - send other NetBird peers the NixPI Home URL"
 		echo "    Element Web  - https://${canonical_host}/element/"
 		echo "    Element Web  - preconfigured for this NixPI server"
-		echo "    Matrix       - https://${canonical_host}"
 	elif [[ "$access_mode" == "not-ready" ]]; then
 		echo "    Canonical host - not ready yet (finish NetBird setup)"
 	fi

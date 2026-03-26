@@ -56,9 +56,6 @@ finalize() {
 	if [[ "${NIXPI_KEEP_SSH_AFTER_SETUP:-0}" != "1" ]]; then
 		root_command nixpi-bootstrap-sshd-systemctl stop sshd.service || echo "warning: failed to stop sshd.service" >&2
 	fi
-	if has_matrix_stack; then
-		root_command nixpi-bootstrap-matrix-systemctl try-restart continuwuity.service || echo "warning: failed to restart continuwuity.service" >&2
-	fi
 	touch "$SYSTEM_READY"
 	if has_systemd_unit nixpi-daemon.service; then
 		if ! root_command nixpi-finalize-service-systemctl enable nixpi-daemon.service; then

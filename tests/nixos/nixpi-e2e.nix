@@ -64,7 +64,6 @@ in
         ${pkgs.git}/bin/git -C ${bootstrapRepoDir}/worktree push ${bootstrapOriginDir} main
         cat > ${homeDir}/.nixpi/prefill.env << 'EOF'
     PREFILL_USERNAME=e2etest
-    PREFILL_MATRIX_PASSWORD=e2etestpass123
     NIXPI_BOOTSTRAP_REPO=${bootstrapRepoUrl}
     EOF
         chown -R ${username}:${username} ${homeDir}/.nixpi
@@ -99,9 +98,7 @@ in
     nixpi = machines[1]
     username = "pi"
     home = "/home/pi"
-    matrix_user = "e2etest"
-    matrix_password = "e2etestpass123"
-    
+
     nixpi.start()
     nixpi.wait_for_unit("multi-user.target", timeout=300)
     nixpi.wait_until_succeeds("ip -4 addr show dev eth1 | grep -q 'inet '", timeout=60)
@@ -115,45 +112,16 @@ in
     nixpi.wait_until_succeeds("test -f " + home + "/.nixpi/wizard-state/system-ready", timeout=180)
     nixpi.fail("test -f " + home + "/.nixpi/.setup-complete")
 
-    nixpi.wait_for_unit("continuwuity.service", timeout=60)
-    nixpi.succeed("curl -sf http://127.0.0.1:6167/_matrix/client/versions")
-
     wizard_log = nixpi.succeed("cat " + home + "/.nixpi/wizard.log")
     assert "setup complete" in wizard_log.lower(), "Wizard log missing setup completion marker"
-
-    register_status = nixpi.succeed("""
-      curl -s -o /tmp/e2e-register.out -w '%{http_code}' -X POST http://127.0.0.1:6167/_matrix/client/v3/register \
-        -H "Content-Type: application/json" \
-        -d '{"username":"blocked","password":"blockedpass123","inhibit_login":false}'
-    """).strip()
-    assert register_status != "200", "Expected registration to be disabled, got HTTP " + register_status
 
     client.succeed("! nc -z -w 2 pi 22")
     nixpi.succeed("systemctl show -p ActiveState --value sshd.service | grep -Eq 'inactive|failed'")
 
-    services = ["continuwuity", "netbird", "NetworkManager"]
+    services = ["netbird", "NetworkManager"]
     for svc in services:
         nixpi.succeed("systemctl is-active " + svc + ".service")
 
-    nixpi.succeed("systemctl list-timers --all | grep -q 'nixpi-netbird-watcher' || true")
-    provisioner_state = nixpi.succeed(
-        "systemctl show -p SubState --value nixpi-netbird-provisioner.service 2>/dev/null || echo skipped"
-    ).strip()
-    print(f"Provisioner state: {provisioner_state}")
-
-    room_check = nixpi.succeed(
-        "curl -sf http://127.0.0.1:6167/_matrix/client/v3/directory/room/%23network-activity%3Api"
-        " -H 'Content-Type: application/json' 2>/dev/null || echo 'not-created'"
-    ).strip()
-    print(f"network-activity room: {room_check}")
-
-    watcher_check = nixpi.succeed(
-        "curl -sf http://127.0.0.1:6167/_matrix/client/v3/profile/%40netbird-watcher%3Api"
-        " 2>/dev/null || echo 'not-provisioned'"
-    ).strip()
-    print(f"netbird-watcher account: {watcher_check}")
-    print("  - NetBird provisioner and watcher services registered")
-    
     nixpi.succeed("test -d /srv/nixpi/.git")
     nixpi.fail("test -e " + home + "/nixpi")
     nixpi.succeed("test -d " + home + "/.nixpi")
@@ -167,7 +135,7 @@ in
 
     nixpi.succeed("systemctl is-active netbird.service")
 
-    for port in [6167, 8080, 8081, 5000, 8443]:
+    for port in [8080, 8081, 5000, 8443]:
         client.succeed(f"! nc -z -w 2 pi {port}")
 
     packages = ["git", "curl", "jq", "htop", "netbird", "pi"]
@@ -181,9 +149,7 @@ in
     print("All E2E tests passed!")
     print("=" * 60)
     print("Verified:")
-    print("  - Matrix homeserver is functional locally on the NixPI node")
     print("  - Firstboot logged unattended setup completion")
-    print("  - Matrix self-registration is disabled after setup")
     print("  - SSH is disabled from an untrusted peer after setup")
     print("  - App ports stay closed without wt0")
     print("  - Firstboot automation completes")

@@ -1,4 +1,4 @@
-{ lib, nixPiModules, nixPiModulesNoShell, piAgent, appPackage, setupPackage, mkTestFilesystems, ... }:
+{ nixPiModules, nixPiModulesNoShell, piAgent, appPackage, setupPackage, mkTestFilesystems, ... }:
 
 {
   name = "nixpi-network";
@@ -17,7 +17,6 @@
       i18n.defaultLocale = "en_US.UTF-8";
       networking.networkmanager.enable = true;
       system.stateVersion = "25.05";
-      systemd.services.continuwuity.wantedBy = lib.mkForce [];
       boot.loader.systemd-boot.enable = true;
       boot.loader.efi.canTouchEfiVariables = true;
     };
@@ -35,7 +34,6 @@
       i18n.defaultLocale = "en_US.UTF-8";
       networking.networkmanager.enable = true;
       system.stateVersion = "25.05";
-      systemd.services.continuwuity.wantedBy = lib.mkForce [];
       boot.loader.systemd-boot.enable = true;
       boot.loader.efi.canTouchEfiVariables = true;
     };
