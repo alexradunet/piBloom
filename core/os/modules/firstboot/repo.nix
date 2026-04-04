@@ -109,7 +109,7 @@ EOF
     let
       system = "${pkgs.stdenv.hostPlatform.system}";
       repoDir = /srv/nixpi;
-      pkgs = nixpkgs.legacyPackages.\${system};
+      pkgs = nixpkgs.legacyPackages.''${system};
       # Build packages directly from the canonical repo so they stay in sync
       # with the local checkout and are never GC-vulnerable store paths.
       piAgent = pkgs.callPackage (repoDir + "/core/os/pkgs/pi") {};
