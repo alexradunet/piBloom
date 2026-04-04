@@ -70,8 +70,14 @@ vm-ssh:
         echo "No VM running. Start with: just vm-daemon"
         exit 1
     fi
+    key_file="$(mktemp)"
+    trap 'rm -f "$key_file"' EXIT
+    install -m 600 tools/dev-key "$key_file"
     echo "Connecting to VM..."
-    ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -p 2222 pi@localhost
+    ssh -i "$key_file" \
+        -o StrictHostKeyChecking=no \
+        -o UserKnownHostsFile=/dev/null \
+        -p 2222 pi@localhost
 
 # Show VM log (for vm-daemon)
 vm-logs:
