@@ -80,7 +80,6 @@ in
         Environment = [
           "PATH=${lib.makeBinPath [ config.nixpi-chat.package pkgs.nodejs ]}:/run/current-system/sw/bin"
         ];
-        ExecStart = "${pkgs.nodejs}/bin/node ${config.nixpi-chat.nixpiShareDir}/dist/core/chat-server/index.js";
         User = config.nixpi-chat.primaryUser;
         Group = config.nixpi-chat.primaryUser;
         WorkingDirectory = toString config.nixpi-chat.agentStateDir;
