@@ -3,10 +3,15 @@ import http from "node:http";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { ChatSessionManager, type ChatSessionManagerOptions } from "./session.js";
+import { handleSetupApply, serveSetupPage, shouldRedirectToSetup } from "./setup.js";
 
 export interface ChatServerOptions extends ChatSessionManagerOptions {
 	/** Directory containing the pre-built frontend (index.html + assets). */
 	staticDir: string;
+	/** Path to ~/.nixpi/wizard-state/system-ready. */
+	systemReadyFile: string;
+	/** Path to the setup apply script. */
+	applyScript: string;
 }
 
 export function createChatServer(opts: ChatServerOptions): http.Server {
@@ -14,6 +19,21 @@ export function createChatServer(opts: ChatServerOptions): http.Server {
 
 	const server = http.createServer(async (req, res) => {
 		const url = new URL(req.url ?? "/", `http://${req.headers.host}`);
+
+		if (shouldRedirectToSetup(url.pathname, opts.systemReadyFile)) {
+			res.writeHead(302, { Location: "/setup" }).end();
+			return;
+		}
+
+		if (req.method === "GET" && url.pathname === "/setup") {
+			serveSetupPage(res);
+			return;
+		}
+
+		if (req.method === "POST" && url.pathname === "/api/setup/apply") {
+			await handleSetupApply(req, res, { applyScript: opts.applyScript });
+			return;
+		}
 
 		// POST /chat — streaming NDJSON
 		if (req.method === "POST" && url.pathname === "/chat") {
@@ -99,6 +119,10 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
 	const port = parseInt(process.env.NIXPI_CHAT_PORT ?? "8080", 10);
 	const nixpiShareDir = process.env.NIXPI_SHARE_DIR ?? "/usr/local/share/nixpi";
 	const piDir = process.env.PI_DIR ?? `${process.env.HOME}/.pi`;
+	const primaryUser = process.env.NIXPI_PRIMARY_USER ?? "pi";
+	const systemReadyFile =
+		process.env.NIXPI_SYSTEM_READY_FILE ?? `/home/${primaryUser}/.nixpi/wizard-state/system-ready`;
+	const applyScript = process.env.NIXPI_SETUP_APPLY_SCRIPT ?? "/run/current-system/sw/bin/nixpi-setup-apply";
 	const chatSessionsDir = `${piDir}/chat-sessions`;
 	const staticDir = path.join(path.dirname(fileURLToPath(import.meta.url)), "frontend/dist");
 
@@ -108,6 +132,8 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
 		idleTimeoutMs: parseInt(process.env.NIXPI_CHAT_IDLE_TIMEOUT ?? "1800", 10) * 1000,
 		maxSessions: parseInt(process.env.NIXPI_CHAT_MAX_SESSIONS ?? "4", 10),
 		staticDir,
+		systemReadyFile,
+		applyScript,
 	});
 
 	server.listen(port, "127.0.0.1", () => {

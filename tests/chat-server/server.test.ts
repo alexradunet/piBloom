@@ -1,4 +1,7 @@
+import fs from "node:fs";
 import type http from "node:http";
+import os from "node:os";
+import path from "node:path";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 // Mock the session manager so the server test doesn't start real Pi sessions.
@@ -18,14 +21,22 @@ import { createChatServer } from "../../core/chat-server/index.js";
 
 let server: http.Server;
 let port: number;
+let tmpDir: string;
+let systemReadyFile: string;
 
 beforeAll(async () => {
+	tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "nixpi-chat-server-test-"));
+	systemReadyFile = path.join(tmpDir, "system-ready");
+	fs.writeFileSync(systemReadyFile, "");
+
 	server = createChatServer({
 		nixpiShareDir: "/mock/share",
 		chatSessionsDir: "/tmp/test-chat-sessions",
 		idleTimeoutMs: 5000,
 		maxSessions: 4,
 		staticDir: new URL("../../core/chat-server/frontend/dist", import.meta.url).pathname,
+		systemReadyFile,
+		applyScript: "/bin/false",
 	});
 	await new Promise<void>((resolve) => {
 		server.listen(0, "127.0.0.1", () => {
@@ -36,7 +47,8 @@ beforeAll(async () => {
 });
 
 afterAll(() => {
-	server.close();
+	server?.close();
+	fs.rmSync(tmpDir, { recursive: true, force: true });
 });
 
 describe("POST /chat", () => {
