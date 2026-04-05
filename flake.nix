@@ -342,6 +342,18 @@
             ! grep -F 'Managed NixPI desktop profile' ${./flake.nix} >/dev/null
             grep -F './core/os/hosts/vps.nix' ${./flake.nix} >/dev/null
             grep -F 'headless VPS profile' ${./core/os/hosts/vps.nix} >/dev/null
+            sed -n '/nixosConfigurations.installed-test = nixpkgs.lib.nixosSystem {/,/checks\.\${system} =/p' ${./flake.nix} \
+              | grep -F './core/os/hosts/vps.nix' >/dev/null
+            sed -n '/bootCheck = pkgsUnfree.testers.runNixOSTest {/,/mkCheckLane = name: entries:/p' ${./flake.nix} \
+              | grep -F './core/os/hosts/vps.nix' >/dev/null
+            sed -n '/nixos-smoke = mkCheckLane "nixos-smoke" \[/,/nixos-full = mkCheckLane "nixos-full" \[/p' ${./flake.nix} \
+              | grep -F '{ name = "nixpi-vps-bootstrap"; path = nixosTests.nixpi-vps-bootstrap; }' >/dev/null
+            sed -n '/nixos-smoke = mkCheckLane "nixos-smoke" \[/,/nixos-full = mkCheckLane "nixos-full" \[/p' ${./flake.nix} \
+              | grep -F '{ name = "nixpi-chat"; path = nixosTests.nixpi-chat; }' >/dev/null
+            sed -n '/nixos-smoke = mkCheckLane "nixos-smoke" \[/,/nixos-full = mkCheckLane "nixos-full" \[/p' ${./flake.nix} \
+              | grep -F '{ name = "nixpi-security"; path = nixosTests.nixpi-security; }' >/dev/null
+            sed -n '/nixos-smoke = mkCheckLane "nixos-smoke" \[/,/nixos-full = mkCheckLane "nixos-full" \[/p' ${./flake.nix} \
+              | grep -F '{ name = "nixpi-broker"; path = nixosTests.nixpi-broker; }' >/dev/null
             touch "$out"
           '';
 
