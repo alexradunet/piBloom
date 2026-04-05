@@ -18,7 +18,7 @@
       lib = nixpkgs.lib;
       nixpiSource = lib.cleanSource ./.;
       installerHelper = pkgs.callPackage ./core/os/pkgs/installer {
-        inherit nixpiSource piAgent appPackage setupApplyPackage;
+        inherit nixpiSource piAgent appPackage setupApplyPackage self;
       };
       setupApplyPackage = pkgs.callPackage ./core/os/pkgs/nixpi-setup-apply {};
       # pkgsUnfree is used only for boot nixosTest.  pkgs.testers.nixosTest
@@ -286,15 +286,12 @@
           # evaluation failures without touching QEMU.
           config = self.nixosConfigurations.installed-test.config.system.build.toplevel;
 
-          # Validate installer script syntax and that install module template is intact.
-          installer-frontend = pkgs.runCommandLocal "installer-frontend-check" {
-            nativeBuildInputs = [ pkgs.bash ];
-          } ''
+          # Validate installer script syntax and the new installer packaging shape.
+          installer-frontend = pkgs.runCommandLocal "installer-frontend-check" { } ''
             bash -n "${installerFrontendSource}"
-            install_template="${installerHelper}/share/nixpi-installer/nixpi-install-module.nix.in"
-            grep -F 'nix.settings.experimental-features = [ "nix-command" "flakes" ];' "$install_template" >/dev/null
-            grep -F '{ config, ... }:' "$install_template" >/dev/null
-            grep -F 'nixpi.primaryUser = "@@username@@";' "$install_template" >/dev/null
+            ! test -e "${installerHelper}/share/nixpi-installer/nixpi-install-module.nix.in"
+            grep -F 'PREFILL_FILE=""' "${installerHelper}/share/nixpi-installer/nixpi-installer.sh" >/dev/null
+            grep -F 'DESKTOP_SYSTEM="@desktopSystem@"' "${installerFrontendSource}" >/dev/null
             touch "$out"
           '';
 

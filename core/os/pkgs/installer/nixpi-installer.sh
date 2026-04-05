@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-INSTALL_MODULE_TEMPLATE="@installModuleTemplate@"
+DESKTOP_SYSTEM="@desktopSystem@"
+DESKTOP_HOST_MODULE="@desktopHostModule@"
+PREFILL_FILE=""
 LAYOUT_STANDARD="@layoutStandard@"
 LAYOUT_SWAP="@layoutSwap@"
 
@@ -19,7 +21,7 @@ LOG_REDIRECTED=0
 
 usage() {
   cat <<'EOF'
-Usage: nixpi-installer [--disk /dev/sdX] [--hostname NAME] [--primary-user USER] [--password VALUE] [--layout no-swap|swap] [--swap-size 8GiB] [--yes] [--system PATH]
+Usage: nixpi-installer [--prefill /path/to/prefill.env] [--disk /dev/sdX] [--hostname NAME] [--primary-user USER] [--password VALUE] [--layout no-swap|swap] [--swap-size 8GiB] [--yes] [--system PATH]
 
 Performs a destructive UEFI install with:
 - EFI system partition: 1 GiB
@@ -166,6 +168,20 @@ prompt_password() {
   done
 }
 
+load_prefill() {
+  local prefill_path="$1"
+  [[ -n "$prefill_path" ]] || return 0
+  if [[ ! -f "$prefill_path" ]]; then
+    echo "Prefill file not found: $prefill_path" >&2
+    exit 1
+  fi
+  # shellcheck disable=SC1090
+  . "$prefill_path"
+  HOSTNAME_VALUE="${HOSTNAME_VALUE:-${PREFILL_HOSTNAME:-}}"
+  PRIMARY_USER_VALUE="${PRIMARY_USER_VALUE:-${PREFILL_USERNAME:-}}"
+  PRIMARY_PASSWORD_VALUE="${PRIMARY_PASSWORD_VALUE:-${PREFILL_PASSWORD:-${PREFILL_PRIMARY_PASSWORD:-}}}"
+}
+
 validate_swap_size() {
   local size="$1"
   [[ "$size" =~ ^[1-9][0-9]*(MiB|GiB|MB|GB)$ ]]
@@ -246,6 +262,34 @@ normalize_layout_inputs() {
   esac
 }
 
+write_install_config() {
+  local hashed_password="$1"
+  cat >"${ROOT_MOUNT}/etc/nixos/nixpi-install.nix" <<EOF
+{ ... }: {
+  nixpi.primaryUser = "${PRIMARY_USER_VALUE}";
+  networking.hostName = "${HOSTNAME_VALUE}";
+  users.users.${PRIMARY_USER_VALUE}.hashedPassword = "${hashed_password}";
+  nixpi.security.ssh.passwordAuthentication = true;
+}
+EOF
+}
+
+write_configuration_nix() {
+  cat >"${ROOT_MOUNT}/etc/nixos/configuration.nix" <<EOF
+{ ... }: {
+  imports = [
+    ./hardware-configuration.nix
+    ./nixpi-install.nix
+    ${DESKTOP_HOST_MODULE}
+  ];
+}
+EOF
+}
+
+install_system() {
+  nixos-install --no-channel-copy --system "${SYSTEM_CLOSURE:-$DESKTOP_SYSTEM}"
+}
+
 confirm_install() {
   if [[ "$FORCE_YES" -eq 1 ]]; then
     return
@@ -298,50 +342,21 @@ run_install() {
   log_step "Generating NixOS hardware config"
   nixos-generate-config --root "$ROOT_MOUNT"
 
-  log_step "Writing NixPI install module"
+  log_step "Writing NixPI install config"
   local password_hash
   password_hash="$(openssl passwd -6 -stdin <<< "$PRIMARY_PASSWORD_VALUE")"
-
-  # Escape for sed replacement (& and / are special in sed RHS)
-  local esc_user esc_password esc_hash
-  esc_user="$(printf '%s\n' "$PRIMARY_USER_VALUE" | sed 's/[&/\]/\\&/g')"
-  esc_password="$(printf '%s\n' "$PRIMARY_PASSWORD_VALUE" | sed 's/[&/\]/\\&/g')"
-  esc_hash="$(printf '%s\n' "$password_hash" | sed 's/[&/\]/\\&/g')"
-
-  sed \
-    -e "s/@@username@@/${esc_user}/g" \
-    -e "s/@@password@@/\"${esc_password}\"/g" \
-    -e "s/@@passwordHash@@/\"${esc_hash}\"/g" \
-    "$INSTALL_MODULE_TEMPLATE" \
-    > "$ROOT_MOUNT/etc/nixos/nixpi-install.nix"
-
-  log_step "Writing configuration.nix"
-  cat > "$ROOT_MOUNT/etc/nixos/configuration.nix" <<EOF
-{ ... }: {
-  imports = [
-    ./hardware-configuration.nix
-    ./nixpi-install.nix
-  ];
-  boot.loader.systemd-boot.enable = true;
-  boot.loader.efi.canTouchEfiVariables = true;
-  networking.hostName = "${HOSTNAME_VALUE}";
-}
-EOF
+  write_install_config "$password_hash"
+  write_configuration_nix
 
   echo "=== [4/5] Installing NixOS (this may take 10-20 minutes) ==="
-  if [[ -n "$SYSTEM_CLOSURE" ]]; then
-    log_step "Installing prebuilt system closure"
-    nixos-install --no-root-passwd --system "$SYSTEM_CLOSURE" --root "$ROOT_MOUNT"
-  else
-    log_step "Running nixos-install"
-    NIX_CONFIG="experimental-features = nix-command flakes" \
-      nixos-install --no-root-passwd --root "$ROOT_MOUNT" --no-channel-copy
-  fi
+  log_step "Installing system closure"
+  install_system
 }
 
 main() {
   while [[ $# -gt 0 ]]; do
     case "$1" in
+      --prefill) PREFILL_FILE="$2"; shift 2 ;;
       --disk) TARGET_DISK="$2"; shift 2 ;;
       --hostname) HOSTNAME_VALUE="$2"; shift 2 ;;
       --primary-user) PRIMARY_USER_VALUE="$2"; shift 2 ;;
@@ -356,6 +371,7 @@ main() {
   done
 
   ensure_root
+  load_prefill "$PREFILL_FILE"
   echo "=== [1/5] Disk selection ==="
   choose_disk
   prompt_inputs
