@@ -1,6 +1,7 @@
 // core/chat-server/rpc-client-manager.ts
 import path from "node:path";
-import { RpcClient } from "@mariozechner/pi-coding-agent";
+import type { AgentEvent } from "@mariozechner/pi-agent-core";
+import { createRpcClient, type RpcClientLike } from "./pi-rpc-client.js";
 
 export type ChatEvent =
 	| { type: "text"; content: string }
@@ -17,7 +18,7 @@ export interface RpcClientManagerOptions {
 }
 
 export class RpcClientManager {
-	private readonly client: RpcClient;
+	private readonly clientPromise: Promise<RpcClientLike>;
 	/** Per-content-block text cursors; cleared on agent_start to reset each turn. */
 	private readonly textCursors = new Map<number, number>();
 
@@ -26,27 +27,31 @@ export class RpcClientManager {
 			opts.nixpiShareDir,
 			"node_modules/@mariozechner/pi-coding-agent/dist/cli.js",
 		);
-		this.client = new RpcClient({ cliPath, cwd: opts.cwd });
+		this.clientPromise = createRpcClient({ cliPath, cwd: opts.cwd });
 	}
 
 	async start(): Promise<void> {
-		await this.client.start();
+		const client = await this.clientPromise;
+		await client.start();
 	}
 
 	async stop(): Promise<void> {
-		await this.client.stop();
+		const client = await this.clientPromise;
+		await client.stop();
 	}
 
 	async reset(): Promise<void> {
-		await this.client.newSession();
+		const client = await this.clientPromise;
+		await client.newSession();
 	}
 
 	async *sendMessage(text: string): AsyncGenerator<ChatEvent> {
+		const client = await this.clientPromise;
 		const queue: ChatEvent[] = [];
 		let notify: (() => void) | null = null;
 		let done = false;
 
-		const unsub = this.client.onEvent((event) => {
+		const unsub = client.onEvent((event: AgentEvent) => {
 			const events: ChatEvent[] = [];
 
 			if (event.type === "agent_start") {
@@ -70,7 +75,8 @@ export class RpcClientManager {
 				events.push({ type: "tool_call", name: e.toolName, input: JSON.stringify(e.args ?? {}) });
 			} else if (event.type === "tool_execution_end") {
 				const e = event as { toolName: string; result: unknown };
-				events.push({ type: "tool_result", name: e.toolName, output: String(e.result ?? "") });
+				const output = typeof e.result === "string" ? e.result : JSON.stringify(e.result ?? "");
+				events.push({ type: "tool_result", name: e.toolName, output });
 			} else if (event.type === "agent_end") {
 				done = true;
 			}
@@ -82,7 +88,7 @@ export class RpcClientManager {
 			}
 		});
 
-		this.client.prompt(text).catch((err: unknown) => {
+		client.prompt(text).catch((err: unknown) => {
 			queue.push({ type: "error", message: String(err) });
 			done = true;
 			notify?.();

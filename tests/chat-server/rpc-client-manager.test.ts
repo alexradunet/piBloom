@@ -2,11 +2,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // Must be hoisted above the import that loads RpcClientManager.
-vi.mock("@mariozechner/pi-coding-agent", () => ({
-	RpcClient: vi.fn(),
+vi.mock("../../core/chat-server/pi-rpc-client.js", () => ({
+	createRpcClient: vi.fn(),
 }));
 
-import { RpcClient } from "@mariozechner/pi-coding-agent";
+import { createRpcClient } from "../../core/chat-server/pi-rpc-client.js";
 import { RpcClientManager } from "../../core/chat-server/rpc-client-manager.js";
 
 type EventListener = (event: Record<string, unknown>) => void;
@@ -33,7 +33,7 @@ let mockClientInstance: ReturnType<typeof makeMockClient>;
 
 beforeEach(() => {
 	mockClientInstance = makeMockClient();
-	vi.mocked(RpcClient).mockImplementation(function () { return mockClientInstance as unknown as RpcClient; });
+	vi.mocked(createRpcClient).mockResolvedValue(mockClientInstance);
 });
 
 describe("RpcClientManager.start / stop", () => {

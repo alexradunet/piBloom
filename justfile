@@ -77,7 +77,7 @@ check-config:
 
 # Fast installer helper regression tests without booting the ISO.
 check-installer:
-    nix {{ nix_opts }} build {{ flake }}#checks.{{ system }}.installer-backend --no-link
+    nix {{ nix_opts }} build {{ flake }}#checks.{{ system }}.installer-frontend --no-link
 
 # Fast generated-config eval: forces the shared installer module to
 # evaluate as a NixOS module before the full VM smoke path.
