@@ -43,8 +43,18 @@ function makeMockSession() {
 			});
 			listener?.({ type: "agent_end" });
 		}),
+		newSession: vi.fn().mockResolvedValue(true),
 		dispose: vi.fn(),
+		emit: (event: Record<string, unknown>) => listener?.(event),
 	};
+}
+
+async function collectEvents(bridge: PiSessionBridge, text: string) {
+	const events = [];
+	for await (const event of bridge.sendMessage(text)) {
+		events.push(event);
+	}
+	return events;
 }
 
 describe("PiSessionBridge", () => {
@@ -57,10 +67,7 @@ describe("PiSessionBridge", () => {
 		mockedCreateAgentSession.mockResolvedValue({ session });
 
 		const bridge = new PiSessionBridge({ cwd: "/tmp/cwd" });
-		const events = [];
-		for await (const event of bridge.sendMessage("hi")) {
-			events.push(event);
-		}
+		const events = await collectEvents(bridge, "hi");
 
 		expect(SessionManager.inMemory).toHaveBeenCalledOnce();
 		expect(createAgentSession).toHaveBeenCalledWith(
@@ -75,5 +82,100 @@ describe("PiSessionBridge", () => {
 			{ type: "tool_result", name: "read", output: "# NixPI" },
 			{ type: "done" },
 		]);
+	});
+
+	it("emits an error event when prompt rejects", async () => {
+		const session = makeMockSession();
+		session.prompt.mockRejectedValue(new Error("Pi crashed"));
+		mockedCreateAgentSession.mockResolvedValue({ session });
+
+		const bridge = new PiSessionBridge({ cwd: "/tmp/cwd" });
+
+		await expect(collectEvents(bridge, "hi")).resolves.toEqual([
+			{ type: "error", message: "Error: Pi crashed" },
+			{ type: "done" },
+		]);
+	});
+
+	it("falls back to accumulated message.content text blocks", async () => {
+		const session = makeMockSession();
+		session.prompt.mockImplementation(async () => {
+			session.emit({
+				type: "message_update",
+				message: { content: [{ type: "text", text: "Hello" }] },
+			});
+			session.emit({
+				type: "message_update",
+				message: { content: [{ type: "text", text: "Hello world" }] },
+			});
+			session.emit({ type: "agent_end" });
+		});
+		mockedCreateAgentSession.mockResolvedValue({ session });
+
+		const bridge = new PiSessionBridge({ cwd: "/tmp/cwd" });
+
+		await expect(collectEvents(bridge, "hi")).resolves.toEqual([
+			{ type: "text", content: "Hello" },
+			{ type: "text", content: " world" },
+			{ type: "done" },
+		]);
+	});
+
+	it("clears accumulated text cursors on agent_start across turns", async () => {
+		const session = makeMockSession();
+		session.prompt
+			.mockImplementationOnce(async () => {
+				session.emit({
+					type: "message_update",
+					message: { content: [{ type: "text", text: "First" }] },
+				});
+				session.emit({ type: "agent_end" });
+			})
+			.mockImplementationOnce(async () => {
+				session.emit({ type: "agent_start" });
+				session.emit({
+					type: "message_update",
+					message: { content: [{ type: "text", text: "Second" }] },
+				});
+				session.emit({ type: "agent_end" });
+			});
+		mockedCreateAgentSession.mockResolvedValue({ session });
+
+		const bridge = new PiSessionBridge({ cwd: "/tmp/cwd" });
+		await collectEvents(bridge, "first");
+		const events = await collectEvents(bridge, "second");
+
+		expect(events).toContainEqual({ type: "text", content: "Second" });
+		expect(events).not.toContainEqual({ type: "text", content: "d" });
+	});
+
+	it("reset uses the session-level newSession API when supported", async () => {
+		const session = makeMockSession();
+		mockedCreateAgentSession.mockResolvedValue({ session });
+
+		const bridge = new PiSessionBridge({ cwd: "/tmp/cwd" });
+		await bridge.start();
+		await bridge.reset();
+
+		expect(session.newSession).toHaveBeenCalledOnce();
+		expect(session.dispose).not.toHaveBeenCalled();
+		expect(createAgentSession).toHaveBeenCalledTimes(1);
+	});
+
+	it("reset disposes and recreates lazily when session-level reset is unavailable", async () => {
+		const firstSession = makeMockSession();
+		const secondSession = makeMockSession();
+		Reflect.deleteProperty(firstSession, "newSession");
+		mockedCreateAgentSession
+			.mockResolvedValueOnce({ session: firstSession })
+			.mockResolvedValueOnce({ session: secondSession });
+
+		const bridge = new PiSessionBridge({ cwd: "/tmp/cwd" });
+		await bridge.start();
+		await bridge.reset();
+		await collectEvents(bridge, "after reset");
+
+		expect(firstSession.dispose).toHaveBeenCalledOnce();
+		expect(createAgentSession).toHaveBeenCalledTimes(2);
 	});
 });

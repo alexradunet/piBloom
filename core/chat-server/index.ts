@@ -5,8 +5,6 @@ import { fileURLToPath } from "node:url";
 import { PiSessionBridge } from "./pi-session.js";
 
 export interface ChatServerOptions {
-	/** Path to /usr/local/share/nixpi (the deployed app share dir). */
-	nixpiShareDir: string;
 	/** Working directory for the Pi agent process (e.g. ~/.pi). */
 	agentCwd: string;
 	/** Directory containing the pre-built frontend (index.html + assets). */
@@ -122,12 +120,10 @@ export function isMainModule(argv1: string | undefined, moduleUrl: string): bool
 
 if (isMainModule(process.argv[1], import.meta.url)) {
 	const port = parseInt(process.env.NIXPI_CHAT_PORT ?? "8080", 10);
-	const nixpiShareDir = process.env.NIXPI_SHARE_DIR ?? "/usr/local/share/nixpi";
 	const piDir = process.env.PI_DIR ?? `${process.env.HOME}/.pi`;
 	const staticDir = path.join(path.dirname(fileURLToPath(import.meta.url)), "frontend/dist");
 
 	const server = createChatServer({
-		nixpiShareDir,
 		agentCwd: piDir,
 		staticDir,
 	});

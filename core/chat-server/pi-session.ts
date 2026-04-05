@@ -37,38 +37,38 @@ type SessionEvent = MessageUpdateEvent | ToolStartEvent | ToolEndEvent | AgentBo
 
 type PiSession = Awaited<ReturnType<typeof createAgentSession>>["session"];
 
-type SessionHandle = {
-	session: PiSession;
-	sessionManager: SessionManager;
+type ResettablePiSession = PiSession & {
+	newSession?: () => Promise<boolean>;
+	dispose?: () => void;
 };
 
 export class PiSessionBridge {
-	private sessionHandlePromise: Promise<SessionHandle> | null = null;
+	private sessionPromise: Promise<ResettablePiSession> | null = null;
 	private readonly textCursors = new Map<number, number>();
 
 	constructor(private readonly opts: PiSessionBridgeOptions) {}
 
-	private async createSessionHandle(): Promise<SessionHandle> {
+	private async createSession(): Promise<ResettablePiSession> {
 		const sessionManager = SessionManager.inMemory(this.opts.cwd);
 		const { session } = await createAgentSession({
 			cwd: this.opts.cwd,
 			sessionManager,
 		});
-		return { session, sessionManager };
+		return session as ResettablePiSession;
 	}
 
-	private async getSessionHandle(): Promise<SessionHandle> {
-		if (!this.sessionHandlePromise) {
-			const sessionHandlePromise = this.createSessionHandle().catch((error: unknown) => {
-				if (this.sessionHandlePromise === sessionHandlePromise) {
-					this.sessionHandlePromise = null;
+	private async getSession(): Promise<ResettablePiSession> {
+		if (!this.sessionPromise) {
+			const sessionPromise = this.createSession().catch((error: unknown) => {
+				if (this.sessionPromise === sessionPromise) {
+					this.sessionPromise = null;
 				}
 				throw error;
 			});
-			this.sessionHandlePromise = sessionHandlePromise;
+			this.sessionPromise = sessionPromise;
 		}
 
-		return this.sessionHandlePromise;
+		return this.sessionPromise;
 	}
 
 	private static stringifyToolInput(value: unknown): string {
@@ -113,36 +113,40 @@ export class PiSessionBridge {
 	}
 
 	async start(): Promise<void> {
-		await this.getSessionHandle();
+		await this.getSession();
 	}
 
 	async reset(): Promise<void> {
-		const currentHandlePromise = this.sessionHandlePromise;
-		this.sessionHandlePromise = null;
+		const currentSessionPromise = this.sessionPromise;
 		this.textCursors.clear();
-		if (!currentHandlePromise) {
+		if (!currentSessionPromise) {
 			return;
 		}
 
-		const { session, sessionManager } = await currentHandlePromise;
-		sessionManager.newSession?.();
+		const session = await currentSessionPromise;
+		if (typeof session.newSession === "function") {
+			await session.newSession();
+			return;
+		}
+
+		this.sessionPromise = null;
 		session.dispose?.();
 	}
 
 	async stop(): Promise<void> {
-		const currentHandlePromise = this.sessionHandlePromise;
-		this.sessionHandlePromise = null;
+		const currentSessionPromise = this.sessionPromise;
+		this.sessionPromise = null;
 		this.textCursors.clear();
-		if (!currentHandlePromise) {
+		if (!currentSessionPromise) {
 			return;
 		}
 
-		const { session } = await currentHandlePromise;
+		const session = await currentSessionPromise;
 		session.dispose?.();
 	}
 
 	async *sendMessage(text: string): AsyncGenerator<ChatEvent> {
-		const { session } = await this.getSessionHandle();
+		const session = await this.getSession();
 		const queue: ChatEvent[] = [];
 		let done = false;
 		let notify: (() => void) | null = null;

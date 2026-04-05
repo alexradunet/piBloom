@@ -28,7 +28,6 @@ let tmpDir: string;
 beforeAll(async () => {
 	tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "nixpi-chat-server-test-"));
 	server = createChatServer({
-		nixpiShareDir: "/mock/share",
 		agentCwd: tmpDir,
 		staticDir: new URL("../../core/chat-server/frontend/dist", import.meta.url).pathname,
 	});
