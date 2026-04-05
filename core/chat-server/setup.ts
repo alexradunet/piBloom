@@ -93,7 +93,7 @@ export async function handleSetupApply(
 
 	const child = spawn("sudo", ["-n", "--preserve-env=SETUP_NETBIRD_KEY", opts.applyScript], {
 		env: {
-			...process.env,
+			PATH: process.env.PATH ?? "",
 			SETUP_NETBIRD_KEY: netbirdKey,
 		},
 	});
