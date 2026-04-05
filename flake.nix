@@ -173,7 +173,6 @@
         let
           installerFrontendSource = ./core/os/pkgs/installer/nixpi-installer.sh;
           mkInstallerGeneratedConfig = {
-            hostName,
             rootDevice,
             bootDevice,
           }: (nixpkgs.lib.nixosSystem {
@@ -190,16 +189,16 @@
                   "${nixpiSource}/core/os/modules/setup-apply.nix"
                 ];
 
-                networking.hostName = hostName;
+                networking.hostName = "nixpi";
                 time.timeZone = "UTC";
                 i18n.defaultLocale = "en_US.UTF-8";
                 nixpkgs.config.allowUnfree = true;
                 nix.settings.experimental-features = [ "nix-command" "flakes" ];
-                nixpi.primaryUser = "installer";
-                users.groups.installer = {};
-                users.users.installer = {
+                nixpi.primaryUser = "human";
+                users.groups.human = {};
+                users.users.human = {
                   isNormalUser = true;
-                  group = "installer";
+                  group = "human";
                   extraGroups = [ "networkmanager" ];
                   initialPassword = "installerpass123";
                 };
@@ -293,6 +292,10 @@
             grep -F 'PREFILL_FILE=""' "${installerHelper}/share/nixpi-installer/nixpi-installer.sh" >/dev/null
             grep -F 'HOSTNAME_VALUE="nixpi"' "${installerHelper}/share/nixpi-installer/nixpi-installer.sh" >/dev/null
             grep -F 'PRIMARY_USER_VALUE="human"' "${installerHelper}/share/nixpi-installer/nixpi-installer.sh" >/dev/null
+            ! grep -F 'Hostname [' "${installerHelper}/share/nixpi-installer/nixpi-installer.sh" >/dev/null
+            ! grep -F 'Primary user [' "${installerHelper}/share/nixpi-installer/nixpi-installer.sh" >/dev/null
+            ! grep -F -- '--hostname)' "${installerFrontendSource}" >/dev/null
+            ! grep -F -- '--primary-user)' "${installerFrontendSource}" >/dev/null
             grep -F 'DESKTOP_SYSTEM="@desktopSystem@"' "${installerFrontendSource}" >/dev/null
             grep -F 'DESKTOP_HOST_MODULE="@desktopHostModule@"' "${installerFrontendSource}" >/dev/null
             grep -F "${self.nixosConfigurations.desktop.config.system.build.toplevel}" "${installerHelper}/share/nixpi-installer/nixpi-installer.sh" >/dev/null
@@ -303,19 +306,16 @@
           disko-layouts = diskoLayoutsCheck;
 
           installer-generated-config = mkInstallerGeneratedConfig {
-            hostName = "installer-vm";
             rootDevice = "/dev/vda2";
             bootDevice = "/dev/vda1";
           };
 
           installer-generated-config-nvme = mkInstallerGeneratedConfig {
-            hostName = "installer-minipc";
             rootDevice = "/dev/nvme0n1p2";
             bootDevice = "/dev/nvme0n1p1";
           };
 
           installer-generated-config-sata = mkInstallerGeneratedConfig {
-            hostName = "installer-server";
             rootDevice = "/dev/sda2";
             bootDevice = "/dev/sda1";
           };
