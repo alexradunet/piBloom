@@ -2,6 +2,7 @@ import fs from "node:fs";
 import type http from "node:http";
 import os from "node:os";
 import path from "node:path";
+import vm from "node:vm";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { hasWizardPrefill, isSystemReady, shouldAutoApply, shouldRedirectToSetup } from "../../core/chat-server/setup.js";
 
@@ -111,7 +112,7 @@ describe("setup gate integration", () => {
 		);
 		fs.writeFileSync(
 			sudoScript,
-			"#!/usr/bin/env bash\nset -euo pipefail\nif [[ \"${1:-}\" == '-n' ]]; then shift; fi\nexec \"$@\"\n",
+			"#!/usr/bin/env bash\nset -euo pipefail\nwhile [[ $# -gt 0 ]]; do\n  case \"$1\" in\n    -n|--preserve-env=*) shift ;;\n    *) break ;;\n  esac\ndone\nexec \"$@\"\n",
 		);
 		fs.chmodSync(applyScript, 0o755);
 		fs.chmodSync(sudoScript, 0o755);
@@ -174,6 +175,15 @@ describe("setup gate integration", () => {
 		expect(res.status).toBe(400);
 	});
 
+	it("returns 400 for /api/setup/apply with valid non-object JSON", async () => {
+		const res = await fetch(`http://127.0.0.1:${gatePort}/api/setup/apply`, {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: "null",
+		});
+		expect(res.status).toBe(400);
+	});
+
 	it("accepts an empty netbirdKey payload", async () => {
 		const res = await fetch(`http://127.0.0.1:${gatePort}/api/setup/apply`, {
 			method: "POST",
@@ -186,11 +196,49 @@ describe("setup gate integration", () => {
 		expect(body).toContain("data: SETUP_COMPLETE");
 	});
 
-	it("renders auto-apply setup page when a prefill marker file exists", async () => {
+	it("auto-applies and redirects when a prefill marker file exists", async () => {
 		fs.writeFileSync(prefillFile, "PREFILL_PASSWORD=test\n");
 		const res = await fetch(`http://127.0.0.1:${gatePort}/setup`);
 		const html = await res.text();
-		expect(html).toContain('fetch("/api/setup/apply"');
-		expect(html).toContain('JSON.stringify({ netbirdKey: "" })');
+		const scripts = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map((match) => match[1]);
+		const autoApplyScript = scripts.at(-1);
+		expect(autoApplyScript).toBeTruthy();
+
+		let loadHandler: (() => Promise<void>) | undefined;
+		const fetchCalls: Array<{ url: string; body: string }> = [];
+		const window = {
+			location: { href: "/setup" },
+			addEventListener: (event: string, handler: () => Promise<void>) => {
+				if (event === "load") loadHandler = handler;
+			},
+		};
+		const context = vm.createContext({
+			window,
+			fetch: async (url: string, init?: { body?: string }) => {
+				fetchCalls.push({ url, body: init?.body ?? "" });
+				const chunks = ["data: SETUP_COMPLETE\n\n"];
+				return {
+					body: {
+						getReader() {
+							let index = 0;
+							return {
+								async read() {
+									if (index >= chunks.length) return { done: true, value: undefined };
+									return { done: false, value: Buffer.from(chunks[index++]) };
+								},
+							};
+						},
+					},
+				};
+			},
+			TextDecoder,
+		});
+
+		vm.runInContext(autoApplyScript ?? "", context);
+		expect(loadHandler).toBeTruthy();
+		await loadHandler?.();
+
+		expect(fetchCalls).toEqual([{ url: "/api/setup/apply", body: '{"netbirdKey":""}' }]);
+		expect(window.location.href).toBe("/");
 	});
 });

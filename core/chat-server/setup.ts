@@ -65,7 +65,11 @@ export async function handleSetupApply(
 
 	let payload: ApplyPayload;
 	try {
-		payload = JSON.parse(body) as ApplyPayload;
+		const parsed = JSON.parse(body) as ApplyPayload | null;
+		if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+			throw new Error("invalid payload");
+		}
+		payload = parsed;
 	} catch {
 		res.writeHead(400).end(JSON.stringify({ error: "invalid JSON" }));
 		return;
@@ -87,7 +91,7 @@ export async function handleSetupApply(
 		res.write(`data: ${line}\n\n`);
 	};
 
-	const child = spawn("sudo", ["-n", opts.applyScript], {
+	const child = spawn("sudo", ["-n", "--preserve-env=SETUP_NETBIRD_KEY", opts.applyScript], {
 		env: {
 			...process.env,
 			SETUP_NETBIRD_KEY: netbirdKey,

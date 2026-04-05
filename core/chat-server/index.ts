@@ -13,7 +13,7 @@ export interface ChatServerOptions extends ChatSessionManagerOptions {
 	/** Path to the setup apply script. */
 	applyScript: string;
 	/** Optional path to a wizard prefill file that enables auto-apply. */
-	prefillFile: string;
+	prefillFile?: string;
 }
 
 export function createChatServer(opts: ChatServerOptions): http.Server {
@@ -29,7 +29,7 @@ export function createChatServer(opts: ChatServerOptions): http.Server {
 
 		if (req.method === "GET" && url.pathname === "/setup") {
 			serveSetupPage(res, {
-				autoApply: shouldAutoApply(opts.prefillFile, opts.systemReadyFile),
+				autoApply: opts.prefillFile ? shouldAutoApply(opts.prefillFile, opts.systemReadyFile) : false,
 			});
 			return;
 		}
