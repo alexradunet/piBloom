@@ -11,6 +11,7 @@ import {
 	SettingsStore,
 	setAppStorage,
 } from "@mariozechner/pi-web-ui";
+import { createShell } from "./shell";
 
 // --------------------------------------------------------------------------
 // Session ID — persisted across page reloads
@@ -210,6 +211,14 @@ const agent = new Agent({
 // Mount ChatPanel
 // --------------------------------------------------------------------------
 async function init() {
+	const appRoot = document.getElementById("app");
+	if (!appRoot) {
+		throw new Error("Missing #app root");
+	}
+
+	const shell = createShell();
+	appRoot.replaceChildren(shell);
+
 	const chatPanel = new ChatPanel();
 
 	await chatPanel.setAgent(agent, {
@@ -220,18 +229,17 @@ async function init() {
 	});
 
 	// Replace the <nixpi-chat> placeholder with the ChatPanel element
-	const placeholder = document.querySelector("nixpi-chat");
-	if (placeholder) {
-		placeholder.replaceWith(chatPanel);
-	} else {
-		document.body.appendChild(chatPanel);
+	const placeholder = shell.querySelector("nixpi-chat");
+	if (!placeholder) {
+		throw new Error("Missing chat placeholder");
 	}
+	placeholder.replaceWith(chatPanel);
 
-	// Apply full-viewport styling
+	// Size the chat panel to its shell pane.
 	Object.assign(chatPanel.style, {
 		display: "block",
-		width: "100vw",
-		height: "100vh",
+		width: "100%",
+		height: "100%",
 	});
 }
 

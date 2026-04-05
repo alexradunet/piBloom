@@ -27,9 +27,16 @@ let tmpDir: string;
 
 beforeAll(async () => {
 	tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "nixpi-chat-server-test-"));
+	const distDir = new URL("../../core/chat-server/frontend/dist", import.meta.url).pathname;
+	const sourceDir = new URL("../../core/chat-server/frontend", import.meta.url).pathname;
+	const sourceIndex = path.join(sourceDir, "index.html");
+	const distIndex = path.join(distDir, "index.html");
 	server = createChatServer({
 		agentCwd: tmpDir,
-		staticDir: new URL("../../core/chat-server/frontend/dist", import.meta.url).pathname,
+		staticDir:
+			fs.existsSync(distIndex) && fs.statSync(distIndex).mtimeMs >= fs.statSync(sourceIndex).mtimeMs
+				? distDir
+				: sourceDir,
 	});
 	await new Promise<void>((resolve) => {
 		server.listen(0, "127.0.0.1", () => {
@@ -90,9 +97,14 @@ describe("DELETE /chat/:id", () => {
 });
 
 describe("GET /", () => {
-	it("returns 200 or 404 (frontend dist may not exist in test env)", async () => {
+	// Keep the double space so vitest -t "combined chat + terminal shell" matches this name as a regex.
+	it("returns the combined chat  terminal shell", async () => {
 		const res = await fetch(`http://127.0.0.1:${port}/`);
-		expect([200, 404]).toContain(res.status);
+		expect(res.status).toBe(200);
+		const html = await res.text();
+		expect(html).toContain("nixpi-shell");
+		expect(html).toContain("<iframe");
+		expect(html).toContain('src="/terminal/"');
 	});
 });
 
