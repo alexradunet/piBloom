@@ -168,6 +168,7 @@
                 + " > /tmp/nixpi-installer.log 2>&1 || { cat /tmp/nixpi-installer.log >&2; exit 1; }"
             )
         )
+        installer.succeed("grep -q " + shlex.quote("${self.nixosConfigurations.desktop.config.system.build.toplevel}") + " /tmp/nixpi-installer.log")
 
         installer.succeed("test -f " + target_mount + "/etc/nixos/configuration.nix")
         installer.succeed("test -f " + target_mount + "/etc/nixos/hardware-configuration.nix")
@@ -212,9 +213,10 @@
         installer.succeed("nixos-enter --root " + target_mount + " -c 'grep -q \"^human:[^!*]\" /etc/shadow'")
         installer.succeed("nixos-enter --root " + target_mount + " -c 'command -v nixpi-bootstrap'")
         installer.succeed("nixos-enter --root " + target_mount + " -c 'command -v nixpi-finalize'")
-        installer.succeed("nixos-enter --root " + target_mount + " -c 'command -v nixpi-bootstrap-ensure-repo-target'")
-        installer.succeed("nixos-enter --root " + target_mount + " -c 'command -v nixpi-bootstrap-prepare-repo'")
-        installer.succeed("nixos-enter --root " + target_mount + " -c 'command -v nixpi-bootstrap-nixos-rebuild-switch'")
+        installer.fail("nixos-enter --root " + target_mount + " -c 'command -v nixpi-bootstrap-ensure-repo-target'")
+        installer.fail("nixos-enter --root " + target_mount + " -c 'command -v nixpi-bootstrap-prepare-repo'")
+        installer.fail("nixos-enter --root " + target_mount + " -c 'command -v nixpi-bootstrap-nixos-rebuild-switch'")
+        installer.succeed("nixos-enter --root " + target_mount + " -c 'systemctl is-enabled nixpi-chat.service'")
         installer.fail("nixos-enter --root " + target_mount + " -c 'test -e /etc/nixos/flake.nix'")
         installer.fail("nixos-enter --root " + target_mount + " -c 'getent passwd agent'")
 
