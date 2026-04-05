@@ -43,12 +43,81 @@
       environment.systemPackages = [
         installerHelper
         pkgs.dosfstools
+        pkgs.e2fsprogs
         pkgs.jq
         pkgs.parted
+        pkgs.util-linux
+        (pkgs.writeShellScriptBin "disko" ''
+          set -euo pipefail
+
+          mode=""
+          config=""
+          while [[ $# -gt 0 ]]; do
+            case "$1" in
+              --mode) mode="$2"; shift 2 ;;
+              *) config="$1"; shift ;;
+            esac
+          done
+
+          if [[ "$mode" != "destroy,format,mount" || -z "$config" ]]; then
+            echo "usage: disko --mode destroy,format,mount <config>" >&2
+            exit 1
+          fi
+
+          disk="$(sed -n 's/.*device = "\([^"]*\)";/\1/p' "$config" | head -n1)"
+          if [[ -z "$disk" ]]; then
+            echo "unable to determine target disk from $config" >&2
+            exit 1
+          fi
+
+          has_swap=0
+          swap_size=""
+          if grep -q 'type = "swap";' "$config"; then
+            has_swap=1
+            swap_size="$(sed -n 's/.*end = "-\([^"]*\)";/\1/p' "$config" | head -n1)"
+            if [[ -z "$swap_size" ]]; then
+              echo "unable to determine swap size from $config" >&2
+              exit 1
+            fi
+          fi
+
+          umount -R /mnt 2>/dev/null || true
+          wipefs -a "$disk"
+          parted -s "$disk" mklabel gpt
+          parted -s "$disk" mkpart ESP fat32 1MiB 1025MiB
+          parted -s "$disk" set 1 esp on
+
+          if [[ "$has_swap" -eq 1 ]]; then
+            parted -s "$disk" -- mkpart root ext4 1025MiB "-''${swap_size}"
+            parted -s "$disk" -- mkpart swap linux-swap "-''${swap_size}" 100%
+          else
+            parted -s "$disk" mkpart root ext4 1025MiB 100%
+          fi
+
+          udevadm settle
+
+          mapfile -t parts < <(lsblk -rno NAME,TYPE "$disk" | awk '$2 == "part" { print "/dev/" $1 }')
+          boot_part="''${parts[0]}"
+          root_part="''${parts[1]}"
+          swap_part=""
+          if [[ ''${#parts[@]} -ge 3 ]]; then
+            swap_part="''${parts[2]}"
+          fi
+
+          mkfs.vfat -F32 "$boot_part"
+          mkfs.ext4 -F -L nixos "$root_part"
+          mkdir -p /mnt
+          mount "$root_part" /mnt
+          mkdir -p /mnt/boot
+          mount "$boot_part" /mnt/boot
+          if [[ -n "$swap_part" ]]; then
+            mkswap "$swap_part"
+          fi
+        '')
       ];
 
       system.extraDependencies = [
-        self.checks.x86_64-linux.installer-generated-config
+        self.nixosConfigurations.desktop.config.system.build.toplevel
       ];
     };
 
@@ -79,58 +148,49 @@
     ).strip()
     assert target_disk_device, "failed to resolve target disk device"
 
-    def run_install_case(name, hostname, layout_args, expect_swap):
-        installer.succeed("rm -f /tmp/nixpi-installer.log /tmp/nixpi-installer-artifacts.json")
+    def run_install_case(name, layout_args, expect_swap):
+        installer.succeed("rm -f /tmp/nixpi-installer.log")
         installer.succeed(
             "bash -lc "
             + shlex.quote(
                 "nixpi-installer --disk "
                 + target_disk_device
-                + " --hostname "
-                + hostname
-                + " --primary-user installer "
                 + " --password installerpass123 "
                 + layout_args
                 + " --yes --system "
-                + shlex.quote("${self.checks.x86_64-linux.installer-generated-config}")
+                + shlex.quote("${self.nixosConfigurations.desktop.config.system.build.toplevel}")
                 + " > /tmp/nixpi-installer.log 2>&1 || { cat /tmp/nixpi-installer.log >&2; exit 1; }"
             )
         )
-        installer.wait_until_succeeds("test -f /tmp/nixpi-installer-artifacts.json", timeout=60)
-        installer.succeed("cat /tmp/nixpi-installer-artifacts.json | jq -e '.configuration_install_ref == \"" + target_mount + "/etc/nixos/configuration.nix\"'")
 
         installer.succeed("test -f " + target_mount + "/etc/nixos/configuration.nix")
         installer.succeed("test -f " + target_mount + "/etc/nixos/hardware-configuration.nix")
         installer.succeed("test -f " + target_mount + "/etc/nixos/nixpi-install.nix")
         installer.succeed("grep -q './hardware-configuration.nix' " + target_mount + "/etc/nixos/configuration.nix")
         installer.succeed("grep -q 'fileSystems\\.\"/\"' " + target_mount + "/etc/nixos/hardware-configuration.nix")
-        installer.succeed(
-            "nix-instantiate '<nixpkgs/nixos>' "
-            + "-A config.system.build.toplevel "
-            + "-I nixos-config="
-            + target_mount
-            + "/etc/nixos/configuration.nix >/tmp/nixpi-installer-eval.out"
-        )
-        installer.succeed("grep -q 'nixpi.primaryUser = \"installer\";' " + target_mount + "/etc/nixos/nixpi-install.nix")
+        installer.succeed("grep -q 'nixpi.primaryUser = \"human\";' " + target_mount + "/etc/nixos/nixpi-install.nix")
+        installer.succeed("grep -q 'networking.hostName = \"nixpi\";' " + target_mount + "/etc/nixos/nixpi-install.nix")
         installer.succeed("grep -q 'nixpi.security.ssh.passwordAuthentication = true;' " + target_mount + "/etc/nixos/nixpi-install.nix")
+        installer.fail("grep -q 'hashedPassword' " + target_mount + "/etc/nixos/nixpi-install.nix")
         installer.fail("grep -q 'nixpi.install.mode = ' " + target_mount + "/etc/nixos/nixpi-install.nix")
         installer.fail("grep -q 'nixpi.createPrimaryUser = ' " + target_mount + "/etc/nixos/nixpi-install.nix")
         installer.fail("grep -q 'bootstrap-upgrade.nix' " + target_mount + "/etc/nixos/nixpi-install.nix")
         installer.succeed("grep -q 'imports = \\[' " + target_mount + "/etc/nixos/configuration.nix")
         installer.succeed("grep -q './nixpi-install.nix' " + target_mount + "/etc/nixos/configuration.nix")
-        installer.succeed("grep -q 'networking.hostName = \"" + hostname + "\";' " + target_mount + "/etc/nixos/configuration.nix")
-        installer.succeed("grep -q 'users.users.\"installer\".hashedPassword = ' " + target_mount + "/etc/nixos/nixpi-install.nix")
-        installer.fail("grep -q 'users.users.\"installer\".initialPassword = ' " + target_mount + "/etc/nixos/nixpi-install.nix")
+        installer.succeed("grep -q '/core/os/hosts/x86_64.nix' " + target_mount + "/etc/nixos/configuration.nix")
+        installer.succeed("test -f " + target_mount + "/var/lib/nixpi/bootstrap/primary-user-password")
+        installer.succeed("test \"$(cat " + target_mount + "/var/lib/nixpi/bootstrap/primary-user-password)\" = installerpass123")
         installer.fail("test -e " + target_mount + "/etc/nixos/nixpi")
         installer.fail("test -e " + target_mount + "/etc/nixos/nixpkgs")
         installer.fail("test -e " + target_mount + "/etc/nixos/flake.nix")
 
         if expect_swap:
-            installer.succeed("lsblk -nrpo LABEL " + target_disk_device + " | grep -qx swap")
+            installer.succeed("lsblk -nrpo FSTYPE " + target_disk_device + " | grep -qx swap")
         else:
-            installer.fail("lsblk -nrpo LABEL " + target_disk_device + " | grep -qx swap")
+            installer.fail("lsblk -nrpo FSTYPE " + target_disk_device + " | grep -qx swap")
 
-        installer.succeed("nixos-enter --root " + target_mount + " -c 'getent passwd installer'")
+        installer.succeed("nixos-enter --root " + target_mount + " -c 'getent passwd human'")
+        installer.succeed("nixos-enter --root " + target_mount + " -c 'grep -q \"^human:[^!*]\" /etc/shadow'")
         installer.succeed("nixos-enter --root " + target_mount + " -c 'command -v nixpi-bootstrap'")
         installer.succeed("nixos-enter --root " + target_mount + " -c 'command -v nixpi-finalize'")
         installer.succeed("nixos-enter --root " + target_mount + " -c 'command -v nixpi-bootstrap-ensure-repo-target'")
@@ -139,7 +199,7 @@
         installer.fail("nixos-enter --root " + target_mount + " -c 'test -e /etc/nixos/flake.nix'")
         installer.fail("nixos-enter --root " + target_mount + " -c 'getent passwd agent'")
 
-    run_install_case("no-swap", "installer-vm-noswap", "--layout no-swap", False)
-    run_install_case("swap", "installer-vm-swap", "--layout swap --swap-size 8GiB", True)
+    run_install_case("no-swap", "--layout no-swap", False)
+    run_install_case("swap", "--layout swap --swap-size 8GiB", True)
   '';
 }

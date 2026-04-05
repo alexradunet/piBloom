@@ -8,8 +8,8 @@ LAYOUT_STANDARD="@layoutStandard@"
 LAYOUT_SWAP="@layoutSwap@"
 
 ROOT_MOUNT="/mnt"
-HOSTNAME_VALUE=""
-PRIMARY_USER_VALUE=""
+HOSTNAME_VALUE="nixpi"
+PRIMARY_USER_VALUE="human"
 PRIMARY_PASSWORD_VALUE=""
 TARGET_DISK=""
 FORCE_YES=0
@@ -21,7 +21,7 @@ LOG_REDIRECTED=0
 
 usage() {
   cat <<'EOF'
-Usage: nixpi-installer [--prefill /path/to/prefill.env] [--disk /dev/sdX] [--hostname NAME] [--primary-user USER] [--password VALUE] [--layout no-swap|swap] [--swap-size 8GiB] [--yes] [--system PATH]
+Usage: nixpi-installer [--prefill /path/to/prefill.env] [--disk /dev/sdX] [--password VALUE] [--layout no-swap|swap] [--swap-size 8GiB] [--yes] [--system PATH]
 
 Performs a destructive UEFI install with:
 - EFI system partition: 1 GiB
@@ -112,29 +112,7 @@ choose_disk() {
 }
 
 prompt_inputs() {
-  if [[ -z "$HOSTNAME_VALUE" ]]; then
-    require_tty
-    while true; do
-      read -rp "Hostname [nixpi]: " HOSTNAME_VALUE
-      HOSTNAME_VALUE="${HOSTNAME_VALUE:-nixpi}"
-      if [[ -n "$HOSTNAME_VALUE" ]]; then
-        break
-      fi
-      printf '%s\n' "Hostname cannot be empty." >&2
-    done
-  fi
-
-  if [[ -z "$PRIMARY_USER_VALUE" ]]; then
-    require_tty
-    while true; do
-      read -rp "Primary user [nixpi]: " PRIMARY_USER_VALUE
-      PRIMARY_USER_VALUE="${PRIMARY_USER_VALUE:-nixpi}"
-      if [[ -n "$PRIMARY_USER_VALUE" ]]; then
-        break
-      fi
-      printf '%s\n' "Primary user cannot be empty." >&2
-    done
-  fi
+  :
 }
 
 prompt_password() {
@@ -143,7 +121,7 @@ prompt_password() {
   fi
 
   if [[ "$FORCE_YES" -eq 1 ]]; then
-    echo "--yes requires --password for the primary user." >&2
+    echo "--yes requires --password." >&2
     exit 1
   fi
 
@@ -151,13 +129,13 @@ prompt_password() {
 
   local password confirm_password
   while true; do
-    read -rsp "Primary user password: " password
+    read -rsp "Password: " password
     echo ""
     if [[ -z "$password" ]]; then
       echo "Password cannot be empty." >&2
       continue
     fi
-    read -rsp "Confirm primary user password: " confirm_password
+    read -rsp "Confirm password: " confirm_password
     echo ""
     if [[ "$password" != "$confirm_password" ]]; then
       echo "Passwords do not match." >&2
@@ -177,8 +155,6 @@ load_prefill() {
   fi
   # shellcheck disable=SC1090
   . "$prefill_path"
-  HOSTNAME_VALUE="${HOSTNAME_VALUE:-${PREFILL_HOSTNAME:-}}"
-  PRIMARY_USER_VALUE="${PRIMARY_USER_VALUE:-${PREFILL_USERNAME:-}}"
   PRIMARY_PASSWORD_VALUE="${PRIMARY_PASSWORD_VALUE:-${PREFILL_PASSWORD:-${PREFILL_PRIMARY_PASSWORD:-}}}"
 }
 
@@ -263,15 +239,32 @@ normalize_layout_inputs() {
 }
 
 write_install_config() {
-  local hashed_password="$1"
   cat >"${ROOT_MOUNT}/etc/nixos/nixpi-install.nix" <<EOF
 { ... }: {
   nixpi.primaryUser = "${PRIMARY_USER_VALUE}";
   networking.hostName = "${HOSTNAME_VALUE}";
-  users.users."${PRIMARY_USER_VALUE}".hashedPassword = "${hashed_password}";
   nixpi.security.ssh.passwordAuthentication = true;
 }
 EOF
+}
+
+set_primary_password() {
+  printf '%s:%s\n' "$PRIMARY_USER_VALUE" "$PRIMARY_PASSWORD_VALUE" \
+    | chroot "$ROOT_MOUNT" /nix/var/nix/profiles/system/sw/bin/chpasswd
+}
+
+write_bootstrap_primary_password_file() {
+  local bootstrap_dir="${ROOT_MOUNT}/var/lib/nixpi/bootstrap"
+  local bootstrap_file="${bootstrap_dir}/primary-user-password"
+
+  mkdir -p "$bootstrap_dir"
+  printf '%s\n' "$PRIMARY_PASSWORD_VALUE" > "$bootstrap_file"
+  chroot "$ROOT_MOUNT" /nix/var/nix/profiles/system/sw/bin/chown \
+    "${PRIMARY_USER_VALUE}:${PRIMARY_USER_VALUE}" \
+    /var/lib/nixpi/bootstrap \
+    /var/lib/nixpi/bootstrap/primary-user-password
+  chroot "$ROOT_MOUNT" /nix/var/nix/profiles/system/sw/bin/chmod 0770 /var/lib/nixpi/bootstrap
+  chroot "$ROOT_MOUNT" /nix/var/nix/profiles/system/sw/bin/chmod 0600 /var/lib/nixpi/bootstrap/primary-user-password
 }
 
 write_configuration_nix() {
@@ -343,14 +336,16 @@ run_install() {
   nixos-generate-config --root "$ROOT_MOUNT"
 
   log_step "Writing NixPI install config"
-  local password_hash
-  password_hash="$(openssl passwd -6 -stdin <<< "$PRIMARY_PASSWORD_VALUE")"
-  write_install_config "$password_hash"
+  write_install_config
   write_configuration_nix
 
   echo "=== [4/5] Installing NixOS (this may take 10-20 minutes) ==="
   log_step "Installing system closure"
   install_system
+  log_step "Setting primary user password in target root"
+  set_primary_password
+  log_step "Writing bootstrap password handoff file"
+  write_bootstrap_primary_password_file
 }
 
 main() {
@@ -358,8 +353,6 @@ main() {
     case "$1" in
       --prefill) PREFILL_FILE="$2"; shift 2 ;;
       --disk) TARGET_DISK="$2"; shift 2 ;;
-      --hostname) HOSTNAME_VALUE="$2"; shift 2 ;;
-      --primary-user) PRIMARY_USER_VALUE="$2"; shift 2 ;;
       --password) PRIMARY_PASSWORD_VALUE="$2"; shift 2 ;;
       --layout) LAYOUT_MODE="$2"; shift 2 ;;
       --swap-size) SWAP_SIZE="$2"; shift 2 ;;
@@ -374,7 +367,6 @@ main() {
   load_prefill "$PREFILL_FILE"
   echo "=== [1/5] Disk selection ==="
   choose_disk
-  prompt_inputs
   prompt_password
   choose_layout
   normalize_layout_inputs

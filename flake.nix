@@ -291,6 +291,8 @@
             bash -n "${installerFrontendSource}"
             ! test -e "${installerHelper}/share/nixpi-installer/nixpi-install-module.nix.in"
             grep -F 'PREFILL_FILE=""' "${installerHelper}/share/nixpi-installer/nixpi-installer.sh" >/dev/null
+            grep -F 'HOSTNAME_VALUE="nixpi"' "${installerHelper}/share/nixpi-installer/nixpi-installer.sh" >/dev/null
+            grep -F 'PRIMARY_USER_VALUE="human"' "${installerHelper}/share/nixpi-installer/nixpi-installer.sh" >/dev/null
             grep -F 'DESKTOP_SYSTEM="@desktopSystem@"' "${installerFrontendSource}" >/dev/null
             grep -F 'DESKTOP_HOST_MODULE="@desktopHostModule@"' "${installerFrontendSource}" >/dev/null
             grep -F "${self.nixosConfigurations.desktop.config.system.build.toplevel}" "${installerHelper}/share/nixpi-installer/nixpi-installer.sh" >/dev/null
