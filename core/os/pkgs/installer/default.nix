@@ -25,7 +25,6 @@ pkgs.stdenvNoCC.mkDerivation {
       --replace-fail "@piAgent@" "${piAgent}" \
       --replace-fail "@appPackage@" "${appPackage}" \
       --replace-fail "@firstbootModule@" "${nixpiSource}/core/os/modules/firstboot/default.nix" \
-      --replace-fail "@desktopXfceModule@" "${nixpiSource}/core/os/modules/desktop-xfce.nix" \
       --replace-fail "@networkModule@" "${nixpiSource}/core/os/modules/network.nix" \
       --replace-fail "@shellModule@" "${nixpiSource}/core/os/modules/shell.nix" \
       --replace-fail "@updateModule@" "${nixpiSource}/core/os/modules/update.nix"

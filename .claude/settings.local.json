@@ -54,7 +54,10 @@
       "Bash(qemu-img resize:*)",
       "Bash(lat search:*)",
       "Bash(lat locate:*)",
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "mcp__lat__lat_search",
+      "mcp__lat__lat_locate",
+      "mcp__lat__lat_check"
     ]
   }
 }

@@ -10,7 +10,6 @@ in
 
   imports = [
     @firstbootModule@
-    @desktopXfceModule@
     @networkModule@
     @shellModule@
     @updateModule@

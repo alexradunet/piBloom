@@ -30,7 +30,6 @@ let
     nixpi-chat                 = runTest ./nixpi-chat.nix;
     nixpi-network              = runTest ./nixpi-network.nix;
     nixpi-e2e                  = runTest ./nixpi-e2e.nix;
-    nixpi-rdp                  = runTest ./nixpi-rdp.nix;
     nixpi-security             = runTest ./nixpi-security.nix;
     nixpi-modular-services     = runTest ./nixpi-modular-services.nix;
     nixpi-bootstrap-mode       = runTest ./nixpi-bootstrap-mode.nix;

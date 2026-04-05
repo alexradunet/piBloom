@@ -111,7 +111,6 @@
             + target_mount
             + "/etc/nixos/configuration.nix >/tmp/nixpi-installer-eval.out"
         )
-        installer.succeed("grep -q 'desktop-xfce.nix' " + target_mount + "/etc/nixos/nixpi-install.nix")
         installer.succeed("grep -q 'nixpi.primaryUser = \"installer\";' " + target_mount + "/etc/nixos/nixpi-install.nix")
         installer.succeed("grep -q 'nixpi.security.ssh.passwordAuthentication = true;' " + target_mount + "/etc/nixos/nixpi-install.nix")
         installer.fail("grep -q 'nixpi.install.mode = ' " + target_mount + "/etc/nixos/nixpi-install.nix")

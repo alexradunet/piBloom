@@ -334,7 +334,6 @@
             { name = "nixpi-firstboot"; path = nixosTests.nixpi-firstboot; }
             { name = "nixpi-network"; path = nixosTests.nixpi-network; }
             { name = "nixpi-e2e"; path = nixosTests.nixpi-e2e; }
-            { name = "nixpi-rdp"; path = nixosTests.nixpi-rdp; }
             { name = "nixpi-security"; path = nixosTests.nixpi-security; }
             { name = "nixpi-modular-services"; path = nixosTests.nixpi-modular-services; }
             { name = "nixpi-bootstrap-mode"; path = nixosTests.nixpi-bootstrap-mode; }
