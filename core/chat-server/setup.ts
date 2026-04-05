@@ -91,8 +91,7 @@ export async function handleSetupApply(
 		res.write(`data: ${line}\n\n`);
 	};
 
-	const sudoCommand = process.env.NIXPI_SETUP_SUDO ?? "/run/wrappers/bin/sudo";
-	const child = spawn(sudoCommand, ["-n", "--preserve-env=SETUP_NETBIRD_KEY", opts.applyScript], {
+	const child = spawn(opts.applyScript, [], {
 		env: {
 			PATH: process.env.PATH ?? "",
 			SETUP_NETBIRD_KEY: netbirdKey,
@@ -112,10 +111,21 @@ export async function handleSetupApply(
 	});
 
 	await new Promise<void>((resolve) => {
-		child.on("close", (code) => {
-			send(code === 0 ? "SETUP_COMPLETE" : `SETUP_FAILED:${code}`);
+		let finished = false;
+		const finish = (line: string) => {
+			if (finished) return;
+			finished = true;
+			send(line);
 			res.end();
 			resolve();
+		};
+
+		child.on("error", () => {
+			finish("SETUP_FAILED:spawn");
+		});
+
+		child.on("close", (code) => {
+			finish(code === 0 ? "SETUP_COMPLETE" : `SETUP_FAILED:${code}`);
 		});
 	});
 }
