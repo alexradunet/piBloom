@@ -308,6 +308,14 @@
             touch "$out"
           '';
 
+          setup-apply-package = pkgs.runCommandLocal "setup-apply-package-check" { } ''
+            bash -n "${./core/scripts/nixpi-setup-apply.sh}"
+            wrapped="${setupApplyPackage}/bin/nixpi-setup-apply"
+            ! grep -E '/jq-[^/]+/bin' "$wrapped"
+            ! grep -E '/git-[^/]+/bin' "$wrapped"
+            touch "$out"
+          '';
+
           disko-layouts = diskoLayoutsCheck;
 
           installer-generated-config = mkInstallerGeneratedConfig {
