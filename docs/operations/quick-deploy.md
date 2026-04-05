@@ -44,30 +44,22 @@ sudo dd if=./result/iso/*.iso of=/dev/<usb-device> bs=4M status=progress oflag=s
    - `EFI + ext4 root`
    - `EFI + ext4 root + 8GiB swap`
    - `EFI + ext4 root + custom swap`
-6. Enter the hostname and primary user
-7. Confirm the destructive install
-8. Reboot into the installed system
+6. Confirm the destructive install
+7. Reboot into the installed system
 
-The installer writes a minimal bootable NixPI base in `/etc/nixos`. The full host flake and local `~/nixpi` checkout are created during first-boot setup after the machine has network access.
+The installer writes `/etc/nixos/nixpi-install.nix` (hashed password, hostname, primary user) and a `configuration.nix` that imports the pre-built desktop closure carried in the ISO. No git clone or `nixos-rebuild` happens after reboot.
 
 ### 4. Complete Setup
 
-After reboot, the installed system should autologin into the XFCE desktop and open the NixPI terminal automatically. If the setup wizard does not appear there, run:
+After reboot, the system autologins into the XFCE desktop. Open a browser to `http://nixpi.local:8080/setup` (or `http://localhost:8080/setup`). The web wizard shows a single optional field: a Netbird setup key. Submit the form to configure Netbird and mark the system ready. The page redirects to `/` when done.
 
-```bash
-setup-wizard.sh
-```
+If `~/.nixpi/prefill.env` exists when the chat server starts, the wizard auto-submits (with an empty Netbird key) and skips the manual form entirely.
 
-During first boot, the wizard:
-
-1. Connects the machine to WiFi and prefers it over Ethernet when both are usable
-2. Clones the NixPI checkout into `~/nixpi`
-3. Writes the host-specific flake under `/etc/nixos`
-4. Runs `sudo nixos-rebuild switch --flake /etc/nixos#$(hostname -s)` to promote the system into the full appliance
+After setup, log in via the terminal and run `pi /login` and `pi /model`.
 
 ## Development: Local Builds and VM Testing
 
-For development and testing, use the QEMU VM workflow.
+For development and testing, use the ISO install workflow in QEMU.
 
 ### Prerequisites
 
@@ -88,14 +80,15 @@ just deps
 
 ```bash
 just iso             # Build the installer ISO
-just vm              # Build and run VM (headless, serial console)
-just vm-ssh          # SSH into running VM
-just vm-stop         # Stop the VM
+just vm-install-iso  # Boot the ISO in QEMU and run the full install flow
+just vm-ssh          # SSH into the installer VM or installed system
 just check-config    # Fast: validate NixOS config
 just check-boot      # Thorough: boot test in VM
 ```
 
-**Default operator user**: the user chosen during `nixpi-installer`. That same primary operator account is the normal local and always-on Pi runtime identity.
+For automated installs, create a `prefill.env` from `prefill.env.example` before running `vm-install-iso`. The installer will pick it up and skip interactive prompts.
+
+**Default operator user**: `human` (hardcoded). The primary account is set up by the installer with the password from `prefill.env` or via the interactive prompt.
 
 ## OTA Updates
 

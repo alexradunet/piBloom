@@ -65,21 +65,24 @@ Do not let root files become secondary architecture documents. If a detail is on
 | `build` | Build the TypeScript app derivation |
 | `switch` | Apply local flake to running system |
 | `update` | Apply remote GitHub flake to system |
-| `vm` | Build and run test VM |
-| `vm-ssh` | SSH into running VM |
+| `iso` | Build the installer ISO |
+| `vm-install-iso` | Boot the installer ISO in QEMU |
+| `vm-ssh` | SSH into the running installer VM |
 | `check-config` | Fast NixOS config validation |
 | `check-boot` | Full VM boot test |
 
 **Environment Variables**:
-- `NIXPI_VM_MEMORY_MB` - VM RAM override
-- `NIXPI_VM_CPUS` - VM CPU override
+- `NIXPI_INSTALL_VM_DISK_PATH` - VM disk path override
+- `NIXPI_INSTALL_VM_MEMORY_MB` - VM RAM override
+- `NIXPI_INSTALL_VM_CPUS` - VM CPU override
+- `NIXPI_INSTALL_PREFILL_PATH` - Prefill env file for automated installs
 
 **Inbound Dependencies**:
 - Called by developers for all common tasks
 
 **Outbound Dependencies**:
 - `nix build`, `nixos-rebuild` commands
-- `tools/run-qemu.sh` for VM execution
+- `tools/run-installer-iso.sh` for VM-based install testing
 
 ---
 

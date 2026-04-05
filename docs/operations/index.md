@@ -33,9 +33,8 @@ sudo nixos-rebuild switch --flake /etc/nixos#$(hostname -s)
 sudo nixos-rebuild switch --rollback
 
 # VMs
-just vm              # Run test VM
-just vm-ssh          # SSH into VM
-just vm-stop         # Stop VM
+just vm-install-iso  # Boot installer ISO in QEMU
+just vm-ssh          # SSH into running installer VM
 
 # Testing
 just check-config    # Validate NixOS config

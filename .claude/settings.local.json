@@ -63,7 +63,9 @@
       "Bash(nc -zv localhost 2222)",
       "Bash(nc -zv localhost 18080)",
       "Read(//nix/store/whn19js2ffrmqv9i1495drj3zdv777wb-nixos-nixpi-26.05.20260317.cda4854-x86_64-linux.iso/**)",
-      "Read(//home/alex/pi-bloom/**)"
+      "Read(//home/alex/pi-bloom/**)",
+      "Bash(ls -la /home/alex/pi-bloom/result*)",
+      "Bash(lat check:*)"
     ]
   }
 }

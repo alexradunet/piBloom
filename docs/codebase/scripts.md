@@ -1,29 +1,27 @@
 # Scripts & Tools
 
-> Setup orchestration and local VM helpers
+> Setup apply and local installer helpers
 
 ## Responsibilities
 
 There are only two script areas that matter:
 
-- `core/scripts/setup-wizard.sh` for first-boot orchestration
-- `core/scripts/setup-lib.sh` for shared setup side effects
-- `tools/run-qemu.sh` for local VM execution
+- `core/scripts/nixpi-setup-apply.sh` for first-boot Netbird setup and ready-marker creation
+- `tools/run-installer-iso.sh` for local ISO-based install testing
 
 ## Cleanup rule
 
 Keep setup logic split by responsibility, not by historical flow:
 
-- `setup-wizard.sh` should own prompts, sequencing, and resume behavior
-- `setup-lib.sh` should own reusable helper actions
-- VM helpers should not embed product logic
+- `nixpi-setup-apply.sh` should only configure Netbird and write the system-ready marker
+- `run-installer-iso.sh` should not embed product logic — it only boots the ISO in QEMU
 
 First boot is now a single flow:
 
-1. LightDM autologins into the XFCE desktop
-2. XFCE launches the NixPI terminal wrapper
-3. That terminal runs `setup-wizard.sh` until `~/.nixpi/.setup-complete` exists
-4. Persona completion is tracked only by `~/.nixpi/wizard-state/persona-done`
+1. The system boots into the installed NixPI desktop (pre-baked from the ISO closure)
+2. The chat server redirects unauthenticated requests to `/setup` until `~/.nixpi/wizard-state/system-ready` exists
+3. The operator optionally submits a Netbird setup key via the web wizard
+4. `nixpi-setup-apply` runs under `sudo`, starts Netbird, and writes the ready marker
 
 ---
 
@@ -31,8 +29,8 @@ First boot is now a single flow:
 
 | Script | Safe to Run | When |
 |--------|-------------|------|
-| `setup-wizard.sh` | Production | First boot only |
-| `run-qemu.sh` | Development | Anytime for testing |
+| `nixpi-setup-apply.sh` | Production | First boot only (via web wizard) |
+| `run-installer-iso.sh` | Development | Anytime for install-flow testing |
 
 ---
 

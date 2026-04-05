@@ -34,6 +34,7 @@ Prefer tests that protect behavior over tests that mirror structure. When cleanu
 |------|---------------|
 | `server.test.ts` | HTTP contract, NDJSON streaming, and reset endpoint |
 | `session.test.ts` | Session creation, reuse, and eviction |
+| `setup.test.ts` | Setup wizard Netbird-only payload and prefill auto-apply |
 
 ### E2E Tests (`tests/e2e/`)
 
@@ -47,19 +48,16 @@ Prefer tests that protect behavior over tests that mirror structure. When cleanu
 |------|---------|------------|
 | `smoke-chat` | Built-in local chat service | `checks.x86_64-linux.nixos-smoke` |
 | `smoke-broker` | Broker service | `checks.x86_64-linux.nixos-smoke` |
-| `smoke-firstboot` | Setup wizard path | `checks.x86_64-linux.nixos-smoke` |
+| `smoke-firstboot` | Firstboot readiness | `checks.x86_64-linux.nixos-smoke` |
 | `nixpi-firstboot` | Full firstboot | `checks.x86_64-linux.nixos-full` |
 | `nixpi-network` | Network config | `checks.x86_64-linux.nixos-full` |
 | `nixpi-e2e` | End-to-end | `checks.x86_64-linux.nixos-full` |
-| `nixpi-desktop` | XFCE desktop and local app boot | `checks.x86_64-linux.nixos-full` |
-| `nixpi-rdp` | Remote desktop path | `checks.x86_64-linux.nixos-full` |
 | `nixpi-security` | Security model | `checks.x86_64-linux.nixos-full` |
 | `nixpi-modular-services` | Services | `checks.x86_64-linux.nixos-full` |
 | `nixpi-bootstrap-mode` | Bootstrap | `checks.x86_64-linux.nixos-full` |
 | `nixpi-post-setup-lockdown` | Post-setup | `checks.x86_64-linux.nixos-full` |
 | `nixpi-broker` | Broker | `checks.x86_64-linux.nixos-full` |
-| `nixpi-install-wizard` | Install wizard flow | `checks.x86_64-linux.nixos-destructive` |
-| `nixpi-installer-smoke` | Installer smoke lane | `checks.x86_64-linux.nixos-destructive` |
+| `nixpi-installer-smoke` | Simplified installer smoke lane | `checks.x86_64-linux.nixos-destructive` |
 | `nixpi-update` | Update flow | `checks.x86_64-linux.nixos-full` |
 | `nixpi-options-validation` | Option assertions | `checks.x86_64-linux.nixos-full` |
 
