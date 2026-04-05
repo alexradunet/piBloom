@@ -4,16 +4,16 @@ This directory contains NixOS integration tests for the NixPI platform. These te
 
 ## Test Lanes
 
-- `config`: fast non-VM closure build for the default installed system
+- `config`: fast non-VM closure build for the default headless VPS system
+- `vps-topology`: fast flake-shape check for the canonical `vps` host profile
 - `nixos-smoke`: PR-oriented VM subset
-  - `smoke-chat`
-  - `smoke-firstboot`
-  - `smoke-install-wizard`
-  - `smoke-security`
-  - `smoke-broker`
-  - `smoke-desktop`
+  - `nixpi-vps-bootstrap`
+  - `nixpi-chat`
+  - `nixpi-security`
+  - `nixpi-broker`
+  - `nixpi-installer-smoke`
 - `nixos-full`: comprehensive VM lane
-  - registered tests: `nixpi-firstboot`, `nixpi-chat`, `nixpi-network`, `nixpi-e2e`, `nixpi-desktop`, `nixpi-rdp`, `nixpi-security`, `nixpi-modular-services`, `nixpi-bootstrap-mode`, `nixpi-post-setup-lockdown`, `nixpi-broker`, `nixpi-installer-smoke`, `nixpi-install-wizard`, `nixpi-update`, `nixpi-options-validation`
+  - registered tests: `nixpi-firstboot`, `nixpi-chat`, `nixpi-network`, `nixpi-e2e`, `nixpi-security`, `nixpi-modular-services`, `nixpi-bootstrap-mode`, `nixpi-post-setup-lockdown`, `nixpi-broker`, `nixpi-installer-smoke`, `nixpi-update`, `nixpi-options-validation`
 - `nixos-destructive`: slower install/lockdown/broker cases intended for manual or scheduled runs
   - `nixpi-installer-smoke`
 
@@ -21,6 +21,7 @@ This directory contains NixOS integration tests for the NixPI platform. These te
 
 ### Run fast local checks
 ```bash
+nix build .#checks.x86_64-linux.vps-topology --no-link
 nix build .#checks.x86_64-linux.config --no-link
 nix build .#checks.x86_64-linux.nixos-smoke --no-link -L
 ```
@@ -63,19 +64,16 @@ $(nix-build -A checks.x86_64-linux.nixpi-chat.driverInteractive)/bin/nixos-test-
 tests/nixos/
 ├── lib.nix              # Shared test helpers and module lists
 ├── default.nix          # Test suite entry point
-├── nixpi-bootstrap-mode.nix      # no-prefill bootstrap-state contract
+├── nixpi-bootstrap-mode.nix      # bootstrap-state contract before setup completes
 ├── nixpi-broker.nix              # broker autonomy and privilege boundaries
 ├── nixpi-chat.nix                # built-in local chat surface test
-├── nixpi-desktop.nix             # desktop profile test
 ├── nixpi-e2e.nix                 # end-to-end integration test
 ├── nixpi-firstboot.nix           # first-boot wizard test
-├── nixpi-install-wizard.nix      # installer wizard flow test
 ├── nixpi-installer-smoke.nix     # live minimal manual installer smoke test
 ├── nixpi-modular-services.nix    # system.services/configData regression
 ├── nixpi-network.nix             # network/mesh test
 ├── nixpi-options-validation.nix  # options validation test
 ├── nixpi-post-setup-lockdown.nix # steady-state post-setup security contract
-├── nixpi-rdp.nix                 # remote desktop profile test
 ├── nixpi-security.nix            # security boundary test
 ├── nixpi-update.nix              # update flow test
 └── README.md            # This file

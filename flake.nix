@@ -90,7 +90,19 @@
         firstboot = import ./core/os/modules/firstboot;
       };
 
-      # Managed NixPI desktop profile used for local builds and installer generation.
+      # Canonical NixPI headless VPS profile used for local builds and the default installed system.
+      nixosConfigurations.vps = nixpkgs.lib.nixosSystem {
+        inherit system specialArgs;
+        modules = [
+          ./core/os/hosts/vps.nix
+          {
+            nixpkgs.hostPlatform = system;
+            nixpkgs.config.allowUnfree = true;
+          }
+        ];
+      };
+
+      # Compatibility alias for downstream code that still expects the legacy desktop output name.
       nixosConfigurations.desktop = nixpkgs.lib.nixosSystem {
         inherit system specialArgs;
         modules = [
@@ -146,7 +158,7 @@
       nixosConfigurations.installed-test = nixpkgs.lib.nixosSystem {
         inherit system specialArgs;
         modules = [
-          ./core/os/hosts/x86_64.nix
+          ./core/os/hosts/vps.nix
           {
             nixpkgs.hostPlatform = system;
             nixpkgs.config.allowUnfree = true;
@@ -222,7 +234,7 @@
 
             nodes.nixpi = { ... }: {
               imports = [
-                ./core/os/hosts/x86_64.nix
+                ./core/os/hosts/vps.nix
               ];
               _module.args = { inherit piAgent appPackage self; };
 
@@ -325,6 +337,14 @@
             touch "$out"
           '';
 
+          vps-topology = pkgs.runCommandLocal "vps-topology-check" { } ''
+            grep -F 'nixosConfigurations.vps' ${./flake.nix} >/dev/null
+            ! grep -F 'Managed NixPI desktop profile' ${./flake.nix} >/dev/null
+            grep -F './core/os/hosts/vps.nix' ${./flake.nix} >/dev/null
+            grep -F 'headless VPS profile' ${./core/os/hosts/vps.nix} >/dev/null
+            touch "$out"
+          '';
+
           disko-layouts = diskoLayoutsCheck;
 
           installer-generated-config = mkInstallerGeneratedConfig {
@@ -350,10 +370,11 @@
 
           nixos-smoke = mkCheckLane "nixos-smoke" [
             { name = "disko-layouts"; path = diskoLayoutsCheck; }
-            { name = "smoke-firstboot"; path = nixosTests.smoke-firstboot; }
-            { name = "smoke-security"; path = nixosTests.smoke-security; }
-            { name = "smoke-broker"; path = nixosTests.smoke-broker; }
-            { name = "installer-smoke"; path = nixosTests.installer-smoke; }
+            { name = "nixpi-vps-bootstrap"; path = nixosTests.nixpi-vps-bootstrap; }
+            { name = "nixpi-chat"; path = nixosTests.nixpi-chat; }
+            { name = "nixpi-security"; path = nixosTests.nixpi-security; }
+            { name = "nixpi-broker"; path = nixosTests.nixpi-broker; }
+            { name = "nixpi-installer-smoke"; path = nixosTests.nixpi-installer-smoke; }
           ];
 
           nixos-full = mkCheckLane "nixos-full" [
