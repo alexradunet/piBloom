@@ -1,11 +1,16 @@
 # core/os/modules/app.nix
-{ pkgs, lib, config, appPackage, piAgent, ... }:
+{ pkgs, lib, config, appPackage, ... }:
 
 let
   primaryUser = config.nixpi.primaryUser;
   primaryHome = "/home/${primaryUser}";
   stateDir = config.nixpi.stateDir;
   agentStateDir = "${primaryHome}/.pi";
+  piCommand = pkgs.writeShellScriptBin "pi" ''
+    export PI_SKIP_VERSION_CHECK=1
+    export PATH="${lib.makeBinPath [ pkgs.fd pkgs.ripgrep ]}:$PATH"
+    exec ${appPackage}/share/nixpi/node_modules/.bin/pi "$@"
+  '';
   defaultSettings = pkgs.writeText "pi-settings.json"
     (builtins.toJSON { packages = config.nixpi.agent.packagePaths; });
 in
@@ -13,7 +18,7 @@ in
 {
   imports = [ ./options.nix ];
 
-  environment.systemPackages = [ appPackage piAgent ];
+  environment.systemPackages = [ appPackage piCommand ];
 
   systemd.tmpfiles.settings.nixpi-app = {
     "/usr/local/share/nixpi"."L+" = { argument = "${appPackage}/share/nixpi"; };

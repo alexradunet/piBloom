@@ -100,10 +100,11 @@ in
     nixpi.fail("command -v nixpi-bootstrap-ensure-repo-target")
     nixpi.fail("command -v nixpi-bootstrap-prepare-repo")
     nixpi.fail("command -v nixpi-bootstrap-nixos-rebuild-switch")
+    nixpi.fail("command -v codex")
     nixpi.succeed("systemctl is-enabled nixpi-chat.service")
 
     nixpi.succeed(
-        "su - pi -c '. ~/.bashrc; test \"$PI_CODING_AGENT_DIR\" = /home/pi/.pi; "
+        "su - pi -c 'test \"$PI_CODING_AGENT_DIR\" = /home/pi/.pi; "
         + "pi --help | grep -q \"AI coding assistant\"'"
     )
 

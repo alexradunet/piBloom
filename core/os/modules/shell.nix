@@ -61,5 +61,27 @@ in
     "issue".text = "NixPI\n";
   };
 
+  environment.loginShellInit = ''
+    export NIXPI_DIR="${workspaceDir}"
+    export NIXPI_STATE_DIR="${stateDir}"
+    export NIXPI_PI_DIR="${primaryHome}/.pi"
+    export PI_CODING_AGENT_DIR="${primaryHome}/.pi"
+    export NIXPI_CONFIG_DIR="${stateDir}/services"
+    export NIXPI_KEEP_SSH_AFTER_SETUP="${if config.nixpi.bootstrap.keepSshAfterSetup then "1" else "0"}"
+    export PATH="/usr/local/share/nixpi/node_modules/.bin:$PATH"
+  '';
+
+  system.activationScripts.nixpi-shell-dotfiles = lib.stringAfter [ "users" ] ''
+    if [ -d ${primaryHome} ]; then
+      if [ ! -e ${primaryHome}/.bashrc ]; then
+        install -m 0644 -o ${primaryUser} -g ${primaryUser} ${bashrc} ${primaryHome}/.bashrc
+      fi
+
+      if [ ! -e ${primaryHome}/.bash_profile ]; then
+        install -m 0644 -o ${primaryUser} -g ${primaryUser} ${bashProfile} ${primaryHome}/.bash_profile
+      fi
+    fi
+  '';
+
   boot.kernel.sysctl."kernel.printk" = "4 4 1 7";
 }

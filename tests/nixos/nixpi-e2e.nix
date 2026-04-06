@@ -122,9 +122,12 @@
     for port in [8080, 8081, 5000, 8443]:
         client.succeed(f"! nc -z -w 2 pi {port}")
 
-    packages = ["git", "curl", "jq", "htop", "netbird", "pi"]
+    packages = ["git", "curl", "jq", "htop", "netbird"]
     for pkg in packages:
         nixpi.succeed("command -v " + pkg)
+
+    nixpi.fail("command -v codex")
+    nixpi.succeed("su - pi -c 'command -v pi'")
     
     nixpi.succeed("getent hosts pi")
     nixpi.succeed("getent hosts client")
