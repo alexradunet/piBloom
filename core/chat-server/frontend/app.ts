@@ -118,11 +118,7 @@ function handleStreamFailure(
 	stream.end(errPartial);
 }
 
-function handleServerResponseError(
-	stream: AssistantEventStream,
-	partial: AssistantMessage,
-	status: number,
-): void {
+function handleServerResponseError(stream: AssistantEventStream, partial: AssistantMessage, status: number): void {
 	const errMsg = `Server error: ${status}`;
 	const errPartial = createStreamError(partial, errMsg, errMsg);
 	stream.push({ type: "error", reason: "error", error: errPartial });

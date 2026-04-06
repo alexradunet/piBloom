@@ -47,8 +47,10 @@
 			"!**/services/**/node_modules",
 			"!**/.worktrees",
 			"!**/core/os/output",
+			"!**/.codex",
 			"!**/.pi",
 			"!**/.claude",
+			"!**/.omx",
 			"!**/coverage"
 		]
 	},
@@ -57,6 +59,9 @@
 			"includes": ["**/tests/**/*.test.ts"],
 			"linter": {
 				"rules": {
+					"complexity": {
+						"useArrowFunction": "off"
+					},
 					"performance": {
 						"noDelete": "off"
 					},
