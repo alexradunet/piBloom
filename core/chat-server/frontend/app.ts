@@ -13,172 +13,253 @@ import {
 } from "@mariozechner/pi-web-ui";
 import { createShell } from "./shell";
 
-// --------------------------------------------------------------------------
-// Session ID — persisted across page reloads
-// --------------------------------------------------------------------------
-let sessionId = localStorage.getItem("nixpi-chat-session-id");
-if (!sessionId) {
-	sessionId = crypto.randomUUID();
-	localStorage.setItem("nixpi-chat-session-id", sessionId);
+type StreamFnOptions = { signal?: AbortSignal };
+type TextContentPart = { type: "text"; text?: string };
+type StreamEvent = { type: string; content?: string; message?: string };
+type AssistantEventStream = ReturnType<typeof createAssistantMessageEventStream>;
+
+function createStorage(): AppStorage {
+	const settings = new SettingsStore();
+	const providerKeys = new ProviderKeysStore();
+	const sessions = new SessionsStore();
+
+	const backend = new IndexedDBStorageBackend({
+		dbName: "nixpi-chat",
+		version: 1,
+		stores: [settings.getConfig(), providerKeys.getConfig(), sessions.getConfig(), SessionsStore.getMetadataConfig()],
+	});
+
+	settings.setBackend(backend);
+	providerKeys.setBackend(backend);
+	sessions.setBackend(backend);
+
+	return new AppStorage(settings, providerKeys, sessions, undefined, backend);
+}
+
+function extractTextPart(content: unknown): string {
+	if (!Array.isArray(content)) {
+		return "";
+	}
+
+	return content
+		.filter(
+			(part): part is TextContentPart =>
+				typeof part === "object" && part !== null && (part as { type?: string }).type === "text",
+		)
+		.map((part) => part.text ?? "")
+		.join("");
+}
+
+function extractLastUserText(context: Context): string {
+	const messages = context.messages ?? [];
+	for (let i = messages.length - 1; i >= 0; i -= 1) {
+		const msg = messages[i];
+		if (msg?.role !== "user") {
+			continue;
+		}
+
+		return typeof msg.content === "string" ? msg.content : extractTextPart(msg.content);
+	}
+
+	return "";
+}
+
+function createEmptyAssistantMessage(): AssistantMessage {
+	return {
+		role: "assistant",
+		content: [{ type: "text", text: "" }],
+		api: "openai-completions",
+		provider: "nixpi",
+		model: "nixpi",
+		usage: {
+			input: 0,
+			output: 0,
+			cacheRead: 0,
+			cacheWrite: 0,
+			cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+		},
+		stopReason: "stop",
+		timestamp: Date.now(),
+	};
+}
+
+function createUpdatedPartial(partial: AssistantMessage, text: string): AssistantMessage {
+	return {
+		...partial,
+		content: [{ type: "text", text }],
+	};
+}
+
+function createStreamError(
+	partial: AssistantMessage,
+	text: string,
+	errorMessage: string,
+	reason: "error" | "aborted" = "error",
+): AssistantMessage {
+	return {
+		...partial,
+		content: [{ type: "text", text }],
+		stopReason: reason,
+		errorMessage,
+	};
+}
+
+function handleStreamFailure(
+	stream: AssistantEventStream,
+	partial: AssistantMessage,
+	accText: string,
+	err: unknown,
+): void {
+	const isAbort = err instanceof Error && (err.name === "AbortError" || err.message.includes("abort"));
+	const errMsg = isAbort ? "Aborted" : String(err);
+	const reason = isAbort ? "aborted" : "error";
+	const errPartial = createStreamError(partial, accText || errMsg, errMsg, reason);
+	stream.push({ type: "error", reason, error: errPartial });
+	stream.end(errPartial);
+}
+
+function handleServerResponseError(
+	stream: AssistantEventStream,
+	partial: AssistantMessage,
+	status: number,
+): void {
+	const errMsg = `Server error: ${status}`;
+	const errPartial = createStreamError(partial, errMsg, errMsg);
+	stream.push({ type: "error", reason: "error", error: errPartial });
+	stream.end(errPartial);
+}
+
+function pushTextDelta(
+	stream: AssistantEventStream,
+	partial: AssistantMessage,
+	accText: string,
+	delta: string,
+): string {
+	const nextText = accText + delta;
+	const updatedPartial = createUpdatedPartial(partial, nextText);
+	stream.push({
+		type: "text_delta",
+		contentIndex: 0,
+		delta,
+		partial: updatedPartial,
+	});
+	return nextText;
+}
+
+function handleParsedStreamEvent(
+	stream: AssistantEventStream,
+	partial: AssistantMessage,
+	accText: string,
+	event: StreamEvent,
+): { accText: string; stop: boolean } {
+	if (event.type === "text" && event.content) {
+		return {
+			accText: pushTextDelta(stream, partial, accText, event.content),
+			stop: false,
+		};
+	}
+
+	if (event.type === "error" && event.message) {
+		const errPartial = createStreamError(partial, accText, event.message);
+		stream.push({ type: "error", reason: "error", error: errPartial });
+		stream.end(errPartial);
+		return { accText, stop: true };
+	}
+
+	return { accText, stop: false };
+}
+
+async function pumpResponseBody(
+	stream: AssistantEventStream,
+	partial: AssistantMessage,
+	body: ReadableStream<Uint8Array>,
+): Promise<string> {
+	const reader = body.getReader();
+	const decoder = new TextDecoder();
+	let buffer = "";
+	let accText = "";
+
+	stream.push({ type: "text_start", contentIndex: 0, partial });
+
+	while (true) {
+		const { done, value } = await reader.read();
+		if (done) {
+			return accText;
+		}
+
+		buffer += decoder.decode(value, { stream: true });
+		const lines = buffer.split("\n");
+		buffer = lines.pop() ?? "";
+
+		for (const line of lines) {
+			if (!line.trim()) {
+				continue;
+			}
+
+			let event: StreamEvent;
+			try {
+				event = JSON.parse(line) as StreamEvent;
+			} catch {
+				continue;
+			}
+
+			const next = handleParsedStreamEvent(stream, partial, accText, event);
+			accText = next.accText;
+			if (next.stop) {
+				return accText;
+			}
+		}
+	}
+}
+
+async function streamChatResponse(
+	stream: AssistantEventStream,
+	partial: AssistantMessage,
+	userText: string,
+	signal?: AbortSignal,
+): Promise<void> {
+	let accText = "";
+
+	try {
+		const res = await fetch("/chat", {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({ message: userText }),
+			signal,
+		});
+
+		if (!res.ok || !res.body) {
+			handleServerResponseError(stream, partial, res.status);
+			return;
+		}
+
+		accText = await pumpResponseBody(stream, partial, res.body);
+
+		const finalPartial = createUpdatedPartial(partial, accText);
+		stream.push({ type: "text_end", contentIndex: 0, content: accText, partial: finalPartial });
+		stream.push({ type: "done", reason: "stop", message: finalPartial });
+		stream.end(finalPartial);
+	} catch (err: unknown) {
+		handleStreamFailure(stream, partial, accText, err);
+	}
 }
 
 // --------------------------------------------------------------------------
 // Minimal AppStorage setup (no API keys needed — we use our own backend)
 // --------------------------------------------------------------------------
-const settings = new SettingsStore();
-const providerKeys = new ProviderKeysStore();
-const sessions = new SessionsStore();
-
-const backend = new IndexedDBStorageBackend({
-	dbName: "nixpi-chat",
-	version: 1,
-	stores: [settings.getConfig(), providerKeys.getConfig(), sessions.getConfig(), SessionsStore.getMetadataConfig()],
-});
-
-settings.setBackend(backend);
-providerKeys.setBackend(backend);
-sessions.setBackend(backend);
-
-const storage = new AppStorage(settings, providerKeys, sessions, undefined, backend);
-setAppStorage(storage);
+setAppStorage(createStorage());
 
 // --------------------------------------------------------------------------
 // Custom streamFn — calls /chat and translates NDJSON to AssistantMessageEventStream
 // --------------------------------------------------------------------------
-function makeCustomStreamFn(sid: string) {
-	return function customStreamFn(_model: Model<any>, context: Context, options?: { signal?: AbortSignal }) {
+function makeCustomStreamFn() {
+	return function customStreamFn(_model: Model<unknown>, context: Context, options?: StreamFnOptions) {
 		const stream = createAssistantMessageEventStream();
-
-		// Extract the last user message text from the context
-		const messages = context.messages ?? [];
-		let userText = "";
-		for (let i = messages.length - 1; i >= 0; i--) {
-			const msg = messages[i];
-			if (msg.role === "user") {
-				const content = msg.content;
-				if (typeof content === "string") {
-					userText = content;
-				} else if (Array.isArray(content)) {
-					userText = content
-						.filter((c: any) => c.type === "text")
-						.map((c: any) => c.text ?? "")
-						.join("");
-				}
-				break;
-			}
-		}
-
-		const partial: AssistantMessage = {
-			role: "assistant",
-			content: [{ type: "text", text: "" }],
-			api: "openai-completions",
-			provider: "nixpi",
-			model: "nixpi",
-			usage: {
-				input: 0,
-				output: 0,
-				cacheRead: 0,
-				cacheWrite: 0,
-				cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
-			},
-			stopReason: "stop",
-			timestamp: Date.now(),
-		};
+		const userText = extractLastUserText(context);
+		const partial = createEmptyAssistantMessage();
 
 		stream.push({ type: "start", partial });
-
-		void (async () => {
-			let accText = "";
-			try {
-				const res = await fetch("/chat", {
-					method: "POST",
-					headers: { "Content-Type": "application/json" },
-					body: JSON.stringify({ sessionId: sid, message: userText }),
-					signal: options?.signal,
-				});
-
-				if (!res.ok || !res.body) {
-					const errMsg = `Server error: ${res.status}`;
-					const errPartial: AssistantMessage = {
-						...partial,
-						content: [{ type: "text", text: errMsg }],
-						stopReason: "error",
-						errorMessage: errMsg,
-					};
-					stream.push({ type: "error", reason: "error", error: errPartial });
-					stream.end(errPartial);
-					return;
-				}
-
-				const reader = res.body.getReader();
-				const decoder = new TextDecoder();
-				let buffer = "";
-
-				stream.push({ type: "text_start", contentIndex: 0, partial });
-
-				while (true) {
-					const { done, value } = await reader.read();
-					if (done) break;
-					buffer += decoder.decode(value, { stream: true });
-					const lines = buffer.split("\n");
-					buffer = lines.pop() ?? "";
-					for (const line of lines) {
-						if (!line.trim()) continue;
-						let event: { type: string; content?: string; message?: string };
-						try {
-							event = JSON.parse(line) as { type: string; content?: string; message?: string };
-						} catch {
-							continue;
-						}
-						if (event.type === "text" && event.content) {
-							accText += event.content;
-							const updatedPartial: AssistantMessage = {
-								...partial,
-								content: [{ type: "text", text: accText }],
-							};
-							stream.push({
-								type: "text_delta",
-								contentIndex: 0,
-								delta: event.content,
-								partial: updatedPartial,
-							});
-						} else if (event.type === "error" && event.message) {
-							const errPartial: AssistantMessage = {
-								...partial,
-								content: [{ type: "text", text: accText }],
-								stopReason: "error",
-								errorMessage: event.message,
-							};
-							stream.push({ type: "error", reason: "error", error: errPartial });
-							stream.end(errPartial);
-							return;
-						}
-						// "done" event from server just signals end of stream; we wait for reader.done
-					}
-				}
-
-				const finalPartial: AssistantMessage = {
-					...partial,
-					content: [{ type: "text", text: accText }],
-					stopReason: "stop",
-				};
-				stream.push({ type: "text_end", contentIndex: 0, content: accText, partial: finalPartial });
-				stream.push({ type: "done", reason: "stop", message: finalPartial });
-				stream.end(finalPartial);
-			} catch (err: unknown) {
-				const isAbort = err instanceof Error && (err.name === "AbortError" || err.message.includes("abort"));
-				const errMsg = isAbort ? "Aborted" : String(err);
-				const reason = isAbort ? "aborted" : "error";
-				const errPartial: AssistantMessage = {
-					...partial,
-					content: [{ type: "text", text: accText || errMsg }],
-					stopReason: reason,
-					errorMessage: errMsg,
-				};
-				stream.push({ type: "error", reason, error: errPartial });
-				stream.end(errPartial);
-			}
-		})();
+		void streamChatResponse(stream, partial, userText, options?.signal);
 
 		return stream;
 	};
@@ -199,12 +280,12 @@ const agent = new Agent({
 			reasoning: false,
 			input: ["text"],
 			cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
-		} as Model<any>,
+		} as Model<unknown>,
 		thinkingLevel: "off",
 		messages: [],
 		tools: [],
 	},
-	streamFn: makeCustomStreamFn(sessionId),
+	streamFn: makeCustomStreamFn(),
 });
 
 // --------------------------------------------------------------------------

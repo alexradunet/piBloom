@@ -4,18 +4,6 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-export interface CanonicalRepoValidationArgs {
-	path?: string;
-	origin?: string;
-	branch?: string;
-	expectedPath?: string;
-	expectedOrigin?: string;
-	expectedBranch?: string;
-	actualPath?: string;
-	actualOrigin?: string;
-	actualBranch?: string;
-}
-
 export const CANONICAL_REPO_DIR = "/srv/nixpi";
 export const SYSTEM_FLAKE_DIR = "/etc/nixos";
 
@@ -140,58 +128,10 @@ export function getSystemFlakeDir(): string {
 	return process.env.NIXPI_SYSTEM_FLAKE_DIR ?? SYSTEM_FLAKE_DIR;
 }
 
-/** Resolve the dedicated daemon state directory. */
-export function getDaemonStateDir(): string {
-	return process.env.NIXPI_DAEMON_STATE_DIR ?? path.join(getPiDir(), "nixpi-daemon");
-}
-
 /** Supported rebuilds only run from the canonical repo on main. */
 export function assertSupportedRebuildBranch(branch: string): void {
 	if (branch !== "main") {
 		throw new Error("Supported rebuilds require /srv/nixpi to be on main");
-	}
-}
-
-function getExpectedCanonicalRepoValues(args: CanonicalRepoValidationArgs) {
-	return {
-		expectedPath: args.expectedPath ?? getCanonicalRepoDir(),
-		expectedOrigin: args.expectedOrigin,
-		expectedBranch: args.expectedBranch,
-		actualPath: args.actualPath ?? args.path,
-		actualOrigin: args.actualOrigin ?? args.origin,
-		actualBranch: args.actualBranch ?? args.branch,
-	};
-}
-
-/** Validate repo path, origin, and branch against the canonical policy. */
-export function assertCanonicalRepo(args: CanonicalRepoValidationArgs): void {
-	const { expectedPath, expectedOrigin, expectedBranch, actualPath, actualOrigin, actualBranch } =
-		getExpectedCanonicalRepoValues(args);
-
-	if (actualPath !== expectedPath) {
-		throw new Error(`Canonical repo path mismatch: expected ${expectedPath}, got ${actualPath ?? "(missing)"}`);
-	}
-	if (actualOrigin !== undefined && expectedOrigin === undefined) {
-		throw new Error("Canonical repo origin expectation missing");
-	}
-	if (expectedOrigin !== undefined && actualOrigin === undefined) {
-		throw new Error("Canonical repo origin actual value missing");
-	}
-	if (expectedOrigin !== undefined && actualOrigin !== expectedOrigin) {
-		throw new Error(
-			`Canonical repo origin mismatch: expected ${expectedOrigin ?? "(missing)"}, got ${actualOrigin ?? "(missing)"}`,
-		);
-	}
-	if (actualBranch !== undefined && expectedBranch === undefined) {
-		throw new Error("Canonical repo branch expectation missing");
-	}
-	if (expectedBranch !== undefined && actualBranch === undefined) {
-		throw new Error("Canonical repo branch actual value missing");
-	}
-	if (expectedBranch !== undefined && actualBranch !== expectedBranch) {
-		throw new Error(
-			`Canonical repo branch mismatch: expected ${expectedBranch ?? "(missing)"}, got ${actualBranch ?? "(missing)"}`,
-		);
 	}
 }
 

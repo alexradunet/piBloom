@@ -17,14 +17,14 @@ It exists to:
 
 The runtime lives in `core/chat-server/` and runs as the `nixpi-chat.service` systemd unit.
 
-Session management is always one Pi session per active browser session ID.
+Session management is currently a single in-process Pi session shared by the local chat UI.
 
 ### Startup
 
 At startup:
 
-1. The HTTP server reads environment config (`NIXPI_CHAT_PORT`, `NIXPI_SHARE_DIR`, `PI_DIR`)
-2. A single `ChatSessionManager` instance is created
+1. The HTTP server reads environment config (`NIXPI_CHAT_PORT`, `PI_DIR`)
+2. A single `PiSessionBridge` instance is created
 3. The server begins accepting `POST /chat` requests and serves the built frontend on `GET /`
 
 ### Runtime Path
@@ -34,16 +34,14 @@ At startup:
 | File | Purpose |
 |------|---------|
 | `core/chat-server/index.ts` | HTTP entry point, route wiring, static asset serving |
-| `core/chat-server/session.ts` | Session creation, reuse, idle eviction, Pi agent integration |
+| `core/chat-server/pi-session.ts` | Pi SDK session creation, reset, and event translation |
 | `core/chat-server/frontend/app.ts` | Browser-side chat client (NDJSON event consumer) |
 | `core/os/services/nixpi-chat.nix` | systemd service wrapper |
 
 **Current behavior**:
 
-- One browser `sessionId` maps to one local Pi session directory under `~/.pi/chat-sessions/<sessionId>`
-- Sessions are created lazily on first use
-- The oldest session is evicted when `maxSessions` is exceeded
-- Idle sessions are disposed after `idleTimeoutMs`
+- A single in-process Pi session is created lazily and reused across chat requests
+- `DELETE /chat/:id` resets that session; the `:id` segment is ignored for compatibility
 - Agent events are translated into NDJSON events streamed to the browser
 
 ### Environment Variables
@@ -51,18 +49,14 @@ At startup:
 | Variable | Default | Purpose |
 |----------|---------|---------|
 | `NIXPI_CHAT_PORT` | `8080` | Backend listening port |
-| `NIXPI_SHARE_DIR` | `/usr/local/share/nixpi` | Packaged share directory |
 | `PI_DIR` | `~/.pi` | Pi runtime directory |
-| `NIXPI_CHAT_IDLE_TIMEOUT` | — | Idle session eviction window (seconds) |
-| `NIXPI_CHAT_MAX_SESSIONS` | — | Maximum concurrent in-memory sessions |
 
 ## Reference
 
 ### Important Current Failure Behavior
 
 - Startup is single-shot; systemd restart policy handles crashes
-- Session eviction is LRU-based (oldest evicted when limit is exceeded)
-- Idle eviction runs on a timer and disposes sessions that have been inactive
+- Session reset is explicit via the legacy `DELETE /chat/:id` route
 
 ## Related
 

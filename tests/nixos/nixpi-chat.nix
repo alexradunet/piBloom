@@ -53,7 +53,7 @@
         "curl -s -o /dev/null -w '%{http_code}' -X POST http://127.0.0.1:8080/chat "
         + "-H 'Content-Type: application/json' -d '{\"message\":\"hello\"}'"
     ).strip()
-    assert result == "400", "Expected 400 for missing sessionId, got: " + result
+    assert result == "200", "Expected 200 for message-only chat request, got: " + result
 
     result = nixpi.succeed(
         "curl -s -o /dev/null -w '%{http_code}' -X DELETE http://127.0.0.1:8080/chat/test-id"

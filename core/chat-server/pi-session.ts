@@ -215,7 +215,11 @@ export class PiSessionBridge {
 				}
 
 				while (queue.length > 0) {
-					yield queue.shift()!;
+					const nextEvent = queue.shift();
+					if (!nextEvent) {
+						continue;
+					}
+					yield nextEvent;
 				}
 			}
 		} finally {

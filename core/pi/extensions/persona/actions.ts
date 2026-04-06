@@ -61,7 +61,7 @@ export function loadGuardrails(): Array<{ tool: string; pattern: RegExp; label: 
 }
 
 /** Get the path to the NixPI context persistence file. */
-export function getContextFile(): string {
+function getContextFile(): string {
 	return join(getPiDir(), "nixpi-context.json");
 }
 

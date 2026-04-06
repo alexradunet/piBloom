@@ -6,7 +6,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { readPackageVersion, resolvePackageDir, safePath } from "../../../lib/filesystem.js";
 import { stringifyFrontmatter } from "../../../lib/frontmatter.js";
-import { errorResult, nowIso, textToolResult, truncate } from "../../../lib/utils.js";
+import { errorResult, textToolResult, truncate } from "../../../lib/utils.js";
 import { readBlueprintVersions } from "./actions-blueprints.js";
 
 const NIXPI_DIRS = ["Persona", "Skills", "Evolutions", "Objects", "Episodes", "Agents", "audit"];
@@ -90,41 +90,6 @@ export function handleSkillList(workspaceDir: string) {
 
 	const text = skills.length > 0 ? skills.join("\n") : "No skills found in NixPI.";
 	return textToolResult(text);
-}
-
-export function handlePersonaEvolve(
-	workspaceDir: string,
-	params: { layer: string; slug: string; title: string; proposal: string },
-) {
-	const validLayers = ["SOUL", "BODY", "FACULTY", "SKILL"];
-	if (!validLayers.includes(params.layer.toUpperCase())) {
-		return errorResult(`invalid layer: ${params.layer} (expected: ${validLayers.join(", ")})`);
-	}
-
-	const evoDir = path.join(workspaceDir, "Evolutions");
-	fs.mkdirSync(evoDir, { recursive: true });
-
-	const filepath = path.join(evoDir, `${params.slug}.pi.md`);
-	if (fs.existsSync(filepath)) {
-		return errorResult(`evolution already exists: ${params.slug}`);
-	}
-
-	const data: Record<string, unknown> = {
-		type: "evolution",
-		slug: params.slug,
-		title: params.title,
-		layer: params.layer.toUpperCase(),
-		status: "proposed",
-		risk: "low",
-		area: "persona",
-		created: nowIso(),
-	};
-
-	fs.writeFileSync(filepath, stringifyFrontmatter(data, `\n${params.proposal}\n`));
-
-	return textToolResult(
-		`proposed persona evolution: ${params.slug}\nlayer: ${params.layer.toUpperCase()}\nstatus: proposed\n\nThe user must approve this evolution before it can be applied.`,
-	);
 }
 
 /** Discover skill paths for dynamic loading. */

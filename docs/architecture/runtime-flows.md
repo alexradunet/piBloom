@@ -69,14 +69,14 @@ multi-user.target
    - Ensures the runtime directories are owned by the primary user
 
 2. **HTTP server bootstrap** (`core/chat-server/index.ts`)
-   - Reads `NIXPI_CHAT_PORT`, `NIXPI_SHARE_DIR`, `PI_DIR`, `NIXPI_CHAT_IDLE_TIMEOUT`, and `NIXPI_CHAT_MAX_SESSIONS`
+   - Reads `NIXPI_CHAT_PORT` and `PI_DIR`
    - Starts the local HTTP server on `127.0.0.1`
    - Serves the built frontend from `core/chat-server/frontend/dist`
 
-3. **Session manager initialization** (`core/chat-server/session.ts`)
-   - Creates per-session working directories under `~/.pi/chat-sessions/<sessionId>`
-   - Loads Pi resources from the packaged share dir
-   - Creates a `pi-coding-agent` session on first use
+3. **Pi session bridge initialization** (`core/chat-server/pi-session.ts`)
+   - Creates a single in-memory `pi-coding-agent` session bridge
+   - Pre-warms the session on server startup
+   - Resets the in-process session when the legacy reset route is called
 
 4. **Web entry point** (`core/os/modules/service-surface.nix`)
    - `nginx` proxies inbound HTTP/HTTPS traffic to the local chat server
@@ -87,7 +87,7 @@ multi-user.target
 | File | Role |
 |------|------|
 | `core/chat-server/index.ts` | HTTP entry point for local chat |
-| `core/chat-server/session.ts` | Session lifecycle, eviction, event streaming |
+| `core/chat-server/pi-session.ts` | Pi SDK event translation and reset lifecycle |
 | `core/os/services/nixpi-chat.nix` | Systemd unit wrapper and env wiring |
 | `core/os/modules/service-surface.nix` | Reverse proxy and TLS setup |
 
@@ -158,9 +158,7 @@ POST /chat
     ↓
 createChatServer()
     ↓
-ChatSessionManager.sendMessage()
-    ↓
-get or create ~/.pi/chat-sessions/<sessionId>
+PiSessionBridge.sendMessage()
     ↓
 pi-coding-agent session prompt()
     ↓
@@ -171,20 +169,18 @@ stream NDJSON events back to browser
 
 | Condition | Action |
 |-----------|--------|
-| Existing session ID | Reuse session and reset idle timer |
-| New session ID | Create a new session directory and agent session |
-| Session limit reached | Evict the least recently used session |
-| Idle timeout reached | Dispose the session automatically |
-| `DELETE /chat/:sessionId` | Tear down the session immediately |
+| Server startup | Pre-warm a single in-process Pi session |
+| `POST /chat` | Reuse the current in-process Pi session |
+| `DELETE /chat/:id` | Reset the current Pi session immediately (legacy compatibility route) |
 
 ### Key Files
 
 | File | Role |
 |------|------|
 | `core/chat-server/index.ts` | `/chat` and static asset routing |
-| `core/chat-server/session.ts` | Session cache, eviction, event translation |
+| `core/chat-server/pi-session.ts` | Pi session bridge and event translation |
 | `tests/chat-server/server.test.ts` | HTTP contract coverage |
-| `tests/chat-server/session.test.ts` | Session manager behavior |
+| `tests/chat-server/pi-session.test.ts` | Pi session bridge behavior |
 
 ## Memory/Object Flow
 
@@ -279,13 +275,13 @@ Apply on next window or manual trigger
 ```
 User resets chat session
     ↓
-DELETE /chat/:sessionId
+DELETE /chat/:id
     ↓
-ChatSessionManager.delete()
+PiSessionBridge.reset()
     ↓
 Dispose Pi session
     ↓
-Remove session from in-memory cache
+Next request lazily resumes a fresh session
 ```
 
 ### Idle Eviction

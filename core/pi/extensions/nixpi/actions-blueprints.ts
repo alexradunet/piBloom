@@ -26,7 +26,7 @@ export function readBlueprintVersions(workspaceDir: string): BlueprintVersions {
 	}
 }
 
-export function writeBlueprintVersions(workspaceDir: string, versions: BlueprintVersions): void {
+function writeBlueprintVersions(workspaceDir: string, versions: BlueprintVersions): void {
 	fs.writeFileSync(path.join(workspaceDir, "blueprint-versions.json"), `${JSON.stringify(versions, null, 2)}\n`);
 }
 

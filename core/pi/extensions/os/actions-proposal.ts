@@ -6,7 +6,7 @@ import { getSystemFlakeDir } from "../../../lib/filesystem.js";
 import { requireConfirmation } from "../../../lib/interactions.js";
 import { errorResult, truncate } from "../../../lib/utils.js";
 
-export type NixConfigProposalAction = "status" | "validate" | "update_flake_lock";
+type NixConfigProposalAction = "status" | "validate" | "update_flake_lock";
 
 const DEFAULT_CHECK = "checks.x86_64-linux.config";
 const PROPOSAL_REPO_DIR = "/var/lib/nixpi/pi-nixpi";
