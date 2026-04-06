@@ -27,10 +27,6 @@ update:
 rollback:
     sudo nixos-rebuild switch --rollback
 
-# Build the minimal NixPI installer ISO
-iso:
-    nix build {{ flake }}#installerIso
-
 # Remove build results
 clean:
     rm -f result result-*
@@ -47,20 +43,6 @@ check-config:
 # Fast bootstrap packaging contract check.
 check-bootstrap-script:
     nix {{ nix_opts }} build {{ flake }}#checks.{{ system }}.bootstrap-script --no-link
-
-# Fast installer helper regression tests without booting the ISO.
-check-installer:
-    nix {{ nix_opts }} build {{ flake }}#checks.{{ system }}.installer-frontend --no-link
-
-# Fast generated-config eval: forces the shared installer module to
-# evaluate as a NixOS module before the full VM smoke path.
-check-installer-generated-config:
-    nix {{ nix_opts }} build {{ flake }}#checks.{{ system }}.installer-generated-config --no-link
-
-# Live minimal installer smoke test. This is intentionally separate from the
-# PR smoke lane until runtime and stability are proven.
-check-installer-smoke:
-    nix {{ nix_vm_lane_opts }} build {{ flake }}#checks.{{ system }}.nixpi-installer-smoke --no-link -L
 
 # Full VM boot test: boots the installed system in a NixOS test VM.
 # Slower than check-config but verifies runtime behaviour (services, users).

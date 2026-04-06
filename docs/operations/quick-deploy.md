@@ -1,10 +1,10 @@
 # Quick Deploy
 
-> Bootstrap NixPI onto a headless VPS and operate it from the remote web app
+> Bootstrap NixPI onto a VPS, headless VM, or mini PC and operate it from the remote web app
 
 ## Audience
 
-Operators and maintainers deploying NixPI onto a NixOS-capable VPS or equivalent headless VM.
+Operators and maintainers deploying NixPI onto a NixOS-capable x86_64 VPS, headless VM, or mini PC.
 
 ## Security Note: NetBird Is Mandatory
 
@@ -14,23 +14,23 @@ NetBird is the network security boundary for NixPI services. The firewall trusts
 
 ## Canonical Deployment Path
 
-NixPI is now VPS-first and headless-first. The standard public deployment flow is:
+NixPI is bootstrap-first and remote-first. The standard public deployment flow is:
 
-1. provision a NixOS-capable VPS
+1. provision a NixOS-capable x86_64 machine
 2. run the bootstrap command once
 3. open the remote web app for chat and terminal access
 4. keep operating from the canonical checkout at `/srv/nixpi`
 
-## 1. Provision a NixOS-Capable VPS
+## 1. Provision a NixOS-Capable Machine
 
-Bring up a fresh x86_64 VPS or headless VM with:
+Bring up a fresh x86_64 VPS, headless VM, or mini PC with:
 
 - SSH access
 - `sudo` privileges
 - outbound internet access
 - enough disk and RAM to complete a `nixos-rebuild switch`
 
-If you are evaluating changes locally, a headless NixOS VM is fine. The public docs still optimize for the same remote operator contract used on a VPS.
+If you are evaluating changes locally, a headless NixOS VM is fine. If you are deploying to a mini PC, an attached monitor is useful as a local fallback, but the supported install path is still the same bootstrap command.
 
 ## 2. Run the Bootstrap Command
 
@@ -52,11 +52,13 @@ The bootstrap package:
 - refreshes that checkout from `origin/main`
 - runs `sudo nixos-rebuild switch --flake /srv/nixpi#nixpi`
 
+On monitor-attached hardware, the resulting system keeps a `tty1` login prompt after reboot. The remote web app remains the primary operator surface; the monitor is a recovery path.
+
 > Warning: rerunning the bootstrap command on a host with local commits in `/srv/nixpi` will reset that checkout to `origin/main`. Commit or export local work first.
 
 ## 3. Connect to the Remote App
 
-After the switch completes, NixPI runs as a headless service set. The default operator surface is the remote web app:
+After the switch completes, NixPI runs as a remote-first service set. The default operator surface is the remote web app:
 
 - `/` — main chat surface
 - `/terminal/` — browser terminal

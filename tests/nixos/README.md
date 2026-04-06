@@ -7,15 +7,14 @@ This directory contains NixOS integration tests for the NixPI platform. These te
 - `config`: fast non-VM closure build for the default headless VPS system
 - `vps-topology`: fast flake-shape check for the canonical `vps` host profile
 - `nixos-smoke`: PR-oriented headless VPS VM subset
-  - `nixpi-vps-bootstrap`
   - `nixpi-chat`
   - `nixpi-security`
   - `nixpi-broker`
-  - `nixpi-installer-smoke`
 - `nixos-full`: comprehensive headless VPS VM lane
-  - registered tests: `nixpi-firstboot`, `nixpi-chat`, `nixpi-network`, `nixpi-e2e`, `nixpi-security`, `nixpi-modular-services`, `nixpi-bootstrap-mode`, `nixpi-post-setup-lockdown`, `nixpi-broker`, `nixpi-installer-smoke`, `nixpi-update`, `nixpi-options-validation`
+  - registered tests: `nixpi-firstboot`, `nixpi-chat`, `nixpi-network`, `nixpi-e2e`, `nixpi-security`, `nixpi-modular-services`, `nixpi-bootstrap-mode`, `nixpi-post-setup-lockdown`, `nixpi-broker`, `nixpi-update`, `nixpi-options-validation`
 - `nixos-destructive`: slower install/lockdown/broker cases intended for manual or scheduled runs
-  - `nixpi-installer-smoke`
+  - `nixpi-post-setup-lockdown`
+  - `nixpi-broker`
 
 ## Running Tests
 
@@ -34,7 +33,6 @@ nix build .#checks.x86_64-linux.nixos-full --no-link -L
 ### Run the destructive lane
 ```bash
 nix build .#checks.x86_64-linux.nixos-destructive --no-link -L
-nix build .#checks.x86_64-linux.nixpi-installer-smoke --no-link -L
 ```
 
 ### Run a specific test
@@ -49,7 +47,6 @@ just check-config
 just check-nixos-smoke
 just check-nixos-full
 just check-nixos-destructive
-just check-installer-smoke
 ```
 
 ### Interactive test driver
@@ -70,7 +67,6 @@ tests/nixos/
 ├── nixpi-chat.nix                # built-in local chat surface test
 ├── nixpi-e2e.nix                 # end-to-end integration test
 ├── nixpi-firstboot.nix           # first-boot remote shell/chat readiness test
-├── nixpi-installer-smoke.nix     # live minimal manual installer smoke test
 ├── nixpi-modular-services.nix    # system.services/configData regression
 ├── nixpi-network.nix             # network/mesh test
 ├── nixpi-options-validation.nix  # options validation test

@@ -1,4 +1,11 @@
-{ config, pkgs, lib, piAgent, appPackage, ... }:
+{
+  config,
+  pkgs,
+  lib,
+  piAgent,
+  appPackage,
+  ...
+}:
 
 let
   primaryUser = config.nixpi.primaryUser;
@@ -119,7 +126,7 @@ EOF
         inherit system;
         specialArgs = { inherit piAgent appPackage; };
         modules = [
-          (repoDir + "/core/os/hosts/x86_64.nix")
+          (repoDir + "/core/os/hosts/vps.nix")
           ./configuration.nix
           ./nixpi-branch-guard.nix
           {
@@ -174,9 +181,18 @@ in
   security.sudo.extraRules = lib.optional config.nixpi.bootstrap.passwordlessSudo.enable {
     users = [ primaryUser ];
     commands = [
-      { command = "/run/current-system/sw/bin/nixpi-bootstrap-ensure-repo-target *"; options = [ "NOPASSWD" ]; }
-      { command = "/run/current-system/sw/bin/nixpi-bootstrap-prepare-repo *"; options = [ "NOPASSWD" ]; }
-      { command = "/run/current-system/sw/bin/nixpi-bootstrap-nixos-rebuild-switch"; options = [ "NOPASSWD" ]; }
+      {
+        command = "/run/current-system/sw/bin/nixpi-bootstrap-ensure-repo-target *";
+        options = [ "NOPASSWD" ];
+      }
+      {
+        command = "/run/current-system/sw/bin/nixpi-bootstrap-prepare-repo *";
+        options = [ "NOPASSWD" ];
+      }
+      {
+        command = "/run/current-system/sw/bin/nixpi-bootstrap-nixos-rebuild-switch";
+        options = [ "NOPASSWD" ];
+      }
     ];
   };
 }

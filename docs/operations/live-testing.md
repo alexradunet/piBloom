@@ -1,10 +1,10 @@
 # Live Testing
 
-> Validating a fresh NixPI release against the headless VPS operator path
+> Validating a fresh NixPI release against the supported bootstrap operator path
 
 ## Audience
 
-Operators validating a fresh NixPI release on a NixOS-capable VPS or a matching headless VM.
+Operators validating a fresh NixPI release on a NixOS-capable x86_64 VPS, headless VM, or mini PC.
 
 ## Why This Checklist Exists
 
@@ -16,7 +16,7 @@ Use it to verify that bootstrap, the remote app surface, and the canonical `/srv
 
 ### Fresh Bootstrap
 
-1. Start from a fresh NixOS-capable VPS or headless VM.
+1. Start from a fresh NixOS-capable x86_64 machine.
 2. Run `nix run github:alexradunet/nixpi#nixpi-bootstrap-vps`.
 3. Confirm the command prepares `/srv/nixpi` and completes `sudo nixos-rebuild switch --flake /srv/nixpi#nixpi`.
 
@@ -29,8 +29,9 @@ If you are validating a branch from a local checkout instead of GitHub, `just bo
 3. Use `http://127.0.0.1:8080/` only as the internal chat backend health probe when you need to distinguish backend availability from the public nginx surface.
 4. Confirm outbound networking works and finish NetBird enrollment before treating the host as ready for routine remote use.
 5. Reboot once and repeat the public-surface checks.
+6. On monitor-attached hardware, confirm the machine also presents a local `tty1` login prompt after reboot.
 
-**Expected result:** the remote app and browser terminal return after reboot, and the system remains operable from the canonical checkout without any local-session setup flow.
+**Expected result:** the remote app and browser terminal return after reboot, the system remains operable from the canonical checkout without any local-session setup flow, and monitor-attached mini PCs retain a local recovery console.
 
 ### Core Runtime
 

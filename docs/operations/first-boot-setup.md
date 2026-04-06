@@ -1,23 +1,23 @@
 # First Boot Setup
 
-> Validating a fresh headless NixPI host after bootstrap
+> Validating a fresh NixPI host after bootstrap
 
 ## Audience
 
-Operators bringing up a fresh NixPI VPS or headless VM.
+Operators bringing up a fresh NixPI VPS, headless VM, or mini PC.
 
 ## Prerequisites
 
 Before this checklist, you should already have:
 
-1. a NixOS-capable VPS or headless VM
+1. a NixOS-capable x86_64 machine
 2. a successful `nixpi-bootstrap-vps` run
 3. the canonical checkout present at `/srv/nixpi`
 4. a completed `sudo nixos-rebuild switch --flake /srv/nixpi#nixpi`
 
 ## What First Boot Means Now
 
-NixPI now expects the host to come up as a remote, headless service platform.
+NixPI now expects the host to come up as a remote-first service platform.
 
 A fresh system should come up with one remote operator surface:
 
@@ -89,6 +89,7 @@ After first boot, keep these boundaries in mind:
 - `/srv/nixpi` is the canonical git working tree for sync, review, and rebuilds
 - the remote web app is the default operator control plane
 - `/terminal/` exists for shell-first recovery and administration
+- a connected monitor on x86_64 hardware lands on a local `tty1` login prompt after boot
 - Pi runs in SDK mode inside the app runtime rather than through a separate local-session story
 - system services remain inspectable with normal NixOS and systemd tooling
 
@@ -108,8 +109,9 @@ After first boot, keep these boundaries in mind:
 - the machine boots to a normal headless multi-user target
 - no desktop session is required to start operating NixPI
 - the primary user workflow is remote web app plus browser terminal
+- on monitor-attached x86_64 hardware, `tty1` remains available for local recovery
 - updates and rollbacks are run from `/srv/nixpi`
-- if the remote surface fails, service status and logs remain the first recovery tools
+- if the remote surface fails, service status and logs remain the first recovery tools, with the local monitor login prompt available as fallback on mini PCs
 
 ## Related
 

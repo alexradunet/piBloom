@@ -1,13 +1,13 @@
 ---
 title: Install NixPI
-description: Install NixPI on a NixOS-capable VPS.
+description: Install NixPI on a NixOS-capable x86_64 machine.
 ---
 
 # Install NixPI
 
 ## Requirements
 
-- NixOS-capable x86_64 VPS or headless VM
+- NixOS-capable x86_64 machine: VPS, headless VM, or mini PC with an attached monitor
 - SSH access with `sudo`
 - Outbound internet access
 
@@ -31,6 +31,8 @@ The bootstrap process prepares `/srv/nixpi` and runs:
 ```bash
 sudo nixos-rebuild switch --flake /srv/nixpi#nixpi
 ```
+
+On a monitor-attached mini PC, the installed system also keeps a local `tty1` login prompt after reboot, so local recovery remains available if remote access is unavailable.
 
 ## After install
 
