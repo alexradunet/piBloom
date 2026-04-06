@@ -141,5 +141,5 @@ Poor promotion candidates:
 
 ## Related
 
-- [Codebase: Pi Extensions - Objects](../codebase/pi-extensions)
-- [Codebase: Pi Extensions - Episodes](../codebase/pi-extensions)
+- [Runtime Flows](../architecture/runtime-flows)
+- [Reference](./)

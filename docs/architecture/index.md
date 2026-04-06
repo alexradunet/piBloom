@@ -104,17 +104,20 @@ The `wt0` interface (NetBird WireGuard tunnel) is the only trusted interface in 
 | `/var/lib/nixpi` | Service and secret state owned by the appliance runtime |
 | `root` (via broker) | Elevated operations only |
 
-## Subsystem Details
+## Detailed References
 
-Each subsystem has its own detailed documentation:
+Use the reference section for topic-level details:
 
-- [Core Library](../codebase/core-lib) - Shared primitives and helpers
-- [Daemon](../codebase/daemon) - Local chat runtime and session lifecycle
-- [Pi Extensions](../codebase/pi-extensions) - Tool and command surface
-- [OS Modules](../codebase/os) - NixOS integration
+- [Service Architecture](../reference/service-architecture) - Built-in service surface
+- [Daemon Architecture](../reference/daemon-architecture) - Chat runtime internals
+- [Infrastructure](../reference/infrastructure) - Network and service boundaries
+- [Memory Model](../reference/memory-model) - Durable and episodic storage
+- [Security Model](../reference/security-model) - Threat model and trust boundary
+- [Supply Chain](../reference/supply-chain) - Dependency and image trust
 
 ## Related
 
 - [Runtime Flows](./runtime-flows) - End-to-end flow documentation
-- [Codebase Guide](../codebase/) - File-level documentation
-- [Security Model](../reference/security-model) - Detailed security documentation
+- [Daemon Architecture](../reference/daemon-architecture) - Runtime internals
+- [Operations](../operations/) - Deployment and validation procedures
+- [Reference](../reference/) - Detailed technical documentation

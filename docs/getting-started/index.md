@@ -12,9 +12,9 @@ NixPI is a headless NixOS system that runs Pi with:
 ## Read in this order
 
 1. [Install](../install)
-2. [Operations](../operations/)
-3. [Architecture](../architecture/)
-4. [Codebase Guide](../codebase/)
+2. [Quick Deploy](../operations/quick-deploy)
+3. [First Boot Setup](../operations/first-boot-setup)
+4. [Architecture](../architecture/)
 5. [Reference](../reference/)
 
 ## Core commands
@@ -28,6 +28,7 @@ npm run build
 
 # Docs
 npm run docs:dev
+npm run docs:build
 
 # Rebuild on host
 sudo nixos-rebuild switch --flake /etc/nixos --impure

@@ -8,7 +8,7 @@ Maintainers and operators deciding how NixPI exposes user-facing services.
 
 ## Current Model
 
-NixPI no longer ships a separate packaged-service layer. The user-facing service surface is built directly into the base NixOS system.
+NixPI ships its operator-facing surface directly from the base NixOS system. The remote web app, browser terminal, backend chat runtime, and supporting network services are part of the same host deployment.
 
 ## Built-In Services
 
@@ -16,17 +16,22 @@ The current built-in service set is:
 
 | Service | Port | Purpose |
 |---------|------|---------|
-| Pi Web Chat | `:8080` | Local web chat service for talking to Pi on the machine itself |
+| `nginx` | `:80`, `:443` | Public entrypoint for the web app and browser terminal |
+| `nixpi-chat.service` | `127.0.0.1:8080` | Internal chat backend used by the web app |
+| `nixpi-ttyd.service` | proxied via `/terminal/` | Browser terminal session |
+| `netbird.service` | mesh-managed | Required remote-access and firewall trust boundary |
 
-This service is declared as a system service in the OS modules and is expected to exist on every NixPI node.
+These services are declared in the OS layer and are expected to exist on every deployed NixPI host.
 
 ## Operational Notes
 
-- Pi Web Chat is served through the primary local interface on `:8080`
-- Use `systemctl status nixpi-chat.service` or `journalctl -u nixpi-chat.service` for host-level inspection
-- Use `systemd_control` to inspect and restart these units
+- The public operator surface is `/` for chat and `/terminal/` for the browser terminal.
+- `127.0.0.1:8080` is the internal backend probe, not the primary operator URL.
+- Use `systemctl status nixpi-chat.service`, `nixpi-ttyd.service`, `nginx.service`, and `netbird.service` for host-level inspection.
+- Use `journalctl -u <unit>` when you need service logs during deployment or troubleshooting.
 
 ## Related
 
 - [Daemon Architecture](./daemon-architecture)
+- [Infrastructure](./infrastructure)
 - [First Boot Setup](../operations/first-boot-setup)

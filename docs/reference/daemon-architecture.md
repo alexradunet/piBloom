@@ -60,5 +60,5 @@ At startup:
 
 ## Related
 
-- [Codebase: Daemon](../codebase/daemon)
 - [Service Architecture](./service-architecture)
+- [Architecture](../architecture/)

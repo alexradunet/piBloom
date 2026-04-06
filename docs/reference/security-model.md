@@ -24,7 +24,9 @@ When NetBird is active and the `wt0` interface is up, the following services are
 
 | Service | Port | Purpose |
 |---------|------|---------|
-| Chat | 8080 | Local web chat surface for Pi |
+| Web app | `:80`, `:443` | Primary remote chat and terminal entrypoint |
+| Browser terminal | `/terminal/` via nginx | Operator shell access |
+| Internal backend probe | `127.0.0.1:8080` | Host-local health check for `nixpi-chat.service` |
 
 ## What Happens If NetBird Is Absent
 
@@ -32,8 +34,8 @@ If NetBird is not running or not configured:
 
 1. The `wt0` interface does not exist
 2. The firewall rule `trustedInterfaces = ["wt0"]` provides **no protection**
-3. All NixPI services are exposed to the **local network**
-4. Any device on the same network can access the local web chat surface, interact with Pi through the browser runtime, and potentially trigger OS tools (`nixos_update`, `systemd_control`) via prompt injection
+3. The remote web app and browser terminal are exposed to the **reachable network**
+4. Any device on that network can interact with Pi through the browser runtime and potentially trigger OS tools (`nixos_update`, `systemd_control`) via prompt injection
 
 **This is a complete loss of the security perimeter.**
 

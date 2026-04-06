@@ -49,5 +49,4 @@ nix build .#checks.x86_64-linux.nixpi-vps-bootstrap --no-link -L
 
 - [Install NixPI](../install) - public install path
 - [Architecture](../architecture/) - system design
-- [Codebase](../codebase/) - implementation details
 - [Reference](../reference/) - deep technical docs

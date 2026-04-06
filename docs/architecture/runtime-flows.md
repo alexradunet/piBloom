@@ -310,4 +310,5 @@ Free one local runtime slot
 ## Related
 
 - [Memory Model](../reference/memory-model) - Memory system details
-- [Codebase: Daemon](../codebase/daemon) - Daemon file inventory
+- [Daemon Architecture](../reference/daemon-architecture) - Runtime internals
+- [Operations](../operations/) - Deployment and validation workflows
