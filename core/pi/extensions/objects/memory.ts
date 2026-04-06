@@ -3,13 +3,13 @@ import path from "node:path";
 import { parseFrontmatter, stringifyFrontmatter } from "../../../lib/frontmatter.js";
 import { nowIso } from "../../../lib/utils.js";
 
-export interface MemoryRecord {
+interface MemoryRecord {
 	filepath: string;
 	attributes: Record<string, unknown>;
 	body: string;
 }
 
-export interface QueryResult {
+interface QueryResult {
 	ref: string;
 	title?: string;
 	summary?: string;
@@ -23,7 +23,7 @@ export interface ScopePreference {
 	value?: string;
 }
 
-export function normalizeScalar(value: unknown): string | number | boolean | null {
+function normalizeScalar(value: unknown): string | number | boolean | null {
 	if (value === null) return null;
 	if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") return value;
 	return String(value);
@@ -68,7 +68,7 @@ function safeTimestamp(value: unknown): number {
 	return Number.isFinite(time) ? time : 0;
 }
 
-export function normalizeFields(fields?: Record<string, unknown>): Record<string, unknown> {
+function normalizeFields(fields?: Record<string, unknown>): Record<string, unknown> {
 	if (!fields) return {};
 	const normalized: Record<string, unknown> = {};
 	for (const [key, value] of Object.entries(fields)) {
@@ -168,7 +168,7 @@ export function writeMemoryRecord(record: MemoryRecord): void {
 	fs.writeFileSync(record.filepath, stringifyFrontmatter(record.attributes, record.body));
 }
 
-export function formatRef(attributes: Record<string, unknown>, filepath: string): string {
+function formatRef(attributes: Record<string, unknown>, filepath: string): string {
 	const type = String(attributes.type ?? "note");
 	const slug = String(attributes.slug ?? path.basename(filepath, ".md"));
 	return `${type}/${slug}`;
