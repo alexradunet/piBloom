@@ -59,16 +59,20 @@ export class PiSessionBridge {
 
 	private async getSession(): Promise<ResettablePiSession> {
 		if (!this.sessionPromise) {
-			const sessionPromise = this.createSession().catch((error: unknown) => {
-				if (this.sessionPromise === sessionPromise) {
-					this.sessionPromise = null;
-				}
-				throw error;
-			});
-			this.sessionPromise = sessionPromise;
+			this.sessionPromise = this.createSessionPromise();
 		}
 
 		return this.sessionPromise;
+	}
+
+	private createSessionPromise(): Promise<ResettablePiSession> {
+		const sessionPromise = this.createSession().catch((error: unknown) => {
+			if (this.sessionPromise === sessionPromise) {
+				this.sessionPromise = null;
+			}
+			throw error;
+		});
+		return sessionPromise;
 	}
 
 	private static stringifyToolInput(value: unknown): string {
@@ -81,6 +85,50 @@ export class PiSessionBridge {
 		}
 
 		return JSON.stringify(value ?? "");
+	}
+
+	private clearTextCursors(): void {
+		this.textCursors.clear();
+	}
+
+	private enqueueToolStart(queue: ChatEvent[], event: ToolStartEvent): void {
+		queue.push({
+			type: "tool_call",
+			name: event.toolName ?? "unknown",
+			input: PiSessionBridge.stringifyToolInput(event.args),
+		});
+	}
+
+	private enqueueToolEnd(queue: ChatEvent[], event: ToolEndEvent): void {
+		queue.push({
+			type: "tool_result",
+			name: event.toolName ?? "unknown",
+			output: PiSessionBridge.stringifyToolOutput(event.result),
+		});
+	}
+
+	private handleSessionEvent(event: SessionEvent, queue: ChatEvent[], finish: () => void): void {
+		switch (event.type) {
+			case "agent_start":
+				this.clearTextCursors();
+				break;
+			case "message_update":
+				queue.push(...this.normalizeMessageUpdate(event));
+				break;
+			case "tool_execution_start":
+				this.enqueueToolStart(queue, event);
+				break;
+			case "tool_execution_end":
+				this.enqueueToolEnd(queue, event);
+				break;
+			case "agent_end":
+				finish();
+				break;
+		}
+	}
+
+	private static shiftQueuedEvent(queue: ChatEvent[]): ChatEvent | null {
+		return queue.shift() ?? null;
 	}
 
 	private normalizeMessageUpdate(event: MessageUpdateEvent): ChatEvent[] {
@@ -118,7 +166,7 @@ export class PiSessionBridge {
 
 	async reset(): Promise<void> {
 		const currentSessionPromise = this.sessionPromise;
-		this.textCursors.clear();
+		this.clearTextCursors();
 		if (!currentSessionPromise) {
 			return;
 		}
@@ -136,7 +184,7 @@ export class PiSessionBridge {
 	async stop(): Promise<void> {
 		const currentSessionPromise = this.sessionPromise;
 		this.sessionPromise = null;
-		this.textCursors.clear();
+		this.clearTextCursors();
 		if (!currentSessionPromise) {
 			return;
 		}
@@ -162,33 +210,7 @@ export class PiSessionBridge {
 		};
 
 		const unsubscribe = session.subscribe((event) => {
-			const normalizedEvent = event as SessionEvent;
-			switch (normalizedEvent.type) {
-				case "agent_start":
-					this.textCursors.clear();
-					break;
-				case "message_update":
-					queue.push(...this.normalizeMessageUpdate(normalizedEvent));
-					break;
-				case "tool_execution_start":
-					queue.push({
-						type: "tool_call",
-						name: normalizedEvent.toolName ?? "unknown",
-						input: PiSessionBridge.stringifyToolInput(normalizedEvent.args),
-					});
-					break;
-				case "tool_execution_end":
-					queue.push({
-						type: "tool_result",
-						name: normalizedEvent.toolName ?? "unknown",
-						output: PiSessionBridge.stringifyToolOutput(normalizedEvent.result),
-					});
-					break;
-				case "agent_end":
-					finish();
-					break;
-			}
-
+			this.handleSessionEvent(event as SessionEvent, queue, finish);
 			if (queue.length > 0) {
 				wake();
 			}
@@ -215,7 +237,7 @@ export class PiSessionBridge {
 				}
 
 				while (queue.length > 0) {
-					const nextEvent = queue.shift();
+					const nextEvent = PiSessionBridge.shiftQueuedEvent(queue);
 					if (!nextEvent) {
 						continue;
 					}

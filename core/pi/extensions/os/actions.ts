@@ -18,6 +18,12 @@ import { errorResult, truncate } from "../../../lib/utils.js";
 import { guardServiceName } from "../../../lib/validation.js";
 import type { UpdateStatus } from "./types.js";
 
+type OsActionResult = {
+	content: Array<{ type: "text"; text: string }>;
+	details: Record<string, unknown>;
+	isError?: boolean;
+};
+
 // --- NixOS update handler ---
 
 function generationStatusText(result: { stdout: string; stderr: string; exitCode: number }): string {
@@ -29,15 +35,15 @@ async function confirmOsMutation(action: "apply" | "rollback", ctx: ExtensionCon
 	return denied ? { denied } : {};
 }
 
-async function handleNixosStatus(signal: AbortSignal | undefined) {
+async function handleNixosStatus(signal: AbortSignal | undefined): Promise<OsActionResult> {
 	const gen = await run("nixos-rebuild", ["list-generations"], signal);
 	return {
 		content: [{ type: "text" as const, text: truncate(generationStatusText(gen)) }],
 		details: { exitCode: gen.exitCode },
-	};
+	} satisfies OsActionResult;
 }
 
-async function handleNixosRollback(signal: AbortSignal | undefined) {
+async function handleNixosRollback(signal: AbortSignal | undefined): Promise<OsActionResult> {
 	const result = await run("nixpi-brokerctl", ["nixos-update", "rollback"], signal);
 	const text =
 		result.exitCode === 0
@@ -47,10 +53,10 @@ async function handleNixosRollback(signal: AbortSignal | undefined) {
 		content: [{ type: "text" as const, text }],
 		details: { exitCode: result.exitCode },
 		isError: result.exitCode !== 0,
-	};
+	} satisfies OsActionResult;
 }
 
-function ensureSystemFlakeExists(flake: string) {
+function ensureSystemFlakeExists(flake: string): OsActionResult | null {
 	if (fs.existsSync(path.join(flake, "flake.nix"))) {
 		return null;
 	}
@@ -64,7 +70,7 @@ async function ensureCanonicalMainBranch(signal: AbortSignal | undefined): Promi
 	| { branchOk: true }
 	| {
 			branchOk: false;
-			errorResult: ReturnType<typeof errorResult>;
+			errorResult: OsActionResult;
 	  }
 > {
 	const repoDir = getCanonicalRepoDir();
@@ -90,7 +96,7 @@ async function ensureCanonicalMainBranch(signal: AbortSignal | undefined): Promi
 	}
 }
 
-async function handleNixosApply(signal: AbortSignal | undefined) {
+async function handleNixosApply(signal: AbortSignal | undefined): Promise<OsActionResult> {
 	const flake = getSystemFlakeDir();
 	const flakeError = ensureSystemFlakeExists(flake);
 	if (flakeError) {
@@ -111,14 +117,14 @@ async function handleNixosApply(signal: AbortSignal | undefined) {
 		content: [{ type: "text" as const, text: truncate(text) }],
 		details: { exitCode: result.exitCode, flake },
 		isError: result.exitCode !== 0,
-	};
+	} satisfies OsActionResult;
 }
 
 export async function handleNixosUpdate(
 	action: "status" | "apply" | "rollback",
 	signal: AbortSignal | undefined,
 	ctx: ExtensionContext,
-) {
+): Promise<OsActionResult> {
 	if (action === "apply" || action === "rollback") {
 		const confirmation = await confirmOsMutation(action, ctx);
 		if (confirmation.denied) return errorResult(confirmation.denied);

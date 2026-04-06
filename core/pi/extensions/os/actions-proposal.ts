@@ -7,6 +7,11 @@ import { requireConfirmation } from "../../../lib/interactions.js";
 import { errorResult, truncate } from "../../../lib/utils.js";
 
 type NixConfigProposalAction = "status" | "validate" | "update_flake_lock";
+type ProposalActionResult = {
+	content: Array<{ type: "text"; text: string }>;
+	details: Record<string, unknown>;
+	isError?: boolean;
+};
 
 const DEFAULT_CHECK = "checks.x86_64-linux.config";
 const PROPOSAL_REPO_DIR = "/var/lib/nixpi/pi-nixpi";
@@ -76,7 +81,7 @@ async function handleProposalStatus(repoDir: string, repo: ProposalRepoState, si
 			branch: branch.stdout.trim(),
 			clean: status.stdout.trim().length === 0,
 		},
-	};
+	} satisfies ProposalActionResult;
 }
 
 async function handleFlakeLockRefresh(
@@ -107,10 +112,14 @@ async function handleFlakeLockRefresh(
 		content: [{ type: "text" as const, text: truncate(text) }],
 		details: { repoDir, exitCode: update.exitCode },
 		isError: update.exitCode !== 0,
-	};
+	} satisfies ProposalActionResult;
 }
 
-async function handleProposalValidation(repoDir: string, repo: ProposalRepoState, signal: AbortSignal | undefined) {
+async function handleProposalValidation(
+	repoDir: string,
+	repo: ProposalRepoState,
+	signal: AbortSignal | undefined,
+): Promise<ProposalActionResult> {
 	const [flakeCheck, configBuild] = await Promise.all([
 		run("nix", ["flake", "check", "--no-build"], signal, repoDir),
 		run("nix", ["build", `.#${DEFAULT_CHECK}`, "--no-link"], signal, repoDir),
@@ -138,7 +147,7 @@ export async function handleNixConfigProposal(
 	action: NixConfigProposalAction,
 	signal: AbortSignal | undefined,
 	ctx: ExtensionContext,
-) {
+): Promise<ProposalActionResult> {
 	const repoDir = PROPOSAL_REPO_DIR;
 	const repo = await ensureProposalRepo(repoDir, signal);
 	if ("error" in repo) {
