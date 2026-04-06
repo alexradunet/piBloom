@@ -43,6 +43,56 @@ export function episodeRef(id: string): string {
 	return `episode/${id}`;
 }
 
+function buildEpisodeId(created: string, room?: string): string {
+	return `${timestampSlug(created)}${room ? `-${room}` : ""}`;
+}
+
+function episodeFrontmatter(params: {
+	id: string;
+	created: string;
+	title: string;
+	kind?: string;
+	room?: string;
+	agent?: string;
+	importance?: string;
+	tags?: string[];
+	derived_objects?: string[];
+}) {
+	return {
+		type: "episode",
+		id: params.id,
+		room: params.room ?? null,
+		agent: params.agent ?? null,
+		kind: params.kind ?? "observation",
+		importance: params.importance ?? "medium",
+		tags: params.tags ?? [],
+		derived_objects: params.derived_objects ?? [],
+		created: params.created,
+		title: params.title,
+	};
+}
+
+function buildEpisodeMarkdown(title: string, body: string): string {
+	return `# ${title}\n\n${body}\n`;
+}
+
+function resolveEpisodeFilepath(created: string, id: string): string {
+	const dir = path.join(ensureEpisodesDir(), dayStamp(created));
+	return safePath(dir, `${id}.md`);
+}
+
+function listEpisodeFiles(root: string, newestFirst = false): string[] {
+	const files = fs.existsSync(root) ? fs.globSync("**/*.md", { cwd: root }) : [];
+	return newestFirst ? files.sort().reverse() : files;
+}
+
+function loadEpisodeRecord(root: string, rel: string): EpisodeRecord {
+	const filepath = path.join(root, rel);
+	const raw = fs.readFileSync(filepath, "utf-8");
+	const parsed = parseFrontmatter<Record<string, unknown>>(raw);
+	return { filepath, relpath: rel, attributes: parsed.attributes, body: parsed.body };
+}
+
 export function createEpisode(params: {
 	title: string;
 	body: string;
@@ -54,29 +104,17 @@ export function createEpisode(params: {
 	derived_objects?: string[];
 }) {
 	const created = nowIso();
-	const id = `${timestampSlug(created)}${params.room ? `-${params.room}` : ""}`;
-	const dir = path.join(ensureEpisodesDir(), dayStamp(created));
+	const id = buildEpisodeId(created, params.room);
 	let filepath: string;
 	try {
-		filepath = safePath(dir, `${id}.md`);
+		filepath = resolveEpisodeFilepath(created, id);
 	} catch {
 		return errorResult("Path traversal blocked: invalid episode id");
 	}
 	fs.mkdirSync(path.dirname(filepath), { recursive: true });
-	const frontmatter = {
-		type: "episode",
-		id,
-		room: params.room ?? null,
-		agent: params.agent ?? null,
-		kind: params.kind ?? "observation",
-		importance: params.importance ?? "medium",
-		tags: params.tags ?? [],
-		derived_objects: params.derived_objects ?? [],
-		created,
-		title: params.title,
-	};
+	const frontmatter = episodeFrontmatter({ ...params, id, created });
 	try {
-		fs.writeFileSync(filepath, stringifyFrontmatter(frontmatter, `# ${params.title}\n\n${params.body}\n`), {
+		fs.writeFileSync(filepath, stringifyFrontmatter(frontmatter, buildEpisodeMarkdown(params.title, params.body)), {
 			flag: "wx",
 		});
 	} catch (err) {
@@ -95,16 +133,14 @@ export function listEpisodes(params: { day?: string; kind?: string; limit?: numb
 export function loadEpisodes(params: { day?: string; kind?: string; limit?: number }): EpisodeRecord[] {
 	const root = ensureEpisodesDir();
 	const max = Math.max(1, Math.min(200, Number(params.limit ?? 20)));
-	const files = fs.existsSync(root) ? fs.globSync("**/*.md", { cwd: root }).sort().reverse() : [];
+	const files = listEpisodeFiles(root, true);
 	const matches: EpisodeRecord[] = [];
 	for (const rel of files) {
-		const filepath = path.join(root, rel);
-		const raw = fs.readFileSync(filepath, "utf-8");
 		const day = rel.split(path.sep)[0] ?? "";
 		if (params.day && day !== params.day) continue;
-		if (params.kind && !raw.includes(`kind: ${params.kind}`)) continue;
-		const parsed = parseFrontmatter<Record<string, unknown>>(raw);
-		matches.push({ filepath, relpath: rel, attributes: parsed.attributes, body: parsed.body });
+		const episode = loadEpisodeRecord(root, rel);
+		if (params.kind && episode.attributes.kind !== params.kind) continue;
+		matches.push(episode);
 		if (matches.length >= max) break;
 	}
 	return matches;
@@ -112,7 +148,7 @@ export function loadEpisodes(params: { day?: string; kind?: string; limit?: numb
 
 function findEpisodePath(id: string): string | null {
 	const root = ensureEpisodesDir();
-	const files = fs.existsSync(root) ? fs.globSync("**/*.md", { cwd: root }) : [];
+	const files = listEpisodeFiles(root);
 	for (const rel of files) {
 		if (path.basename(rel, ".md") === id) {
 			return path.join(root, rel);
@@ -247,6 +283,28 @@ function inferTargetFromEpisode(episode: EpisodeRecord): PromotionTarget | null 
 	return buildPromotionTarget(episode, type, title, importance, tags);
 }
 
+function summarizeProposal(episode: EpisodeRecord, target: PromotionTarget): string {
+	const episodeId = String(episode.attributes.id ?? "unknown");
+	return `${episodeRef(episodeId)} -> ${target.type}/${target.slug}\n  ${target.summary}`;
+}
+
+function applyPromotionProposal(
+	proposal: { episode: EpisodeRecord; target: PromotionTarget },
+	projectName?: string,
+): string | null {
+	const episodeId = String(proposal.episode.attributes.id ?? "");
+	const result = promoteEpisode({
+		episode_id: episodeId,
+		target: proposal.target,
+		mode: "upsert",
+		projectName,
+	});
+	if ("isError" in result && result.isError) {
+		return null;
+	}
+	return `${episodeRef(episodeId)} -> ${proposal.target.type}/${proposal.target.slug}`;
+}
+
 export function consolidateEpisodes(params: {
 	day?: string;
 	kind?: string;
@@ -270,31 +328,16 @@ export function consolidateEpisodes(params: {
 	}
 
 	if (params.mode === "apply") {
-		const applied: string[] = [];
-		for (const proposal of proposals) {
-			const episodeId = String(proposal.episode.attributes.id ?? "");
-			const result = promoteEpisode({
-				episode_id: episodeId,
-				target: proposal.target,
-				mode: "upsert",
-				projectName: params.projectName,
-			});
-			if (!("isError" in result && result.isError)) {
-				applied.push(`${episodeRef(episodeId)} -> ${proposal.target.type}/${proposal.target.slug}`);
-			}
-		}
+		const applied = proposals
+			.map((proposal) => applyPromotionProposal(proposal, params.projectName))
+			.filter((entry): entry is string => entry !== null);
 		return {
 			content: [{ type: "text" as const, text: applied.join("\n") || "No candidates applied" }],
 			details: { count: proposals.length, applied: applied.length },
 		};
 	}
 
-	const text = proposals
-		.map((proposal) => {
-			const episodeId = String(proposal.episode.attributes.id ?? "unknown");
-			return `${episodeRef(episodeId)} -> ${proposal.target.type}/${proposal.target.slug}\n  ${proposal.target.summary}`;
-		})
-		.join("\n");
+	const text = proposals.map((proposal) => summarizeProposal(proposal.episode, proposal.target)).join("\n");
 	return {
 		content: [{ type: "text" as const, text }],
 		details: { count: proposals.length, applied: 0 },
