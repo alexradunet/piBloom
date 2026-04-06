@@ -13,7 +13,30 @@ run_as_root() {
   if [ "$(id -u)" -eq 0 ]; then
     "$@"
   else
-    sudo env "PATH=$PATH" "$@"
+    if [ -x /run/wrappers/bin/sudo ]; then
+      /run/wrappers/bin/sudo env "PATH=$PATH" "$@"
+      return
+    fi
+
+    if command -v sudo >/dev/null 2>&1; then
+      local SUDO_BIN
+      SUDO_BIN="$(command -v sudo)"
+      if [[ "$SUDO_BIN" == /nix/store/*/bin/sudo ]]; then
+        log "Detected store-provided sudo at $SUDO_BIN (not setuid root)."
+        log "Re-run as root, or use /run/wrappers/bin/sudo if available."
+        return 1
+      fi
+      "$SUDO_BIN" env "PATH=$PATH" "$@"
+      return
+    fi
+
+    if command -v doas >/dev/null 2>&1; then
+      doas env "PATH=$PATH" "$@"
+      return
+    fi
+
+    log "No usable privilege escalation tool found. Re-run this script as root."
+    return 1
   fi
 }
 

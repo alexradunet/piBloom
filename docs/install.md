@@ -17,6 +17,15 @@ description: Install NixPI on a NixOS-capable VPS.
 nix --extra-experimental-features 'nix-command flakes' run github:alexradunet/nixpi#nixpi-bootstrap-vps
 ```
 
+Run the command as your normal user (do **not** prefix with `sudo`).
+The bootstrap script escalates only the specific steps that need root.
+
+If you want to force the freshest copy from GitHub (skip flake fetch cache), use:
+
+```bash
+nix --extra-experimental-features 'nix-command flakes' run --refresh github:alexradunet/nixpi?ref=main#nixpi-bootstrap-vps
+```
+
 The bootstrap process prepares `/srv/nixpi` and runs:
 
 ```bash
