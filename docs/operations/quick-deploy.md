@@ -55,7 +55,7 @@ The bootstrap package:
 
 `/etc/nixos` remains the host-owned system layer for hardware, boot, filesystems, display, and desktop settings. `/srv/nixpi` provides the NixPI layer imported by that host flake, so rebuilds preserve machine-specific behavior instead of replacing it.
 
-The generated host flake also follows the machine's current NixOS release line by default. That prevents bootstrap from silently jumping a `25.05` host to `26.x` or unstable while NixPI is layered on top.
+The generated host flake also follows the configured stable NixOS line by default. Today that means `nixos-25.11`, which prevents bootstrap from silently jumping onto `nixos-unstable` or a 26.x pre-release line while NixPI is layered on top.
 
 On monitor-attached hardware, the resulting system keeps a `tty1` login prompt after reboot. The remote web app remains the primary operator surface; the monitor is a recovery path.
 
