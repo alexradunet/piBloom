@@ -23,6 +23,11 @@ export interface ScopePreference {
 	value?: string;
 }
 
+interface ScoreState {
+	score: number;
+	reasons: string[];
+}
+
 function normalizeScalar(value: unknown): string | number | boolean | null {
 	if (value === null) return null;
 	if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") return value;
@@ -73,21 +78,19 @@ function normalizeFields(fields?: Record<string, unknown>): Record<string, unkno
 	const normalized: Record<string, unknown> = {};
 	for (const [key, value] of Object.entries(fields)) {
 		if (value === undefined) continue;
-		if (key === "tags" || key === "links" || key === "source") {
-			normalized[key] = normalizeArray(value);
-			continue;
-		}
-		if (key === "salience") {
-			normalized[key] = coerceNumber(value, 0);
-			continue;
-		}
-		if (key === "scope_value") {
-			normalized[key] = normalizeScalar(value);
-			continue;
-		}
-		normalized[key] = normalizeScalar(value);
+		normalized[key] = normalizeFieldValue(key, value);
 	}
 	return normalized;
+}
+
+function normalizeFieldValue(key: string, value: unknown): unknown {
+	if (key === "tags" || key === "links" || key === "source") {
+		return normalizeArray(value);
+	}
+	if (key === "salience") {
+		return coerceNumber(value, 0);
+	}
+	return normalizeScalar(value);
 }
 
 function scopePreferenceBonus(
@@ -116,6 +119,30 @@ function preferenceBonus(
 	return { bonus: 20, matched: recordScope };
 }
 
+function defaultObjectAttributes(type: string, slug: string, existing: Record<string, unknown>, now: string) {
+	return {
+		...existing,
+		type,
+		slug,
+		origin: existing.origin ?? "pi",
+		created: existing.created ?? now,
+		modified: now,
+		scope: existing.scope ?? "global",
+		confidence: existing.confidence ?? "medium",
+		status: existing.status ?? "active",
+		salience: existing.salience ?? 0.5,
+	};
+}
+
+function finalizeObjectState(merged: Record<string, unknown>): Record<string, unknown> {
+	if (!merged.summary && typeof merged.title === "string") {
+		merged.summary = `${merged.title}`;
+	}
+	if (!merged.last_accessed) merged.last_accessed = merged.modified;
+	if (!merged.last_confirmed) merged.last_confirmed = merged.modified;
+	return merged;
+}
+
 export function defaultObjectBody(attributes: Record<string, unknown>): string {
 	const title = typeof attributes.title === "string" ? attributes.title : undefined;
 	return title ? `# ${title}\n` : "";
@@ -131,25 +158,10 @@ export function mergeObjectState(params: {
 	const normalizedFields = normalizeFields(params.fields);
 	const existing = params.existing ?? {};
 	const merged: Record<string, unknown> = {
-		...existing,
-		type: params.type,
-		slug: params.slug,
-		origin: existing.origin ?? "pi",
-		created: existing.created ?? now,
-		modified: now,
-		scope: existing.scope ?? "global",
-		confidence: existing.confidence ?? "medium",
-		status: existing.status ?? "active",
-		salience: existing.salience ?? 0.5,
+		...defaultObjectAttributes(params.type, params.slug, existing, now),
 		...normalizedFields,
 	};
-
-	if (!merged.summary && typeof merged.title === "string") {
-		merged.summary = `${merged.title}`;
-	}
-	if (!merged.last_accessed) merged.last_accessed = merged.modified;
-	if (!merged.last_confirmed) merged.last_confirmed = merged.modified;
-	return merged;
+	return finalizeObjectState(merged);
 }
 
 export function readMemoryRecord(filepath: string): MemoryRecord | null {
@@ -179,7 +191,7 @@ function applyExactFilter(
 	actual: string,
 	scoreValue: number,
 	reason: string,
-	state: { score: number; reasons: string[] },
+	state: ScoreState,
 ): boolean {
 	if (!expected) return true;
 	if (actual !== expected) return false;
@@ -188,11 +200,7 @@ function applyExactFilter(
 	return true;
 }
 
-function applyLinkFilter(
-	linkTo: string | undefined,
-	links: string[],
-	state: { score: number; reasons: string[] },
-): boolean {
+function applyLinkFilter(linkTo: string | undefined, links: string[], state: ScoreState): boolean {
 	if (!linkTo) return true;
 	if (!links.includes(linkTo)) return false;
 	state.score += 15;
@@ -200,11 +208,7 @@ function applyLinkFilter(
 	return true;
 }
 
-function applyTagFilter(
-	requiredTags: string[] | undefined,
-	tags: string[],
-	state: { score: number; reasons: string[] },
-): boolean {
+function applyTagFilter(requiredTags: string[] | undefined, tags: string[], state: ScoreState): boolean {
 	if (!requiredTags || requiredTags.length === 0) return true;
 	const tagMatches = requiredTags.filter((tag) => tags.includes(tag));
 	if (tagMatches.length === 0) return false;
@@ -219,7 +223,7 @@ function applyTextScore(
 	title: string | undefined,
 	summary: string | undefined,
 	tags: string[],
-	state: { score: number; reasons: string[] },
+	state: ScoreState,
 ): boolean {
 	if (!text) return true;
 	const query = text.toLowerCase();
@@ -244,7 +248,7 @@ function scoreTextMatch(
 	query: string,
 	scoreValue: number,
 	reason: string,
-	state: { score: number; reasons: string[] },
+	state: ScoreState,
 ): boolean {
 	if (!value?.toLowerCase().includes(query)) return false;
 	state.score += scoreValue;
@@ -257,7 +261,7 @@ function applyMetadataBonuses(
 	recordScope: string,
 	recordScopeValue: string,
 	preferredScopes: ScopePreference[] | undefined,
-	state: { score: number; reasons: string[] },
+	state: ScoreState,
 ) {
 	state.score += confidenceBonus(
 		typeof record.attributes.confidence === "string" ? record.attributes.confidence : undefined,
@@ -268,6 +272,28 @@ function applyMetadataBonuses(
 	if (scopeBonus.matched) state.reasons.push(`preferred:${scopeBonus.matched}`);
 	state.score += safeTimestamp(record.attributes.last_accessed) > 0 ? 3 : 0;
 	state.score += safeTimestamp(record.attributes.modified) > 0 ? 2 : 0;
+}
+
+function recordSummary(attributes: Record<string, unknown>): string | undefined {
+	return typeof attributes.summary === "string" ? attributes.summary : undefined;
+}
+
+function scoreState(): ScoreState {
+	return { score: 0, reasons: [] };
+}
+
+function recordIdentity(record: MemoryRecord) {
+	return {
+		ref: formatRef(record.attributes, record.filepath),
+		title: typeof record.attributes.title === "string" ? record.attributes.title : undefined,
+		summary: recordSummary(record.attributes),
+		tags: normalizeArray(record.attributes.tags),
+		links: normalizeArray(record.attributes.links),
+		recordType: String(record.attributes.type ?? "note"),
+		recordScope: String(record.attributes.scope ?? "global"),
+		recordScopeValue: String(record.attributes.scope_value ?? ""),
+		recordStatus: String(record.attributes.status ?? "active"),
+	};
 }
 
 export function scoreRecord(
@@ -283,34 +309,24 @@ export function scoreRecord(
 		preferred_scopes?: ScopePreference[];
 	},
 ): QueryResult | null {
-	const ref = formatRef(record.attributes, record.filepath);
-	const title = typeof record.attributes.title === "string" ? record.attributes.title : undefined;
-	const summary = typeof record.attributes.summary === "string" ? record.attributes.summary : undefined;
-	const tags = normalizeArray(record.attributes.tags);
-	const links = normalizeArray(record.attributes.links);
-	const reasons: string[] = [];
-	const state = { score: 0, reasons };
+	const identity = recordIdentity(record);
+	const state = scoreState();
 
-	const recordType = String(record.attributes.type ?? "note");
-	const recordScope = String(record.attributes.scope ?? "global");
-	const recordScopeValue = String(record.attributes.scope_value ?? "");
-	const recordStatus = String(record.attributes.status ?? "active");
-
-	if (!applyExactFilter(params.type, recordType, 50, "type", state)) return null;
-	if (!applyExactFilter(params.scope, recordScope, 25, "scope", state)) return null;
-	if (!applyExactFilter(params.scope_value, recordScopeValue, 15, "scope_value", state)) return null;
-	if (!applyExactFilter(params.status, recordStatus, 10, "status", state)) return null;
-	if (!applyLinkFilter(params.link_to, links, state)) return null;
-	if (!applyTagFilter(params.tags, tags, state)) return null;
-	if (!applyTextScore(params.text, record, title, summary, tags, state)) return null;
-	applyMetadataBonuses(record, recordScope, recordScopeValue, params.preferred_scopes, state);
+	if (!applyExactFilter(params.type, identity.recordType, 50, "type", state)) return null;
+	if (!applyExactFilter(params.scope, identity.recordScope, 25, "scope", state)) return null;
+	if (!applyExactFilter(params.scope_value, identity.recordScopeValue, 15, "scope_value", state)) return null;
+	if (!applyExactFilter(params.status, identity.recordStatus, 10, "status", state)) return null;
+	if (!applyLinkFilter(params.link_to, identity.links, state)) return null;
+	if (!applyTagFilter(params.tags, identity.tags, state)) return null;
+	if (!applyTextScore(params.text, record, identity.title, identity.summary, identity.tags, state)) return null;
+	applyMetadataBonuses(record, identity.recordScope, identity.recordScopeValue, params.preferred_scopes, state);
 
 	return {
-		ref,
-		title,
-		summary,
+		ref: identity.ref,
+		title: identity.title,
+		summary: identity.summary,
 		score: state.score,
-		reasons,
+		reasons: state.reasons,
 		filepath: record.filepath,
 	};
 }
