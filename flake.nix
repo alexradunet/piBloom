@@ -345,6 +345,16 @@
             touch "$out"
           '';
 
+          rebuild-pull-script = pkgs.runCommandLocal "rebuild-pull-script-check" { } ''
+            script="${./.}/core/scripts/nixpi-rebuild-pull.sh"
+            test -x "$script"
+            grep -F 'REPO_DIR="/srv/nixpi"' "$script" >/dev/null
+            grep -F 'TARGET_REF="''${1:-main}"' "$script" >/dev/null
+            grep -F 'reset --hard "origin/$TARGET_REF"' "$script" >/dev/null
+            grep -F 'nixos-rebuild switch --flake /etc/nixos#nixos' "$script" >/dev/null
+            touch "$out"
+          '';
+
           system-flake-bootstrap = pkgs.runCommandLocal "system-flake-bootstrap-check" { } ''
             script=${./core/os/pkgs/bootstrap/nixpi-bootstrap-vps.sh}
             helper=${./core/scripts/nixpi-init-system-flake.sh}
