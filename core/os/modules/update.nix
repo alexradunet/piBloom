@@ -8,6 +8,7 @@
 
 let
   inherit (config.nixpi) primaryUser;
+  nixpiUpdate = pkgs.callPackage ../pkgs/nixpi-update { };
 in
 
 {
@@ -28,11 +29,7 @@ in
   ];
 
   system.services.nixpi-update = {
-    process.argv = [
-      (pkgs.writeShellScript "nixpi-update" (
-        builtins.readFile ../../../core/scripts/system-update.sh
-      ))
-    ];
+    process.argv = [ "${nixpiUpdate}/bin/nixpi-update" ];
     systemd.service = {
       description = "NixPI NixOS update";
       after = [ "network-online.target" ];
@@ -45,16 +42,7 @@ in
         RemainAfterExit = false;
         Restart = "no";
         Environment = [
-          "PATH=/run/current-system/sw/bin:${
-            lib.makeBinPath (
-              with pkgs;
-              [
-                nix
-                git
-                jq
-              ]
-            )
-          }"
+          "PATH=/run/current-system/sw/bin:${lib.makeBinPath [ pkgs.nix ]}"
           "NIXPI_PRIMARY_USER=${primaryUser}"
           "NIXPI_SYSTEM_FLAKE_DIR=/etc/nixos"
         ];

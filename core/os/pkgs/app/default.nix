@@ -14,6 +14,7 @@ buildNpmPackage {
         !(lib.hasPrefix "/node_modules" rel
           || lib.hasPrefix "/dist" rel
           || lib.hasPrefix "/coverage" rel
+          || lib.hasPrefix "/tests" rel
           || lib.hasPrefix "/core/os" rel
           || lib.hasPrefix "/.git" rel
           || lib.hasSuffix ".qcow2" rel

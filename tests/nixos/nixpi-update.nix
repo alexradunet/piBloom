@@ -37,6 +37,9 @@ in
             {
               nixpkgs.hostPlatform = system;
               nixpkgs.pkgs = pkgs;
+              system.stateVersion = "25.05";
+              boot.loader.systemd-boot.enable = true;
+              boot.loader.efi.canTouchEfiVariables = true;
             }
             (
               { pkgs, ... }:
@@ -111,7 +114,7 @@ in
       };
 
       systemd.timers.nixpi-update.wantedBy = lib.mkForce [ ];
-      system.services.nixpi-update.nixpi-update.command = lib.mkForce testUpdateScript;
+      system.services.nixpi-update.process.argv = lib.mkForce [ testUpdateScript ];
 
       systemd.tmpfiles.rules = [
         "d /etc/nixos 0755 root root -"
