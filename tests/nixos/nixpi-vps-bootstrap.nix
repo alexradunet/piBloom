@@ -11,7 +11,7 @@
         mkTestFilesystems
       ];
 
-      nixpi.primaryUser = "human";
+      nixpi.primaryUser = "pi";
 
       virtualisation.diskSize = 20480;
       virtualisation.memorySize = 4096;
@@ -22,7 +22,7 @@
 
   testScript = ''
     nixpi = machines[0]
-    home = "/home/human"
+    home = "/home/pi"
 
     nixpi.start()
     nixpi.wait_for_unit("multi-user.target", timeout=300)

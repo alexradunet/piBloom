@@ -23,7 +23,6 @@
   systemd.services."serial-getty@ttyS0".enable = lib.mkDefault true;
 
   nixpi = {
-    primaryUser = lib.mkDefault "human";
     bootstrap.keepSshAfterSetup = lib.mkDefault true;
     security.ssh.passwordAuthentication = lib.mkDefault false;
   };

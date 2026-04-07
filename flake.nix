@@ -4,14 +4,12 @@
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-    nixos-hardware.url = "github:NixOS/nixos-hardware";
   };
 
   outputs =
     {
       self,
       nixpkgs,
-      nixos-hardware,
       ...
     }:
     let
@@ -117,26 +115,6 @@
         vps = mkConfiguredSystem {
           inherit system;
           modules = [ ./core/os/hosts/vps.nix ];
-        };
-
-        # Raspberry Pi 4 target (aarch64-linux).
-        # Build on native aarch64 hardware or with binfmt/QEMU:
-        #   nix build .#nixosConfigurations.rpi4.config.system.build.toplevel
-        rpi4 = mkConfiguredSystem {
-          system = "aarch64-linux";
-          modules = [
-            nixos-hardware.nixosModules.raspberry-pi-4
-            ./core/os/hosts/rpi4.nix
-          ];
-        };
-
-        # Raspberry Pi 5 target (aarch64-linux).
-        rpi5 = mkConfiguredSystem {
-          system = "aarch64-linux";
-          modules = [
-            nixos-hardware.nixosModules.raspberry-pi-5
-            ./core/os/hosts/rpi5.nix
-          ];
         };
 
         # Host-owned system-flake composition used by bootstrap-generated installs:
@@ -271,6 +249,7 @@
             ! grep -F 'git clone' "${./core/scripts/nixpi-setup-apply.sh}"
             ! grep -F 'nixos-rebuild switch' "${./core/scripts/nixpi-setup-apply.sh}"
             ! grep -F 'jq --arg key' "${./core/scripts/nixpi-setup-apply.sh}"
+            ! grep -F 'SUDO_USER:-human' "${./core/scripts/nixpi-setup-apply.sh}"
             touch "$out"
           '';
 
@@ -330,14 +309,20 @@
             ! grep -F 'desktop-vm' ${./flake.nix}
             ! test -e ${./.}/core/os/hosts/x86_64-vm.nix
             ! test -e ${./.}/tools/run-qemu.sh
+            ! test -e ${./.}/core/os/hosts/rpi-common.nix
+            ! test -e ${./.}/core/os/hosts/rpi4.nix
+            ! test -e ${./.}/core/os/hosts/rpi5.nix
             touch "$out"
           '';
 
           vps-topology = pkgs.runCommandLocal "vps-topology-check" { } ''
             grep -F 'nixosConfigurations.vps' ${./flake.nix} >/dev/null
+            ! grep -F 'nixosConfigurations.rpi4' ${./flake.nix} >/dev/null
+            ! grep -F 'nixosConfigurations.rpi5' ${./flake.nix} >/dev/null
             ! grep -F 'nixosConfigurations.nixpi = self.nixosConfigurations.vps' ${./flake.nix} >/dev/null
             ! grep -F 'Managed NixPI desktop profile' ${./flake.nix} >/dev/null
             grep -F './core/os/hosts/vps.nix' ${./flake.nix} >/dev/null
+            ! grep -F 'primaryUser = lib.mkDefault "human";' ${./core/os/hosts/vps.nix} >/dev/null
             grep -F 'headless VPS profile' ${./core/os/hosts/vps.nix} >/dev/null
             grep -F 'enableRedistributableFirmware' ${./core/os/hosts/vps.nix} >/dev/null
             sed -n '/nixosConfigurations.installed-test =/,/checks\.\${system} =/p' ${./flake.nix} \
