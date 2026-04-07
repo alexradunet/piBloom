@@ -18,7 +18,7 @@ resolve_repo_dir() {
 }
 
 REPO_DIR="$(resolve_repo_dir)"
-LAB_DIR="${NIXPI_QEMU_DIR:-${REPO_DIR}/.omx/qemu-lab}"
+LAB_DIR="${NIXPI_QEMU_DIR:-${REPO_DIR}/qemu-lab}"
 DISK_DIR="${LAB_DIR}/disks"
 LOG_DIR="${LAB_DIR}/logs"
 SHARE_DIR="${REPO_DIR}"
