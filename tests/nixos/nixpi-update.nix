@@ -1,49 +1,51 @@
-{ lib, nixPiModulesNoShell, mkTestFilesystems, piAgent, appPackage, setupApplyPackage, ... }:
+{
+  lib,
+  nixPiModulesNoShell,
+  mkTestFilesystems,
+  ...
+}:
 
 let
-  commonNodeModule = { ... }: {
+  commonNodeModule = _: {
     nixpi.primaryUser = "tester";
 
     networking.hostName = "nixpi-update-test";
-    time.timeZone = "UTC";
-    i18n.defaultLocale = "en_US.UTF-8";
-    networking.networkmanager.enable = true;
-    system.stateVersion = "25.05";
-
-    boot.loader.systemd-boot.enable = true;
-    boot.loader.efi.canTouchEfiVariables = true;
 
     users.users.tester = {
       isNormalUser = true;
       group = "tester";
       initialPassword = "test";
     };
-    users.groups.tester = {};
+    users.groups.tester = { };
   };
 
 in
 {
   name = "nixpi-update";
 
-  nodes.machine = { pkgs, ... }:
+  nodes.machine =
+    { pkgs, ... }:
     let
-      system = pkgs.stdenv.hostPlatform.system;
+      inherit (pkgs.stdenv.hostPlatform) system;
 
-      systemNew = (import "${pkgs.path}/nixos/lib/eval-config.nix" {
-        inherit system;
-        specialArgs = { inherit piAgent appPackage setupApplyPackage; };
-        modules = nixPiModulesNoShell ++ [
-          mkTestFilesystems
-          commonNodeModule
-          {
-            nixpkgs.hostPlatform = system;
-            nixpkgs.pkgs = pkgs;
-          }
-          ({ pkgs, ... }: {
-            environment.systemPackages = [ pkgs.hello ];
-          })
-        ];
-      }).config.system.build.toplevel;
+      systemNew =
+        (import "${pkgs.path}/nixos/lib/eval-config.nix" {
+          inherit system;
+          modules = nixPiModulesNoShell ++ [
+            mkTestFilesystems
+            commonNodeModule
+            {
+              nixpkgs.hostPlatform = system;
+              nixpkgs.pkgs = pkgs;
+            }
+            (
+              { pkgs, ... }:
+              {
+                environment.systemPackages = [ pkgs.hello ];
+              }
+            )
+          ];
+        }).config.system.build.toplevel;
 
       testUpdateScript = pkgs.writeShellScript "nixpi-update-test-cmd" ''
         set -euo pipefail
@@ -95,16 +97,18 @@ in
           chown "$NIXPI_PRIMARY_USER" "$STATUS_FILE"
         fi
       '';
-    in {
+    in
+    {
       imports = nixPiModulesNoShell ++ [
         mkTestFilesystems
         commonNodeModule
       ];
-      _module.args = { inherit piAgent appPackage setupApplyPackage; };
 
-      virtualisation.diskSize = 20480;
-      virtualisation.memorySize = 4096;
-      virtualisation.additionalPaths = [ systemNew ];
+      virtualisation = {
+        diskSize = 20480;
+        memorySize = 4096;
+        additionalPaths = [ systemNew ];
+      };
 
       systemd.timers.nixpi-update.wantedBy = lib.mkForce [ ];
       system.services.nixpi-update.nixpi-update.command = lib.mkForce testUpdateScript;

@@ -1,42 +1,48 @@
-{ nixPiModulesNoShell, piAgent, appPackage, setupApplyPackage, mkTestFilesystems, ... }:
+{ nixPiModulesNoShell, mkTestFilesystems, ... }:
 
 let
-  mkNode = { hostName, username }: { pkgs, ... }: let
-    homeDir = "/home/${username}";
-  in {
-    imports = nixPiModulesNoShell ++ [
-      mkTestFilesystems
-    ];
-    _module.args = { inherit piAgent appPackage setupApplyPackage; };
+  mkNode =
+    { hostName, username }:
+    { pkgs, ... }:
+    let
+      homeDir = "/home/${username}";
+    in
+    {
+      imports = nixPiModulesNoShell ++ [
+        mkTestFilesystems
+      ];
 
-    nixpi.primaryUser = username;
-    nixpi.security.enforceServiceFirewall = true;
+      nixpi.primaryUser = username;
+      nixpi.security.enforceServiceFirewall = true;
 
-    virtualisation.diskSize = 20480;
-    virtualisation.memorySize = 4096;
+      virtualisation.diskSize = 20480;
+      virtualisation.memorySize = 4096;
 
-    boot.loader.systemd-boot.enable = true;
-    boot.loader.efi.canTouchEfiVariables = true;
-    networking.hostName = hostName;
-    time.timeZone = "UTC";
-    i18n.defaultLocale = "en_US.UTF-8";
-    networking.networkmanager.enable = true;
-    system.stateVersion = "25.05";
+      boot.loader.systemd-boot.enable = true;
+      boot.loader.efi.canTouchEfiVariables = true;
+      networking.hostName = hostName;
+      time.timeZone = "UTC";
+      i18n.defaultLocale = "en_US.UTF-8";
+      networking.networkmanager.enable = true;
+      system.stateVersion = "25.05";
 
-    users.users.${username} = {
-      isNormalUser = true;
-      group = username;
-      extraGroups = [ "wheel" "networkmanager" ];
-      home = homeDir;
-      shell = pkgs.bash;
+      users.users.${username} = {
+        isNormalUser = true;
+        group = username;
+        extraGroups = [
+          "wheel"
+          "networkmanager"
+        ];
+        home = homeDir;
+        shell = pkgs.bash;
+      };
+      users.groups.${username} = { };
+      system.activationScripts.nixpi-bootstrap = ''
+        mkdir -p ${homeDir}/.nixpi
+        chown -R ${username}:${username} ${homeDir}/.nixpi
+        chmod 755 ${homeDir}/.nixpi
+      '';
     };
-    users.groups.${username} = { };
-    system.activationScripts.nixpi-bootstrap = ''
-      mkdir -p ${homeDir}/.nixpi
-      chown -R ${username}:${username} ${homeDir}/.nixpi
-      chmod 755 ${homeDir}/.nixpi
-    '';
-  };
 in
 {
   name = "nixpi-security";
@@ -52,20 +58,25 @@ in
       username = "pi";
     };
 
-    client = { pkgs, ... }: {
-      virtualisation.diskSize = 5120;
-      virtualisation.memorySize = 1024;
+    client =
+      { pkgs, ... }:
+      {
+        virtualisation.diskSize = 5120;
+        virtualisation.memorySize = 1024;
 
-      boot.loader.systemd-boot.enable = true;
-      boot.loader.efi.canTouchEfiVariables = true;
-      networking.hostName = "client";
-      time.timeZone = "UTC";
-      i18n.defaultLocale = "en_US.UTF-8";
-      networking.networkmanager.enable = true;
-      system.stateVersion = "25.05";
+        boot.loader.systemd-boot.enable = true;
+        boot.loader.efi.canTouchEfiVariables = true;
+        networking.hostName = "client";
+        time.timeZone = "UTC";
+        i18n.defaultLocale = "en_US.UTF-8";
+        networking.networkmanager.enable = true;
+        system.stateVersion = "25.05";
 
-      environment.systemPackages = with pkgs; [ curl netcat ];
-    };
+        environment.systemPackages = with pkgs; [
+          curl
+          netcat
+        ];
+      };
   };
 
   testScript = ''

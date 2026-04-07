@@ -1,34 +1,39 @@
-{ nixPiModulesNoShell, piAgent, appPackage, setupApplyPackage, mkTestFilesystems, ... }:
+{ nixPiModulesNoShell, mkTestFilesystems, ... }:
 
 {
   name = "nixpi-chat";
 
-  nodes.nixpi = { pkgs, ... }: let
-    username = "pi";
-    homeDir = "/home/${username}";
-  in {
-    imports = nixPiModulesNoShell ++ [ mkTestFilesystems ];
-    _module.args = { inherit piAgent appPackage setupApplyPackage; };
-    nixpi.primaryUser = username;
+  nodes.nixpi =
+    { pkgs, ... }:
+    let
+      username = "pi";
+      homeDir = "/home/${username}";
+    in
+    {
+      imports = nixPiModulesNoShell ++ [ mkTestFilesystems ];
+      nixpi.primaryUser = username;
 
-    virtualisation.diskSize = 10240;
-    virtualisation.memorySize = 2048;
-    networking.hostName = "nixpi-chat-test";
-    time.timeZone = "UTC";
-    i18n.defaultLocale = "en_US.UTF-8";
-    networking.networkmanager.enable = true;
-    system.stateVersion = "25.05";
-    boot.loader.systemd-boot.enable = true;
-    boot.loader.efi.canTouchEfiVariables = true;
-    users.users.${username} = {
-      isNormalUser = true;
-      group = username;
-      extraGroups = [ "wheel" "networkmanager" ];
-      home = homeDir;
-      shell = pkgs.bash;
+      virtualisation.diskSize = 10240;
+      virtualisation.memorySize = 2048;
+      networking.hostName = "nixpi-chat-test";
+      time.timeZone = "UTC";
+      i18n.defaultLocale = "en_US.UTF-8";
+      networking.networkmanager.enable = true;
+      system.stateVersion = "25.05";
+      boot.loader.systemd-boot.enable = true;
+      boot.loader.efi.canTouchEfiVariables = true;
+      users.users.${username} = {
+        isNormalUser = true;
+        group = username;
+        extraGroups = [
+          "wheel"
+          "networkmanager"
+        ];
+        home = homeDir;
+        shell = pkgs.bash;
+      };
+      users.groups.${username} = { };
     };
-    users.groups.${username} = {};
-  };
 
   testScript = ''
     nixpi = machines[0]

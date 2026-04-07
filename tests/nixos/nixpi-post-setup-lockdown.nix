@@ -1,55 +1,55 @@
-{ lib, nixPiModulesNoShell, piAgent, appPackage, setupApplyPackage, mkTestFilesystems, mkManagedUserConfig, ... }:
+{
+  lib,
+  nixPiModulesNoShell,
+  mkTestFilesystems,
+  mkManagedUserConfig,
+  ...
+}:
 
 {
   name = "nixpi-post-setup-lockdown";
 
   nodes = {
-    nixpi = { ... }: let
-      username = "pi";
-      homeDir = "/home/${username}";
-    in {
-      imports = nixPiModulesNoShell ++ [
-        ../../core/os/modules/broker.nix
-        mkTestFilesystems
-      ];
-      _module.args = { inherit piAgent appPackage setupApplyPackage; };
+    nixpi =
+      _:
+      let
+        username = "pi";
+        homeDir = "/home/${username}";
+      in
+      {
+        imports = nixPiModulesNoShell ++ [
+          ../../core/os/modules/broker.nix
+          mkTestFilesystems
+        ];
 
-      networking.hostName = "nixpi-steady";
-      nixpi.security.enforceServiceFirewall = true;
+        networking.hostName = "nixpi-steady";
+        nixpi.security.enforceServiceFirewall = true;
+        system.activationScripts.nixpi-bootstrap = lib.stringAfter [ "users" ] ''
+          mkdir -p ${homeDir}/.nixpi
+          chown -R ${username}:${username} ${homeDir}/.nixpi
+          chmod 755 ${homeDir}/.nixpi
+        '';
+      }
+      // (mkManagedUserConfig { inherit username homeDir; });
 
-      virtualisation.diskSize = 20480;
-      virtualisation.memorySize = 4096;
+    client =
+      { pkgs, ... }:
+      {
+        imports = [ mkTestFilesystems ];
 
-      boot.loader.systemd-boot.enable = true;
-      boot.loader.efi.canTouchEfiVariables = true;
-      networking.networkmanager.enable = true;
-      time.timeZone = "UTC";
-      i18n.defaultLocale = "en_US.UTF-8";
-      system.stateVersion = "25.05";
-      system.activationScripts.nixpi-bootstrap = lib.stringAfter [ "users" ] ''
-        mkdir -p ${homeDir}/.nixpi
-        chown -R ${username}:${username} ${homeDir}/.nixpi
-        chmod 755 ${homeDir}/.nixpi
-      '';
-    } // (mkManagedUserConfig { inherit username homeDir; });
+        virtualisation = {
+          diskSize = 5120;
+          memorySize = 1024;
+          graphics = false;
+        };
 
-    client = { pkgs, ... }: {
-      imports = [ mkTestFilesystems ];
+        networking.hostName = "client";
 
-      virtualisation.diskSize = 5120;
-      virtualisation.memorySize = 1024;
-      virtualisation.graphics = false;
-
-      boot.loader.systemd-boot.enable = true;
-      boot.loader.efi.canTouchEfiVariables = true;
-      networking.hostName = "client";
-      networking.networkmanager.enable = true;
-      time.timeZone = "UTC";
-      i18n.defaultLocale = "en_US.UTF-8";
-      system.stateVersion = "25.05";
-
-      environment.systemPackages = with pkgs; [ curl netcat ];
-    };
+        environment.systemPackages = with pkgs; [
+          curl
+          netcat
+        ];
+      };
   };
 
   testScript = ''

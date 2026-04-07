@@ -1,4 +1,10 @@
-{ lib, nixPiModulesNoShell, piAgent, appPackage, setupApplyPackage, mkTestFilesystems, mkManagedUserConfig, ... }:
+{
+  lib,
+  nixPiModulesNoShell,
+  mkTestFilesystems,
+  mkManagedUserConfig,
+  ...
+}:
 
 let
   initSystemFlake = ../../core/scripts/nixpi-init-system-flake.sh;
@@ -7,27 +13,28 @@ in
   name = "nixpi-system-flake";
 
   nodes.machine =
-    { ... }:
+    _:
     {
       imports = nixPiModulesNoShell ++ [
         mkTestFilesystems
       ];
-      _module.args = { inherit piAgent appPackage setupApplyPackage; };
 
       networking.hostName = "system-flake-test";
       system.stateVersion = "25.05";
 
-      environment.etc."system-flake-marker".text = "preserved";
-      environment.etc."nixos/configuration.nix".text = ''
-        { ... }:
-        {
-          networking.hostName = "system-flake-test";
-        }
-      '';
-      environment.etc."nixos/hardware-configuration.nix".text = ''
-        { ... }:
-        {}
-      '';
+      environment.etc = {
+        "system-flake-marker".text = "preserved";
+        "nixos/configuration.nix".text = ''
+          { ... }:
+          {
+            networking.hostName = "system-flake-test";
+          }
+        '';
+        "nixos/hardware-configuration.nix".text = ''
+          { ... }:
+          {}
+        '';
+      };
 
     }
     // (mkManagedUserConfig { username = "pi"; });

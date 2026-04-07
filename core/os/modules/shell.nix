@@ -1,11 +1,15 @@
 # core/os/modules/shell.nix
-{ pkgs, lib, config, ... }:
+{
+  pkgs,
+  lib,
+  config,
+  ...
+}:
 
 let
-  primaryUser = config.nixpi.primaryUser;
+  inherit (config.nixpi) primaryUser stateDir;
   primaryHome = "/home/${primaryUser}";
-  stateDir = config.nixpi.stateDir;
-  workspaceDir = config.nixpi.agent.workspaceDir;
+  inherit (config.nixpi.agent) workspaceDir;
 
   bashrc = pkgs.writeText "nixpi-bashrc" ''
     export NIXPI_DIR="${workspaceDir}"
@@ -40,18 +44,26 @@ in
   users.users.${primaryUser} = {
     isNormalUser = true;
     group = primaryUser;
-    extraGroups = [ "wheel" "networkmanager" ];
+    extraGroups = [
+      "wheel"
+      "networkmanager"
+    ];
     home = primaryHome;
     createHome = true;
     shell = pkgs.bash;
   };
 
-  users.groups.${primaryUser} = {};
+  users.groups.${primaryUser} = { };
 
   security.sudo.extraRules = lib.mkIf config.nixpi.security.passwordlessSudo.enable [
     {
       users = [ primaryUser ];
-      commands = [ { command = "ALL"; options = [ "NOPASSWD" ]; } ];
+      commands = [
+        {
+          command = "ALL";
+          options = [ "NOPASSWD" ];
+        }
+      ];
     }
   ];
 

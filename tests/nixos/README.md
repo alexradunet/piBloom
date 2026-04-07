@@ -90,14 +90,17 @@ When writing new NixOS tests:
 
 Example:
 ```nix
-{ pkgs, lib, nixPiModulesNoShell, piAgent, appPackage, mkTestFilesystems, ... }:
+{ pkgs, lib, nixPiModulesNoShell, mkTestFilesystems, ... }:
 
 pkgs.testers.runNixOSTest {
+  defaults._module.args = {
+    inherit nixPiModulesNoShell mkTestFilesystems;
+  };
+
   name = "my-test";
   
   nodes.server = { ... }: {
     imports = nixPiModulesNoShell ++ [ mkTestFilesystems ];
-    _module.args = { inherit piAgent appPackage; };
     
     nixpi.primaryUser = "pi";
     users.users.pi = { ... };

@@ -1,24 +1,35 @@
-{ config, lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 
 let
-  primaryUser = config.nixpi.primaryUser;
+  inherit (config.nixpi) primaryUser stateDir;
   primaryHome = "/home/${primaryUser}";
-  stateDir = config.nixpi.stateDir;
   socketDir = "/run/nixpi-broker";
   socketPath = "${socketDir}/broker.sock";
   brokerStateDir = "${stateDir}/broker";
   elevationPath = "${brokerStateDir}/elevation.json";
 
-  brokerConfig = pkgs.writeText "nixpi-broker-config.json" (builtins.toJSON {
-    inherit socketPath elevationPath brokerStateDir primaryUser;
-    defaultAutonomy = config.nixpi.agent.autonomy;
-    elevationDuration = config.nixpi.agent.elevation.duration;
-    osUpdateEnable = config.nixpi.agent.osUpdate.enable;
-    allowedUnits = config.nixpi.agent.allowedUnits;
-    defaultFlake = "/etc/nixos#nixos";
-  });
+  brokerConfig = pkgs.writeText "nixpi-broker-config.json" (
+    builtins.toJSON {
+      inherit
+        socketPath
+        elevationPath
+        brokerStateDir
+        primaryUser
+        ;
+      defaultAutonomy = config.nixpi.agent.autonomy;
+      elevationDuration = config.nixpi.agent.elevation.duration;
+      osUpdateEnable = config.nixpi.agent.osUpdate.enable;
+      inherit (config.nixpi.agent) allowedUnits;
+      defaultFlake = "/etc/nixos#nixos";
+    }
+  );
 
-  brokerProgram = pkgs.callPackage ../pkgs/broker {};
+  brokerProgram = pkgs.callPackage ../pkgs/broker { };
 
   brokerCtl = pkgs.writeShellScriptBin "nixpi-brokerctl" ''
     export NIXPI_BROKER_CONFIG=${brokerConfig}
@@ -30,20 +41,24 @@ in
 
   config = lib.mkIf config.nixpi.agent.broker.enable {
     assertions = [
-    {
-      assertion = config.nixpi.agent.autonomy != "";
-      message = "nixpi.agent.autonomy must not be empty.";
-    }
-    {
-      assertion = config.nixpi.agent.elevation.duration != "";
-      message = "nixpi.agent.elevation.duration must not be empty.";
-    }
-  ];
+      {
+        assertion = config.nixpi.agent.autonomy != "";
+        message = "nixpi.agent.autonomy must not be empty.";
+      }
+      {
+        assertion = config.nixpi.agent.elevation.duration != "";
+        message = "nixpi.agent.elevation.duration must not be empty.";
+      }
+    ];
 
     environment.systemPackages = [ brokerCtl ];
 
     systemd.tmpfiles.settings.nixpi-broker = {
-      "${brokerStateDir}".d = { mode = "0770"; user = "root"; group = primaryUser; };
+      "${brokerStateDir}".d = {
+        mode = "0770";
+        user = "root";
+        group = primaryUser;
+      };
     };
 
     system.services.nixpi-broker = {
@@ -54,14 +69,22 @@ in
       };
     };
 
-    security.sudo.extraRules =
-      lib.optional (primaryUser != "") {
-        users = [ primaryUser ];
-        commands = [
-          { command = "${brokerCtl}/bin/nixpi-brokerctl grant-admin *"; options = [ "NOPASSWD" ]; }
-          { command = "${brokerCtl}/bin/nixpi-brokerctl revoke-admin"; options = [ "NOPASSWD" ]; }
-          { command = "${brokerCtl}/bin/nixpi-brokerctl status"; options = [ "NOPASSWD" ]; }
-        ];
-      };
+    security.sudo.extraRules = lib.optional (primaryUser != "") {
+      users = [ primaryUser ];
+      commands = [
+        {
+          command = "${brokerCtl}/bin/nixpi-brokerctl grant-admin *";
+          options = [ "NOPASSWD" ];
+        }
+        {
+          command = "${brokerCtl}/bin/nixpi-brokerctl revoke-admin";
+          options = [ "NOPASSWD" ];
+        }
+        {
+          command = "${brokerCtl}/bin/nixpi-brokerctl status";
+          options = [ "NOPASSWD" ];
+        }
+      ];
+    };
   };
 }

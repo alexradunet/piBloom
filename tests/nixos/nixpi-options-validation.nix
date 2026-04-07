@@ -1,51 +1,38 @@
-{ nixPiModulesNoShell, mkTestFilesystems, mkManagedUserConfig, piAgent, appPackage, setupApplyPackage, ... }:
+{
+  nixPiModulesNoShell,
+  mkTestFilesystems,
+  mkManagedUserConfig,
+  ...
+}:
 
 {
   name = "nixpi-options-validation";
 
   nodes = {
-    defaults = { ... }: {
+    defaults = _: {
       imports = nixPiModulesNoShell ++ [
         mkTestFilesystems
         (mkManagedUserConfig { username = "pi"; })
       ];
-      _module.args = { inherit piAgent appPackage setupApplyPackage; };
 
       networking.hostName = "nixpi-defaults-test";
-
-      virtualisation.diskSize = 20480;
-      virtualisation.memorySize = 4096;
-
-      boot.loader.systemd-boot.enable = true;
-      boot.loader.efi.canTouchEfiVariables = true;
-      networking.networkmanager.enable = true;
-      time.timeZone = "UTC";
-      i18n.defaultLocale = "en_US.UTF-8";
-      system.stateVersion = "25.05";
     };
 
-    overrides = { ... }: {
+    overrides = _: {
       imports = nixPiModulesNoShell ++ [
         mkTestFilesystems
         (mkManagedUserConfig { username = "pi"; })
       ];
-      _module.args = { inherit piAgent appPackage setupApplyPackage; };
 
       networking.hostName = "nixpi-overrides-test";
 
-      virtualisation.diskSize = 20480;
-      virtualisation.memorySize = 4096;
-
-      boot.loader.systemd-boot.enable = true;
-      boot.loader.efi.canTouchEfiVariables = true;
-      networking.networkmanager.enable = true;
-      time.timeZone = "UTC";
-      i18n.defaultLocale = "en_US.UTF-8";
-      system.stateVersion = "25.05";
-
-      nixpi.services.home.port = 9090;
-      nixpi.security.fail2ban.enable = false;
-      nixpi.security.ssh.passwordAuthentication = true;
+      nixpi = {
+        services.home.port = 9090;
+        security = {
+          fail2ban.enable = false;
+          ssh.passwordAuthentication = true;
+        };
+      };
     };
   };
 

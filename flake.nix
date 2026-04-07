@@ -16,11 +16,29 @@
     }:
     let
       system = "x86_64-linux";
-      pkgs = nixpkgs.legacyPackages.${system};
-      lib = nixpkgs.lib;
-      bootstrapPackage = pkgs.callPackage ./core/os/pkgs/bootstrap { };
-      nixpiRebuildPackage = pkgs.callPackage ./core/os/pkgs/nixpi-rebuild { };
-      setupApplyPackage = pkgs.callPackage ./core/os/pkgs/nixpi-setup-apply { };
+      inherit (nixpkgs) lib;
+      supportedSystems = [
+        system
+        "aarch64-linux"
+      ];
+      moduleSets = import ./core/os/modules/module-sets.nix;
+      forAllSystems = lib.genAttrs supportedSystems;
+      mkPkgs = system: import nixpkgs { inherit system; };
+      mkPackages =
+        system:
+        let
+          pkgs = mkPkgs system;
+          piAgent = pkgs.callPackage ./core/os/pkgs/pi { };
+          appPackage = pkgs.callPackage ./core/os/pkgs/app { inherit piAgent; };
+        in
+        {
+          pi = piAgent;
+          app = appPackage;
+          nixpi-bootstrap-vps = pkgs.callPackage ./core/os/pkgs/bootstrap { };
+          nixpi-rebuild = pkgs.callPackage ./core/os/pkgs/nixpi-rebuild { };
+          nixpi-setup-apply = pkgs.callPackage ./core/os/pkgs/nixpi-setup-apply { };
+        };
+      pkgs = mkPkgs system;
       # pkgsUnfree is used only for boot nixosTest.  pkgs.testers.nixosTest
       # injects its own pkgs as nixpkgs.pkgs for test nodes, which means modules
       # cannot set nixpkgs.config (NixOS assertion).  Using a pkgs already created
@@ -29,28 +47,25 @@
         inherit system;
         config.allowUnfree = true;
       };
-      piAgent = pkgs.callPackage ./core/os/pkgs/pi { };
-      appPackage = pkgs.callPackage ./core/os/pkgs/app { inherit piAgent; };
-
-      specialArgs = {
-        inherit
-          piAgent
-          appPackage
-          self
-          setupApplyPackage
-          ;
-      };
+      mkConfiguredSystem =
+        {
+          system,
+          modules,
+        }:
+        nixpkgs.lib.nixosSystem {
+          inherit system;
+          modules = modules ++ [
+            {
+              nixpkgs.hostPlatform = system;
+              nixpkgs.config.allowUnfree = true;
+            }
+          ];
+        };
     in
     {
-      packages.${system} = {
-        pi = piAgent;
-        app = appPackage;
-        nixpi-bootstrap-vps = bootstrapPackage;
-        nixpi-rebuild = nixpiRebuildPackage;
-        nixpi-setup-apply = setupApplyPackage;
-      };
+      packages = forAllSystems mkPackages;
 
-      formatter.${system} = pkgs.nixfmt-rfc-style;
+      formatter = forAllSystems (system: (mkPkgs system).nixfmt-rfc-style);
 
       nixosModules = {
         # Minimal installed NixPI base without the Pi runtime, collab stack,
@@ -58,46 +73,29 @@
         nixpi-base-no-shell =
           { ... }:
           {
-            imports = [
-              ./core/os/modules/options.nix
-              ./core/os/modules/network.nix
-              ./core/os/modules/update.nix
-            ];
+            imports = moduleSets.nixpiBaseNoShell;
           };
 
         # Minimal installed NixPI base with the operator shell/bootstrap path.
         nixpi-base =
           { ... }:
           {
-            imports = [
-              self.nixosModules.nixpi-base-no-shell
-              ./core/os/modules/shell.nix
-            ];
+            imports = moduleSets.nixpiBase;
           };
 
         # Portable NixPI module set without the operator shell/user module.
         # Useful for tests that intentionally define their own primary user.
         nixpi-no-shell =
-          { piAgent, appPackage, ... }:
+          { ... }:
           {
-            imports = [
-              self.nixosModules.nixpi-base-no-shell
-              ./core/os/modules/runtime.nix
-              ./core/os/modules/collab.nix
-              ./core/os/modules/tooling.nix
-              ./core/os/modules/setup-apply.nix
-            ];
+            imports = moduleSets.nixpiNoShell;
           };
 
         # Single composable module exporting all NixPI feature modules.
-        # Consuming flake.nix must provide piAgent and appPackage in specialArgs.
         nixpi =
-          { piAgent, appPackage, ... }:
+          { ... }:
           {
-            imports = [
-              self.nixosModules.nixpi-no-shell
-              ./core/os/modules/shell.nix
-            ];
+            imports = moduleSets.nixpi;
             # allowUnfree is intentionally NOT set here.
             # nixpkgs.config cannot be set in a module that is used inside
             # pkgs.testers.nixosTest (the test framework injects an externally
@@ -107,90 +105,94 @@
 
       };
 
-      # Canonical NixPI headless VPS profile used for local builds and the default installed system.
-      nixosConfigurations.vps = nixpkgs.lib.nixosSystem {
-        inherit system specialArgs;
-        modules = [
-          ./core/os/hosts/vps.nix
-          {
-            nixpkgs.hostPlatform = system;
-            nixpkgs.config.allowUnfree = true;
-          }
-        ];
-      };
-
-      # Raspberry Pi 4 target (aarch64-linux).
-      # Build on native aarch64 hardware or with binfmt/QEMU:
-      #   nix build .#nixosConfigurations.rpi4.config.system.build.toplevel
-      nixosConfigurations.rpi4 = nixpkgs.lib.nixosSystem {
-        system = "aarch64-linux";
-        specialArgs = specialArgs // {
-          inherit nixos-hardware;
+      nixosConfigurations = {
+        # Canonical NixPI headless VPS profile used for local builds and CI topology checks.
+        vps = mkConfiguredSystem {
+          inherit system;
+          modules = [ ./core/os/hosts/vps.nix ];
         };
-        modules = [
-          nixos-hardware.nixosModules.raspberry-pi-4
-          ./core/os/hosts/rpi4.nix
-          {
-            nixpkgs.hostPlatform = "aarch64-linux";
-            nixpkgs.config.allowUnfree = true;
-          }
-        ];
-      };
 
-      # Raspberry Pi 5 target (aarch64-linux).
-      nixosConfigurations.rpi5 = nixpkgs.lib.nixosSystem {
-        system = "aarch64-linux";
-        specialArgs = specialArgs // {
-          inherit nixos-hardware;
+        # Raspberry Pi 4 target (aarch64-linux).
+        # Build on native aarch64 hardware or with binfmt/QEMU:
+        #   nix build .#nixosConfigurations.rpi4.config.system.build.toplevel
+        rpi4 = mkConfiguredSystem {
+          system = "aarch64-linux";
+          modules = [
+            nixos-hardware.nixosModules.raspberry-pi-4
+            ./core/os/hosts/rpi4.nix
+          ];
         };
-        modules = [
-          nixos-hardware.nixosModules.raspberry-pi-5
-          ./core/os/hosts/rpi5.nix
-          {
-            nixpkgs.hostPlatform = "aarch64-linux";
-            nixpkgs.config.allowUnfree = true;
-          }
-        ];
-      };
 
-      # NixOS configuration that mirrors a default NixPI install
-      # (nixpi + the standard machine defaults).
-      # Used by checks.config and checks.boot below.
-      nixosConfigurations.installed-test = nixpkgs.lib.nixosSystem {
-        inherit system specialArgs;
-        modules = [
-          ./core/os/hosts/vps.nix
-          {
-            nixpkgs.hostPlatform = system;
-            nixpkgs.config.allowUnfree = true;
-            nixpi.primaryUser = "alex";
-            networking.hostName = "nixos";
-            fileSystems."/" = {
-              device = "/dev/vda";
-              fsType = "ext4";
-            };
-            fileSystems."/boot" = {
-              device = "/dev/vda1";
-              fsType = "vfat";
-            };
-          }
-        ];
+        # Raspberry Pi 5 target (aarch64-linux).
+        rpi5 = mkConfiguredSystem {
+          system = "aarch64-linux";
+          modules = [
+            nixos-hardware.nixosModules.raspberry-pi-5
+            ./core/os/hosts/rpi5.nix
+          ];
+        };
+
+        # Host-owned system-flake composition used by bootstrap-generated installs:
+        # local /etc/nixos configuration layered with nixpi.nixosModules.nixpi.
+        # Used by checks.config and checks.boot below.
+        installed-test = mkConfiguredSystem {
+          inherit system;
+          modules = [
+            self.nixosModules.nixpi
+            {
+              nixpi.primaryUser = "alex";
+              networking.hostName = "nixos";
+              system.stateVersion = "25.05";
+              boot.loader = {
+                systemd-boot.enable = true;
+                efi.canTouchEfiVariables = true;
+              };
+              fileSystems = {
+                "/" = {
+                  device = "/dev/vda";
+                  fsType = "ext4";
+                };
+                "/boot" = {
+                  device = "/dev/vda1";
+                  fsType = "vfat";
+                };
+              };
+            }
+          ];
+        };
       };
 
       checks.${system} =
         let
+          bootstrapPackage = self.packages.${system}.nixpi-bootstrap-vps;
           bootstrapScriptSource = ./core/os/pkgs/bootstrap/nixpi-bootstrap-vps.sh;
+          setupApplyPackage = self.packages.${system}.nixpi-setup-apply;
+          generatedModuleSystem = mkConfiguredSystem {
+            inherit system;
+            modules = [
+              self.nixosModules.nixpi
+              {
+                nixpi.primaryUser = "pi";
+                networking.hostName = "generated-module-test";
+                system.stateVersion = "25.05";
+                boot.loader.systemd-boot.enable = true;
+                boot.loader.efi.canTouchEfiVariables = true;
+                fileSystems."/" = {
+                  device = "/dev/vda";
+                  fsType = "ext4";
+                };
+                fileSystems."/boot" = {
+                  device = "/dev/vda1";
+                  fsType = "vfat";
+                };
+              }
+            ];
+          };
           # Import the NixOS integration test suite
           # Using pkgsUnfree so tests can use packages that require allowUnfree
           nixosTests = import ./tests/nixos {
             pkgs = pkgsUnfree;
-            inherit
-              lib
-              piAgent
-              appPackage
-              self
-              setupApplyPackage
-              ;
+            inherit lib self;
           };
           bootCheck = pkgsUnfree.testers.runNixOSTest {
             name = "boot";
@@ -199,20 +201,23 @@
               { ... }:
               {
                 imports = [
-                  ./core/os/hosts/vps.nix
+                  self.nixosModules.nixpi
                 ];
-                _module.args = {
-                  inherit
-                    piAgent
-                    appPackage
-                    self
-                    setupApplyPackage
-                    ;
-                };
 
                 nixpi.primaryUser = "alex";
 
                 networking.hostName = "nixos";
+                system.stateVersion = "25.05";
+                boot.loader.systemd-boot.enable = true;
+                boot.loader.efi.canTouchEfiVariables = true;
+                fileSystems."/" = {
+                  device = "/dev/vda";
+                  fsType = "ext4";
+                };
+                fileSystems."/boot" = {
+                  device = "/dev/vda1";
+                  fsType = "vfat";
+                };
 
                 # Give the VM enough disk for the NixPI closure
                 virtualisation.diskSize = 20480; # 20 GB
@@ -235,6 +240,13 @@
           mkCheckLane = name: entries: pkgs.linkFarm name entries;
         in
         {
+          exported-topology =
+            assert builtins.hasAttr "aarch64-linux" self.packages;
+            assert builtins.hasAttr "nixpi-ttyd" generatedModuleSystem.config.systemd.services;
+            pkgs.runCommandLocal "exported-topology-check" { } ''
+              touch "$out"
+            '';
+
           # Fast: build the installed system closure locally — catches locale
           # errors, module conflicts, bad package references, and NixOS
           # evaluation failures without touching QEMU.
@@ -297,6 +309,7 @@
             grep -F 'nixosConfigurations.nixos' "$helper" >/dev/null
             grep -F './configuration.nix' "$helper" >/dev/null
             grep -F 'nixos-rebuild switch --flake /etc/nixos#nixos' "$script" >/dev/null
+            ! grep -F 'specialArgs =' "$helper" >/dev/null
             ! grep -F 'nixpi-integration.nix' "$helper" >/dev/null
             ! grep -F 'nixpi-host.nix' "$helper" >/dev/null
             ! grep -F 'hostModules' "$helper" >/dev/null
@@ -320,10 +333,10 @@
             grep -F './core/os/hosts/vps.nix' ${./flake.nix} >/dev/null
             grep -F 'headless VPS profile' ${./core/os/hosts/vps.nix} >/dev/null
             grep -F 'enableRedistributableFirmware' ${./core/os/hosts/vps.nix} >/dev/null
-            sed -n '/nixosConfigurations.installed-test = nixpkgs.lib.nixosSystem {/,/checks\.\${system} =/p' ${./flake.nix} \
-              | grep -F './core/os/hosts/vps.nix' >/dev/null
+            sed -n '/nixosConfigurations.installed-test =/,/checks\.\${system} =/p' ${./flake.nix} \
+              | grep -F 'self.nixosModules.nixpi' >/dev/null
             sed -n '/bootCheck = pkgsUnfree.testers.runNixOSTest {/,/mkCheckLane = name: entries:/p' ${./flake.nix} \
-              | grep -F './core/os/hosts/vps.nix' >/dev/null
+              | grep -F 'self.nixosModules.nixpi' >/dev/null
             smoke_block="$(sed -n '/nixos-smoke = mkCheckLane "nixos-smoke" \[/,/nixos-full = mkCheckLane "nixos-full" \[/p' ${./flake.nix})"
             ! printf '%s\n' "$smoke_block" | grep -F 'name = "nixpi-vps-bootstrap";' >/dev/null
             printf '%s\n' "$smoke_block" | grep -F 'name = "nixpi-chat";' >/dev/null
@@ -342,7 +355,9 @@
             params='${lib.concatStringsSep " " self.nixosConfigurations.vps.config.boot.kernelParams}'
             printf '%s\n' "$params" | grep -Eq '(^| )console=tty0($| )'
             printf '%s\n' "$params" | grep -Eq '(^| )console=ttyS0,115200($| )'
-            test '${if self.nixosConfigurations.vps.config.systemd.services."getty@tty1".enable then "true" else "false"}' = true
+            test '${
+              if self.nixosConfigurations.vps.config.systemd.services."getty@tty1".enable then "true" else "false"
+            }' = true
             touch "$out"
           '';
 
@@ -425,29 +440,37 @@
         }
         // nixosTests; # Merge in the new test suite
 
-      devShells.${system}.default = pkgs.mkShell {
-        packages = with pkgs; [
-          # JavaScript / TypeScript
-          nodejs
-          typescript
-          biome
+      devShells = forAllSystems (
+        system:
+        let
+          pkgs = mkPkgs system;
+        in
+        {
+          default = pkgs.mkShell {
+            packages = with pkgs; [
+              # JavaScript / TypeScript
+              nodejs
+              typescript
+              biome
 
-          # Linting & utilities
-          nixfmt-rfc-style
-          statix
-          shellcheck
-          jq
-          curl
-          git
-          just
-        ];
+              # Linting & utilities
+              nixfmt-rfc-style
+              statix
+              shellcheck
+              jq
+              curl
+              git
+              just
+            ];
 
-        # Note: vitest is not in nixpkgs-unstable — use 'npm install' then 'npx vitest'
+            # Note: vitest is not in nixpkgs-unstable — use 'npm install' then 'npx vitest'
 
-        shellHook = ''
-          echo "NixPI dev shell"
-          echo "Run 'npm install' to set up JS dependencies (includes vitest)"
-        '';
-      };
+            shellHook = ''
+              echo "NixPI dev shell"
+              echo "Run 'npm install' to set up JS dependencies (includes vitest)"
+            '';
+          };
+        }
+      );
     };
 }

@@ -1,42 +1,49 @@
-{ nixPiModules, nixPiModulesNoShell, piAgent, appPackage, setupApplyPackage, mkTestFilesystems, ... }:
+{
+  nixPiModules,
+  nixPiModulesNoShell,
+  mkTestFilesystems,
+  ...
+}:
 
 {
   name = "nixpi-network";
 
   nodes = {
-    nixpi1 = { ... }: {
-      imports = nixPiModules ++ [ mkTestFilesystems ];
-      _module.args = { inherit piAgent appPackage setupApplyPackage; };
-      nixpi.primaryUser = "tester1";
+    nixpi1 =
+      { ... }:
+      {
+        imports = nixPiModules ++ [ mkTestFilesystems ];
+        nixpi.primaryUser = "tester1";
 
-      virtualisation.diskSize = 10240;
-      virtualisation.memorySize = 2048;
+        virtualisation.diskSize = 10240;
+        virtualisation.memorySize = 2048;
 
-      networking.hostName = "nixpi1";
-      time.timeZone = "UTC";
-      i18n.defaultLocale = "en_US.UTF-8";
-      networking.networkmanager.enable = true;
-      system.stateVersion = "25.05";
-      boot.loader.systemd-boot.enable = true;
-      boot.loader.efi.canTouchEfiVariables = true;
-    };
+        networking.hostName = "nixpi1";
+        time.timeZone = "UTC";
+        i18n.defaultLocale = "en_US.UTF-8";
+        networking.networkmanager.enable = true;
+        system.stateVersion = "25.05";
+        boot.loader.systemd-boot.enable = true;
+        boot.loader.efi.canTouchEfiVariables = true;
+      };
 
-    nixpi2 = { ... }: {
-      imports = nixPiModules ++ [ mkTestFilesystems ];
-      _module.args = { inherit piAgent appPackage setupApplyPackage; };
-      nixpi.primaryUser = "tester2";
+    nixpi2 =
+      { ... }:
+      {
+        imports = nixPiModules ++ [ mkTestFilesystems ];
+        nixpi.primaryUser = "tester2";
 
-      virtualisation.diskSize = 10240;
-      virtualisation.memorySize = 2048;
+        virtualisation.diskSize = 10240;
+        virtualisation.memorySize = 2048;
 
-      networking.hostName = "nixpi2";
-      time.timeZone = "UTC";
-      i18n.defaultLocale = "en_US.UTF-8";
-      networking.networkmanager.enable = true;
-      system.stateVersion = "25.05";
-      boot.loader.systemd-boot.enable = true;
-      boot.loader.efi.canTouchEfiVariables = true;
-    };
+        networking.hostName = "nixpi2";
+        time.timeZone = "UTC";
+        i18n.defaultLocale = "en_US.UTF-8";
+        networking.networkmanager.enable = true;
+        system.stateVersion = "25.05";
+        boot.loader.systemd-boot.enable = true;
+        boot.loader.efi.canTouchEfiVariables = true;
+      };
   };
 
   testScript = ''

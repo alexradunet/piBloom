@@ -1,12 +1,20 @@
 # core/os/modules/update.nix
-{ pkgs, lib, config, ... }:
+{
+  pkgs,
+  lib,
+  config,
+  ...
+}:
 
 let
-  primaryUser = config.nixpi.primaryUser;
+  inherit (config.nixpi) primaryUser;
 in
 
 {
-  nix.settings.experimental-features = [ "nix-command" "flakes" ];
+  nix.settings.experimental-features = [
+    "nix-command"
+    "flakes"
+  ];
 
   assertions = [
     {
@@ -22,21 +30,32 @@ in
   system.services.nixpi-update = {
     imports = [ ../services/nixpi-update.nix ];
     nixpi-update = {
-      command = pkgs.writeShellScript "nixpi-update" (builtins.readFile ../../../core/scripts/system-update.sh);
+      command = pkgs.writeShellScript "nixpi-update" (
+        builtins.readFile ../../../core/scripts/system-update.sh
+      );
       inherit primaryUser;
       flakeDir = "/etc/nixos";
-      path = "/run/current-system/sw/bin:${lib.makeBinPath (with pkgs; [ nix git jq ])}";
+      path = "/run/current-system/sw/bin:${
+        lib.makeBinPath (
+          with pkgs;
+          [
+            nix
+            git
+            jq
+          ]
+        )
+      }";
     };
   };
 
   systemd.timers.nixpi-update = {
     description = "NixPI update check timer";
-    wantedBy    = [ "timers.target" ];
+    wantedBy = [ "timers.target" ];
 
     timerConfig = {
-      OnBootSec        = config.nixpi.update.onBootSec;
-      OnUnitActiveSec  = config.nixpi.update.interval;
-      Persistent       = true;
+      OnBootSec = config.nixpi.update.onBootSec;
+      OnUnitActiveSec = config.nixpi.update.interval;
+      Persistent = true;
     };
   };
 }

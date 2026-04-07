@@ -1,24 +1,13 @@
 {
   pkgs,
   lib,
-  piAgent,
-  appPackage,
   self,
-  setupApplyPackage ? null,
 }:
 
 let
   testLib = import ./lib.nix { inherit pkgs lib self; };
 
-  # self is forwarded independently (not from testLib) so test node modules
-  # can reference self.nixosModules.* via _module.args.
   sharedArgs = {
-    inherit
-      piAgent
-      appPackage
-      self
-      setupApplyPackage
-      ;
     inherit (testLib)
       nixPiModules
       nixPiModulesNoShell
@@ -32,6 +21,9 @@ let
     pkgs.testers.runNixOSTest {
       imports = [ testFile ];
       _module.args = sharedArgs;
+      defaults = testLib.mkBaseNode {
+        _module.args = sharedArgs;
+      };
     };
 
   tests = {

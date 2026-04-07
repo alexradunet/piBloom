@@ -1,54 +1,38 @@
-{ nixPiModules, mkTestFilesystems, piAgent, appPackage, setupApplyPackage, ... }:
+{ nixPiModules, mkTestFilesystems, ... }:
 
 {
   name = "nixpi-broker";
 
   nodes = {
-    maintain = { ... }: {
+    maintain = _: {
       imports = nixPiModules ++ [
         ../../core/os/modules/broker.nix
         mkTestFilesystems
       ];
-      _module.args = { inherit piAgent appPackage setupApplyPackage; };
 
-      nixpi.primaryUser = "maintainer";
-      nixpi.agent.autonomy = "maintain";
-      nixpi.agent.osUpdate.enable = false;
+      nixpi = {
+        primaryUser = "maintainer";
+        agent = {
+          autonomy = "maintain";
+          osUpdate.enable = false;
+        };
+      };
 
       networking.hostName = "maintain";
-
-      virtualisation.diskSize = 20480;
-      virtualisation.memorySize = 4096;
-
-      boot.loader.systemd-boot.enable = true;
-      boot.loader.efi.canTouchEfiVariables = true;
-      networking.networkmanager.enable = true;
-      time.timeZone = "UTC";
-      i18n.defaultLocale = "en_US.UTF-8";
-      system.stateVersion = "25.05";
     };
 
-    observe = { ... }: {
+    observe = _: {
       imports = nixPiModules ++ [
         ../../core/os/modules/broker.nix
         mkTestFilesystems
       ];
-      _module.args = { inherit piAgent appPackage setupApplyPackage; };
 
-      nixpi.primaryUser = "observer";
-      nixpi.agent.autonomy = "observe";
+      nixpi = {
+        primaryUser = "observer";
+        agent.autonomy = "observe";
+      };
 
       networking.hostName = "observe";
-
-      virtualisation.diskSize = 20480;
-      virtualisation.memorySize = 4096;
-
-      boot.loader.systemd-boot.enable = true;
-      boot.loader.efi.canTouchEfiVariables = true;
-      networking.networkmanager.enable = true;
-      time.timeZone = "UTC";
-      i18n.defaultLocale = "en_US.UTF-8";
-      system.stateVersion = "25.05";
     };
   };
 
@@ -74,11 +58,11 @@
     assert observe_status["effectiveAutonomy"] == "observe", observe_status
 
     # Observe can inspect allowed units but cannot mutate them.
-    observe.succeed("nixpi-brokerctl systemd status nixpi-update.service >/dev/null")
-    observe.fail("nixpi-brokerctl systemd restart nixpi-update.service")
+    observe.succeed("nixpi-brokerctl systemd status nixpi-chat.service >/dev/null")
+    observe.fail("nixpi-brokerctl systemd restart nixpi-chat.service")
 
     # Maintain can manage allowed units but cannot use admin-only operations.
-    maintain.succeed("nixpi-brokerctl systemd restart nixpi-update.service")
+    maintain.succeed("nixpi-brokerctl systemd restart nixpi-chat.service")
     maintain.fail("nixpi-brokerctl systemd status sshd.service")
     maintain.fail("nixpi-brokerctl nixos-update rollback")
 

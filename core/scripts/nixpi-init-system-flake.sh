@@ -81,12 +81,6 @@ if should_write_system_flake; then
     in {
       nixosConfigurations.nixos = nixpkgs.lib.nixosSystem {
         inherit system;
-        specialArgs = {
-          self = nixpi;
-          piAgent = nixpi.packages.\${system}.pi;
-          appPackage = nixpi.packages.\${system}.app;
-          setupApplyPackage = nixpi.packages.\${system}.nixpi-setup-apply;
-        };
         modules = [
           ./configuration.nix
           nixpi.nixosModules.nixpi

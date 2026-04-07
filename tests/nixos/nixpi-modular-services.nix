@@ -1,28 +1,38 @@
-{ lib, nixPiModulesNoShell, piAgent, appPackage, setupApplyPackage, mkTestFilesystems, ... }:
+{
+  lib,
+  nixPiModulesNoShell,
+  mkTestFilesystems,
+  ...
+}:
 
 {
   name = "nixpi-modular-services";
 
-  nodes.nixpi = { pkgs, ... }: let
-    username = "pi";
-    homeDir = "/home/${username}";
-  in {
-    imports = nixPiModulesNoShell ++ [ mkTestFilesystems ];
-    _module.args = { inherit piAgent appPackage setupApplyPackage; };
-    nixpi.primaryUser = username;
+  nodes.nixpi =
+    { pkgs, ... }:
+    let
+      username = "pi";
+      homeDir = "/home/${username}";
+    in
+    {
+      imports = nixPiModulesNoShell ++ [ mkTestFilesystems ];
+      nixpi.primaryUser = username;
 
-    networking.hostName = "nixpi-modular-test";
+      networking.hostName = "nixpi-modular-test";
 
-    users.users.${username} = {
-      isNormalUser = true;
-      group = username;
-      extraGroups = [ "wheel" "networkmanager" ];
-      home = homeDir;
-      shell = pkgs.bash;
+      users.users.${username} = {
+        isNormalUser = true;
+        group = username;
+        extraGroups = [
+          "wheel"
+          "networkmanager"
+        ];
+        home = homeDir;
+        shell = pkgs.bash;
+      };
+      users.groups.${username} = { };
+
     };
-    users.groups.${username} = {};
-
-  };
 
   testScript = ''
     nixpi = machines[0]

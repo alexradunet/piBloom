@@ -1,9 +1,15 @@
-{ lib, nixPiModulesNoShell, piAgent, appPackage, setupApplyPackage, mkTestFilesystems, ... }:
+{
+  lib,
+  nixPiModulesNoShell,
+  mkTestFilesystems,
+  ...
+}:
 
 let
   initSystemFlake = ../../core/scripts/nixpi-init-system-flake.sh;
   mkNode =
-    { hostName ? "nixpi-firstboot-test"
+    {
+      hostName ? "nixpi-firstboot-test",
     }:
     { pkgs, ... }:
     let
@@ -16,32 +22,27 @@ let
         ../../core/os/modules/service-surface.nix
         mkTestFilesystems
       ];
-      _module.args = { inherit piAgent appPackage setupApplyPackage; };
       nixpi.primaryUser = username;
 
-      virtualisation.diskSize = 20480;
-      virtualisation.memorySize = 4096;
-
-      boot.loader.systemd-boot.enable = true;
-      boot.loader.efi.canTouchEfiVariables = true;
       networking.hostName = hostName;
-      time.timeZone = "UTC";
-      i18n.defaultLocale = "en_US.UTF-8";
-      networking.networkmanager.enable = true;
-      system.stateVersion = "25.05";
       users.users.${username} = {
         isNormalUser = true;
         group = username;
-        extraGroups = [ "wheel" "networkmanager" ];
+        extraGroups = [
+          "wheel"
+          "networkmanager"
+        ];
         home = homeDir;
         shell = pkgs.bash;
       };
-      users.groups.${username} = {};
-      environment.systemPackages = [ pkgs.curl pkgs.jq ];
+      users.groups.${username} = { };
+      environment.systemPackages = [
+        pkgs.curl
+        pkgs.jq
+      ];
       systemd.tmpfiles.rules = [ "d ${homeDir}/.nixpi 0755 ${username} ${username} -" ];
 
-      system.activationScripts.nixpi-bootstrap = lib.stringAfter [ "users" ] (
-        ''
+      system.activationScripts.nixpi-bootstrap = lib.stringAfter [ "users" ] ''
           mkdir -p ${homeDir}/.nixpi
           install -d -m 0755 /etc/nixos
           cat > /etc/nixos/configuration.nix <<'EOF'
@@ -57,8 +58,7 @@ let
           ${lib.getExe' pkgs.bash "bash"} ${initSystemFlake} /srv/nixpi ${hostName} ${username} UTC us
           chown -R ${username}:${username} ${homeDir}/.nixpi
           chmod 755 ${homeDir}/.nixpi
-        ''
-      );
+      '';
     };
 in
 {

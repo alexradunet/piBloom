@@ -3,33 +3,36 @@
 { lib, config, ... }:
 
 {
-  imports = [
-    ../modules
-  ];
+  imports = [ ../modules ];
 
   system.stateVersion = "25.05";
 
-  boot.loader.systemd-boot.enable = true;
-  boot.loader.efi.canTouchEfiVariables = true;
-  # Use tty0 so the active local VT keeps visible boot/login output on
-  # monitor-attached x86_64 hosts, while tty1 still provides the recovery getty.
-  boot.kernelParams = [ "console=tty0" "console=ttyS0,115200" ];
+  boot = {
+    loader = {
+      systemd-boot.enable = true;
+      efi.canTouchEfiVariables = true;
+    };
+    # Use tty0 so the active local VT keeps visible boot/login output on
+    # monitor-attached x86_64 hosts, while tty1 still provides the recovery getty.
+    kernelParams = [
+      "console=tty0"
+      "console=ttyS0,115200"
+    ];
+  };
   systemd.services."getty@tty1".enable = lib.mkDefault true;
   systemd.services."serial-getty@ttyS0".enable = lib.mkDefault true;
 
-  nixpi.primaryUser = lib.mkDefault "human";
-  nixpi.bootstrap.keepSshAfterSetup = lib.mkDefault true;
-  nixpi.security.ssh.passwordAuthentication = lib.mkDefault false;
+  nixpi = {
+    primaryUser = lib.mkDefault "human";
+    bootstrap.keepSshAfterSetup = lib.mkDefault true;
+    security.ssh.passwordAuthentication = lib.mkDefault false;
+  };
 
   networking.hostName = lib.mkDefault "nixpi";
   networking.networkmanager.enable = true;
   time.timeZone = config.nixpi.timezone;
   i18n.defaultLocale = "en_US.UTF-8";
   console.keyMap = config.nixpi.keyboard;
-  # Include redistributable GPU firmware for more reliable display bring-up on
-  # monitor-attached x86_64 hardware such as miniPCs.
-  hardware.enableRedistributableFirmware = lib.mkDefault true;
-
   # Include redistributable GPU firmware (Intel, AMD) for reliable KMS
   # initialization on monitor-attached hardware such as mini PCs.
   hardware.enableRedistributableFirmware = lib.mkDefault true;

@@ -1,23 +1,24 @@
-{ piAgent, appPackage, setupApplyPackage, mkTestFilesystems, ... }:
+{ mkTestFilesystems, ... }:
 
 {
   name = "nixpi-vps-bootstrap";
 
-  nodes.nixpi = { pkgs, ... }: {
-    imports = [
-      ../../core/os/hosts/vps.nix
-      mkTestFilesystems
-    ];
-    _module.args = { inherit piAgent appPackage setupApplyPackage; };
+  nodes.nixpi =
+    { pkgs, ... }:
+    {
+      imports = [
+        ../../core/os/hosts/vps.nix
+        mkTestFilesystems
+      ];
 
-    nixpi.primaryUser = "human";
+      nixpi.primaryUser = "human";
 
-    virtualisation.diskSize = 20480;
-    virtualisation.memorySize = 4096;
-    networking.hostName = "nixpi-vps-bootstrap";
+      virtualisation.diskSize = 20480;
+      virtualisation.memorySize = 4096;
+      networking.hostName = "nixpi-vps-bootstrap";
 
-    environment.systemPackages = [ pkgs.curl ];
-  };
+      environment.systemPackages = [ pkgs.curl ];
+    };
 
   testScript = ''
     nixpi = machines[0]
