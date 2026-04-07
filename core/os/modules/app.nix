@@ -103,9 +103,14 @@ in
         primary_group="$(id -gn ${primaryUser})"
 
         install -d -m 0700 -o ${primaryUser} -g "$primary_group" ${agentStateDir}
+        install -d -m 0700 -o ${primaryUser} -g "$primary_group" ${agentStateDir}/agent
 
         if [ ! -e ${agentStateDir}/settings.json ]; then
           install -m 0600 -o ${primaryUser} -g "$primary_group" ${defaultSettings} ${agentStateDir}/settings.json
+        fi
+
+        if [ -e ${agentStateDir}/auth.json ] && [ ! -e ${agentStateDir}/agent/auth.json ]; then
+          ln -s ../auth.json ${agentStateDir}/agent/auth.json
         fi
 
         chown -R ${primaryUser}:"$primary_group" ${agentStateDir}
