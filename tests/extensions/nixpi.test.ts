@@ -9,6 +9,7 @@ import {
 	handleSkillCreate,
 	handleSkillList,
 } from "../../core/pi/extensions/nixpi/actions.js";
+import { handleUpdateBlueprints } from "../../core/pi/extensions/nixpi/actions-blueprints.js";
 import { createMockExtensionAPI } from "../helpers/mock-extension-api.js";
 import { createMockExtensionContext } from "../helpers/mock-extension-context.js";
 import { createTempNixPi, type TempNixPi } from "../helpers/temp-nixpi.js";
@@ -188,6 +189,36 @@ describe("handleSkillList", () => {
 		fs.mkdirSync(path.join(nixPiDir, "Skills", "orphan"), { recursive: true });
 		const result = handleSkillList(nixPiDir);
 		expect(result.content[0].text).toContain("No skills found");
+	});
+});
+
+describe("handleUpdateBlueprints", () => {
+	it("updates persona files from core/pi/persona sources", () => {
+		ensureNixPi(nixPiDir);
+
+		const packageDir = fs.mkdtempSync(path.join(os.tmpdir(), "nixpi-package-"));
+		try {
+			fs.mkdirSync(path.join(packageDir, "core", "pi", "persona"), { recursive: true });
+			fs.writeFileSync(path.join(packageDir, "package.json"), JSON.stringify({ version: "1.2.3" }));
+			fs.writeFileSync(path.join(packageDir, "core", "pi", "persona", "SOUL.md"), "updated soul");
+			fs.writeFileSync(path.join(nixPiDir, "Persona", "SOUL.md"), "old soul");
+			fs.writeFileSync(
+				path.join(nixPiDir, "blueprint-versions.json"),
+				JSON.stringify({
+					packageVersion: "1.0.0",
+					seeded: { "persona/SOUL.md": "1.0.0" },
+					seededHashes: { "persona/SOUL.md": "hash-old" },
+					updatesAvailable: { "persona/SOUL.md": "1.2.3" },
+				}),
+			);
+
+			const updatedCount = handleUpdateBlueprints(nixPiDir, packageDir);
+
+			expect(updatedCount).toBe(1);
+			expect(fs.readFileSync(path.join(nixPiDir, "Persona", "SOUL.md"), "utf-8")).toBe("updated soul");
+		} finally {
+			fs.rmSync(packageDir, { recursive: true, force: true });
+		}
 	});
 });
 

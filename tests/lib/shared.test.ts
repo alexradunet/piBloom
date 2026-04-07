@@ -362,6 +362,27 @@ describe("requireConfirmation", () => {
 		const result = await requireConfirmation(fakeCtx, "delete file");
 		expect(result).toBe("User declined: delete file");
 	});
+
+	it("re-prompts instead of consuming an ambiguous untokened approval", async () => {
+		requestInteraction(fakeCtx, {
+			kind: "input",
+			key: "nickname",
+			prompt: "Enter nickname",
+		});
+		const confirmation = requestInteraction(fakeCtx, {
+			kind: "confirm",
+			key: "delete file",
+			prompt: "Allow: delete file?",
+		});
+		if (!confirmation || confirmation.state !== "pending") throw new Error("expected pending confirmation");
+
+		resolveInteractionReply(fakeCtx, "yes");
+
+		const result = await requireConfirmation(fakeCtx, "delete file");
+		expect(result).not.toBeNull();
+		expect(result).toContain('Confirmation required for "delete file"');
+		expect(result).toContain("confirm ");
+	});
 });
 
 describe("requestSelection", () => {

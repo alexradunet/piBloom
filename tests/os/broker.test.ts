@@ -1,15 +1,15 @@
 import { describe, expect, it } from "vitest";
 import {
-	PermissionError,
+	type BrokerCommandResult,
+	type BrokerConfig,
+	type BrokerRuntime,
 	brokerStatus,
 	currentAutonomy,
 	grantAdmin,
 	handleRequest,
+	PermissionError,
 	parseDuration,
 	revokeAdmin,
-	type BrokerCommandResult,
-	type BrokerConfig,
-	type BrokerRuntime,
 } from "../../core/os/broker.js";
 
 interface RuntimeState {
@@ -151,15 +151,40 @@ describe("handleRequest", () => {
 		).rejects.toEqual(new PermissionError("OS updates are disabled"));
 	});
 
-	it("clamps reboot scheduling to one week", async () => {
-		const { runtime, state } = createRuntime(async (args) => ({
-			ok: true,
-			stdout: "",
-			stderr: "",
-			exitCode: 0,
-		}), {
-			files: new Map([[baseConfig.elevationPath, JSON.stringify({ until: 5000, grantedAt: 1000 })]]),
+	it("always uses the configured default flake for apply", async () => {
+		const { runtime, state } = createRuntime(
+			async () => ({
+				ok: true,
+				stdout: "",
+				stderr: "",
+				exitCode: 0,
+			}),
+			{
+				files: new Map([[baseConfig.elevationPath, JSON.stringify({ until: 5000, grantedAt: 1000 })]]),
+			},
+		);
+
+		await handleRequest(runtime, baseConfig, {
+			operation: "nixos-update",
+			action: "apply",
+			flake: "evil#host",
 		});
+
+		expect(state.commands).toEqual([["nixos-rebuild", "switch", "--flake", baseConfig.defaultFlake]]);
+	});
+
+	it("clamps reboot scheduling to one week", async () => {
+		const { runtime, state } = createRuntime(
+			async (_args) => ({
+				ok: true,
+				stdout: "",
+				stderr: "",
+				exitCode: 0,
+			}),
+			{
+				files: new Map([[baseConfig.elevationPath, JSON.stringify({ until: 5000, grantedAt: 1000 })]]),
+			},
+		);
 
 		await handleRequest(runtime, baseConfig, {
 			operation: "schedule-reboot",

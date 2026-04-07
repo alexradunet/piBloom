@@ -105,54 +105,72 @@ async function ensureAllowedLevel(
 
 export class PermissionError extends Error {}
 
+async function handleSystemdRequest(
+	runtime: BrokerRuntime,
+	config: BrokerConfig,
+	request: BrokerRequest,
+): Promise<BrokerCommandResult> {
+	const action = request.action;
+	const unit = request.unit;
+	if (typeof unit !== "string" || !config.allowedUnits.includes(unit)) {
+		throw new PermissionError(`unit not allowed: ${unit}`);
+	}
+	if (action === "status") {
+		await ensureAllowedLevel(runtime, config, "observe");
+		return runtime.runCommand(["systemctl", "status", "--no-pager", unit]);
+	}
+	if (action === "start" || action === "stop" || action === "restart" || action === "enable-now") {
+		await ensureAllowedLevel(runtime, config, "maintain");
+		return runtime.runCommand(
+			action === "enable-now" ? ["systemctl", "enable", "--now", unit] : ["systemctl", action, unit],
+		);
+	}
+	throw new Error(`unsupported systemd action: ${action}`);
+}
+
+async function handleNixosUpdateRequest(
+	runtime: BrokerRuntime,
+	config: BrokerConfig,
+	request: BrokerRequest,
+): Promise<BrokerCommandResult> {
+	await ensureAllowedLevel(runtime, config, "admin");
+	if (!config.osUpdateEnable) {
+		throw new PermissionError("OS updates are disabled");
+	}
+	if (request.action === "rollback") {
+		return runtime.runCommand(["nixos-rebuild", "switch", "--rollback"]);
+	}
+	if (request.action === "apply") {
+		return runtime.runCommand(["nixos-rebuild", "switch", "--flake", config.defaultFlake]);
+	}
+	throw new Error(`unsupported nixos-update action: ${request.action}`);
+}
+
+async function handleScheduleRebootRequest(
+	runtime: BrokerRuntime,
+	config: BrokerConfig,
+	request: BrokerRequest,
+): Promise<BrokerCommandResult> {
+	await ensureAllowedLevel(runtime, config, "admin");
+	const minutes = Math.max(1, Math.min(Number(request.minutes ?? 1), 7 * 24 * 60));
+	return runtime.runCommand(["systemd-run", `--on-active=${minutes}m`, "systemctl", "reboot"]);
+}
+
 export async function handleRequest(
 	runtime: BrokerRuntime,
 	config: BrokerConfig,
 	request: BrokerRequest,
 ): Promise<BrokerCommandResult> {
-	const operation = request.operation;
-
-	if (operation === "systemd") {
-		const action = request.action;
-		const unit = request.unit;
-		if (typeof unit !== "string" || !config.allowedUnits.includes(unit)) {
-			throw new PermissionError(`unit not allowed: ${unit}`);
-		}
-		if (action === "status") {
-			await ensureAllowedLevel(runtime, config, "observe");
-			return runtime.runCommand(["systemctl", "status", "--no-pager", unit]);
-		}
-		if (action === "start" || action === "stop" || action === "restart" || action === "enable-now") {
-			await ensureAllowedLevel(runtime, config, "maintain");
-			return runtime.runCommand(
-				action === "enable-now" ? ["systemctl", "enable", "--now", unit] : ["systemctl", action, unit],
-			);
-		}
-		throw new Error(`unsupported systemd action: ${action}`);
+	switch (request.operation) {
+		case "systemd":
+			return handleSystemdRequest(runtime, config, request);
+		case "nixos-update":
+			return handleNixosUpdateRequest(runtime, config, request);
+		case "schedule-reboot":
+			return handleScheduleRebootRequest(runtime, config, request);
+		default:
+			throw new Error(`unsupported operation: ${request.operation}`);
 	}
-
-	if (operation === "nixos-update") {
-		await ensureAllowedLevel(runtime, config, "admin");
-		if (!config.osUpdateEnable) {
-			throw new PermissionError("OS updates are disabled");
-		}
-		const action = request.action;
-		if (action === "rollback") {
-			return runtime.runCommand(["nixos-rebuild", "switch", "--rollback"]);
-		}
-		if (action === "apply") {
-			return runtime.runCommand(["nixos-rebuild", "switch", "--flake", request.flake || config.defaultFlake]);
-		}
-		throw new Error(`unsupported nixos-update action: ${action}`);
-	}
-
-	if (operation === "schedule-reboot") {
-		await ensureAllowedLevel(runtime, config, "admin");
-		const minutes = Math.max(1, Math.min(Number(request.minutes ?? 1), 7 * 24 * 60));
-		return runtime.runCommand(["systemd-run", `--on-active=${minutes}m`, "systemctl", "reboot"]);
-	}
-
-	throw new Error(`unsupported operation: ${operation}`);
 }
 
 export async function brokerStatus(runtime: BrokerRuntime, config: BrokerConfig) {
@@ -246,9 +264,7 @@ export async function serve(runtime: BrokerRuntime, config: BrokerConfig): Promi
 
 export async function main(runtime: BrokerRuntime, config: BrokerConfig, argv: string[]): Promise<number> {
 	if (argv.length < 2) {
-		runtime.stderr(
-			"usage: nixpi-broker <server|status|grant-admin|revoke-admin|systemd|nixos-update|schedule-reboot>",
-		);
+		runtime.stderr("usage: nixpi-broker <server|status|grant-admin|revoke-admin|systemd|nixos-update|schedule-reboot>");
 		return 1;
 	}
 

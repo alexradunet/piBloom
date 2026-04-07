@@ -102,6 +102,15 @@ describe("POST /chat", () => {
 		});
 		expect(res.status).toBe(400);
 	});
+
+	it("returns 413 for oversized request bodies", async () => {
+		const res = await fetch(`http://127.0.0.1:${port}/chat`, {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({ message: "x".repeat(70_000) }),
+		});
+		expect(res.status).toBe(413);
+	});
 });
 
 describe("DELETE /chat/:id", () => {

@@ -11,6 +11,7 @@ export interface InteractionRecord {
 	prompt: string;
 	status: InteractionStatus;
 	resolution?: string;
+	ambiguous?: boolean;
 	options?: string[];
 	resumeMessage?: string;
 	createdAt: string;
@@ -22,6 +23,10 @@ export interface ResolvedInteractionReply {
 	value: string;
 	ambiguous?: boolean;
 }
+
+type InteractionRequestResult =
+	| { state: "resolved"; value: string; ambiguous?: boolean }
+	| { state: "pending"; record: InteractionRecord; prompt: string };
 
 /** Module-level in-memory store scoped to the daemon session lifetime. */
 const store = new Map<string, InteractionRecord>();
@@ -154,16 +159,43 @@ function createInteractionRecord(
 	};
 }
 
-function consumeResolvedInteraction(
-	record: InteractionRecord | undefined,
-): { state: "resolved"; value: string } | null {
+function consumeResolvedInteraction(record: InteractionRecord | undefined): InteractionRequestResult | null {
 	if (!record?.resolution) {
 		return null;
 	}
 
 	record.status = "consumed";
 	record.updatedAt = interactionNowIso();
-	return { state: "resolved", value: record.resolution };
+	return { state: "resolved", value: record.resolution, ...(record.ambiguous ? { ambiguous: true } : {}) };
+}
+
+function requestNoUiConfirmation(ctx: ExtensionContext, action: string): string | null {
+	const request = () =>
+		requestInteraction(ctx, {
+			kind: "confirm",
+			key: action,
+			prompt: `Allow: ${action}?`,
+		});
+
+	const first = request();
+	if (!first) {
+		return `Cannot perform "${action}" without interactive user confirmation.`;
+	}
+	if (first.state === "pending") {
+		return first.prompt;
+	}
+	if (!first.ambiguous) {
+		return first.value === "approved" ? null : `User declined: ${action}`;
+	}
+
+	const retry = request();
+	if (!retry) {
+		return `Cannot perform "${action}" without interactive user confirmation.`;
+	}
+	if (retry.state === "pending") {
+		return retry.prompt;
+	}
+	return retry.value === "approved" ? null : `User declined: ${action}`;
 }
 
 function selectReplyTarget(
@@ -185,6 +217,7 @@ function selectReplyTarget(
 function finalizeResolvedReply(record: InteractionRecord, value: string, ambiguous: boolean): ResolvedInteractionReply {
 	record.status = "resolved";
 	record.resolution = value;
+	record.ambiguous = ambiguous || undefined;
 	record.updatedAt = interactionNowIso();
 	return { record, value, ...(ambiguous ? { ambiguous: true } : {}) };
 }
@@ -198,7 +231,7 @@ export function requestInteraction(
 		options?: string[];
 		resumeMessage?: string;
 	},
-): { state: "resolved"; value: string } | { state: "pending"; record: InteractionRecord; prompt: string } | null {
+): InteractionRequestResult | null {
 	const resolved = consumeResolvedInteraction(findLatestResolved(request.kind, request.key));
 	if (resolved) {
 		return resolved;
@@ -255,18 +288,7 @@ export async function requireConfirmation(
 	const requireUi = options?.requireUi ?? true;
 	if (!ctx.hasUI) {
 		if (!requireUi) return null;
-		const interaction = requestInteraction(ctx, {
-			kind: "confirm",
-			key: action,
-			prompt: `Allow: ${action}?`,
-		});
-		if (!interaction) {
-			return `Cannot perform "${action}" without interactive user confirmation.`;
-		}
-		if (interaction.state === "resolved") {
-			return interaction.value === "approved" ? null : `User declined: ${action}`;
-		}
-		return interaction.prompt;
+		return requestNoUiConfirmation(ctx, action);
 	}
 	const confirmed = await ctx.ui.confirm("Confirm action", `Allow: ${action}?`);
 	if (!confirmed) return `User declined: ${action}`;

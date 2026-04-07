@@ -6,7 +6,7 @@ import os from "node:os";
 import path from "node:path";
 import { getNixPiDir, safePath } from "../../../lib/filesystem.js";
 import { parseFrontmatter, stringifyFrontmatter } from "../../../lib/frontmatter.js";
-import { errorResult, nowIso, textToolResult, truncate } from "../../../lib/utils.js";
+import { errorResult, textToolResult, truncate } from "../../../lib/utils.js";
 import { defaultObjectBody, mergeObjectState, readMemoryRecord, writeMemoryRecord } from "./memory.js";
 
 type ObjectWriteParams = {
@@ -139,16 +139,6 @@ export function readObject(params: { type: string; slug: string; path?: string }
 		return errorResult(`object not found: ${params.type}/${params.slug}`);
 	}
 	const raw = fs.readFileSync(filepath, "utf-8");
-	try {
-		const { attributes, body } = parseFrontmatter<Record<string, unknown>>(raw);
-		const updated = {
-			...attributes,
-			last_accessed: nowIso(),
-		};
-		fs.writeFileSync(filepath, stringifyFrontmatter(updated, body));
-	} catch {
-		// Leave unreadable files untouched.
-	}
 	return textToolResult(truncate(raw));
 }
 

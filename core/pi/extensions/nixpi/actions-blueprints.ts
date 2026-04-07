@@ -51,6 +51,19 @@ function blueprintDestPath(workspaceDir: string, key: string): string {
 	return path.join(workspaceDir, key);
 }
 
+function resolvePersonaSourceDir(packageDir: string): string {
+	return fs.existsSync(path.join(packageDir, "core", "pi", "persona"))
+		? path.join(packageDir, "core", "pi", "persona")
+		: path.join(packageDir, "persona");
+}
+
+function blueprintSourcePath(packageDir: string, key: string): string {
+	if (key.startsWith("persona/")) {
+		return path.join(resolvePersonaSourceDir(packageDir), key.replace(/^persona\//, ""));
+	}
+	return path.join(packageDir, key);
+}
+
 function seedFile(src: string, dest: string, key: string, version: string, versions: BlueprintVersions): void {
 	if (!fs.existsSync(src)) return;
 
@@ -93,12 +106,9 @@ function seedFile(src: string, dest: string, key: string, version: string, versi
 export function seedBlueprints(workspaceDir: string, packageDir: string): void {
 	const version = getPackageVersion(packageDir);
 	const versions = readBlueprintVersions(workspaceDir);
-	const personaDir = fs.existsSync(path.join(packageDir, "core", "pi", "persona"))
-		? path.join(packageDir, "core", "pi", "persona")
-		: path.join(packageDir, "persona");
 	for (const file of PERSONA_FILES) {
 		const key = `persona/${file}`;
-		const src = path.join(personaDir, file);
+		const src = blueprintSourcePath(packageDir, key);
 		const dest = path.join(workspaceDir, "Persona", file);
 		seedFile(src, dest, key, version, versions);
 	}
@@ -129,7 +139,7 @@ export function handleUpdateBlueprints(workspaceDir: string, packageDir: string)
 	if (updates.length === 0) return 0;
 
 	for (const [key, version] of updates) {
-		const src = path.join(packageDir, key);
+		const src = blueprintSourcePath(packageDir, key);
 		const dest = blueprintDestPath(workspaceDir, key);
 		if (!fs.existsSync(src)) continue;
 		const srcContent = fs.readFileSync(src, "utf-8");

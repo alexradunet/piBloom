@@ -132,6 +132,27 @@ describe("memory_create and memory_read execution", () => {
 		expect(result.content[0].text).toContain("not found");
 	});
 
+	it("does not rewrite the file when reading an object", async () => {
+		const create = getExecute("memory_create");
+		const read = getExecute("memory_read");
+
+		await create("call-1", {
+			type: "note",
+			slug: "read-only-note",
+			fields: { title: "Read Only Note" },
+			body: "Original body",
+		});
+
+		const filepath = path.join(temp.nixPiDir, "Objects", "read-only-note.md");
+		const before = fs.readFileSync(filepath, "utf-8");
+
+		const result = await read("call-2", { type: "note", slug: "read-only-note" });
+		const after = fs.readFileSync(filepath, "utf-8");
+
+		expect(result.content[0].text).toContain("Read Only Note");
+		expect(after).toBe(before);
+	});
+
 	it("updates and queries richer durable metadata", async () => {
 		const create = getExecute("memory_create");
 		const update = getExecute("memory_update");

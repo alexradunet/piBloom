@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+	type CommandResult,
 	parseCurrentGeneration,
 	runSystemUpdate,
-	type CommandResult,
 	type SystemUpdateRuntime,
 } from "../../core/os/system-update.js";
 
@@ -84,18 +84,21 @@ describe("runSystemUpdate", () => {
 	});
 
 	it("writes available=false when the built system matches the current system", async () => {
-		const { runtime, state } = createRuntime(async (cmd) => {
-			if (cmd === "nix-env") {
-				return { stdout: "1 something current\n", stderr: "", exitCode: 0 };
-			}
-			if (cmd === "nix") {
-				return { stdout: "/nix/store/current-system\n", stderr: "", exitCode: 0 };
-			}
-			throw new Error(`unexpected command ${cmd}`);
-		}, {
-			files: new Map([["/etc/nixos/flake.nix", "{}"]]),
-			symlinks: new Map([["/run/current-system", "/nix/store/current-system"]]),
-		});
+		const { runtime, state } = createRuntime(
+			async (cmd) => {
+				if (cmd === "nix-env") {
+					return { stdout: "1 something current\n", stderr: "", exitCode: 0 };
+				}
+				if (cmd === "nix") {
+					return { stdout: "/nix/store/current-system\n", stderr: "", exitCode: 0 };
+				}
+				throw new Error(`unexpected command ${cmd}`);
+			},
+			{
+				files: new Map([["/etc/nixos/flake.nix", "{}"]]),
+				symlinks: new Map([["/run/current-system", "/nix/store/current-system"]]),
+			},
+		);
 
 		const exitCode = await runSystemUpdate(runtime, { primaryUser: "tester", flakeDir: "/etc/nixos" });
 		const status = JSON.parse(state.files.get("/home/tester/.nixpi/update-status.json") ?? "");
@@ -112,32 +115,35 @@ describe("runSystemUpdate", () => {
 
 	it("preserves notified=true before apply and clears it after a successful apply", async () => {
 		let nixEnvCalls = 0;
-		const { runtime, state } = createRuntime(async (cmd) => {
-			if (cmd === "nix-env") {
-				nixEnvCalls += 1;
-				return {
-					stdout: nixEnvCalls === 1 ? "4 something current\n" : "5 something current\n",
-					stderr: "",
-					exitCode: 0,
-				};
-			}
-			if (cmd === "nix") {
-				return { stdout: "/nix/store/new-system\n", stderr: "", exitCode: 0 };
-			}
-			if (cmd === "nixos-rebuild") {
-				return { stdout: "", stderr: "", exitCode: 0 };
-			}
-			throw new Error(`unexpected command ${cmd}`);
-		}, {
-			files: new Map([
-				["/etc/nixos/flake.nix", "{}"],
-				[
-					"/home/tester/.nixpi/update-status.json",
-					JSON.stringify({ checked: "earlier", available: true, generation: "4", notified: true }),
-				],
-			]),
-			symlinks: new Map([["/run/current-system", "/nix/store/current-system"]]),
-		});
+		const { runtime, state } = createRuntime(
+			async (cmd) => {
+				if (cmd === "nix-env") {
+					nixEnvCalls += 1;
+					return {
+						stdout: nixEnvCalls === 1 ? "4 something current\n" : "5 something current\n",
+						stderr: "",
+						exitCode: 0,
+					};
+				}
+				if (cmd === "nix") {
+					return { stdout: "/nix/store/new-system\n", stderr: "", exitCode: 0 };
+				}
+				if (cmd === "nixos-rebuild") {
+					return { stdout: "", stderr: "", exitCode: 0 };
+				}
+				throw new Error(`unexpected command ${cmd}`);
+			},
+			{
+				files: new Map([
+					["/etc/nixos/flake.nix", "{}"],
+					[
+						"/home/tester/.nixpi/update-status.json",
+						JSON.stringify({ checked: "earlier", available: true, generation: "4", notified: true }),
+					],
+				]),
+				symlinks: new Map([["/run/current-system", "/nix/store/current-system"]]),
+			},
+		);
 
 		const exitCode = await runSystemUpdate(runtime, { primaryUser: "tester", flakeDir: "/etc/nixos" });
 		const status = JSON.parse(state.files.get("/home/tester/.nixpi/update-status.json") ?? "");
@@ -158,21 +164,24 @@ describe("runSystemUpdate", () => {
 	});
 
 	it("returns success and keeps the pre-apply status when rebuild fails", async () => {
-		const { runtime, state } = createRuntime(async (cmd) => {
-			if (cmd === "nix-env") {
-				return { stdout: "7 something current\n", stderr: "", exitCode: 0 };
-			}
-			if (cmd === "nix") {
-				return { stdout: "/nix/store/new-system\n", stderr: "", exitCode: 0 };
-			}
-			if (cmd === "nixos-rebuild") {
-				return { stdout: "", stderr: "failed", exitCode: 1 };
-			}
-			throw new Error(`unexpected command ${cmd}`);
-		}, {
-			files: new Map([["/etc/nixos/flake.nix", "{}"]]),
-			symlinks: new Map([["/run/current-system", "/nix/store/current-system"]]),
-		});
+		const { runtime, state } = createRuntime(
+			async (cmd) => {
+				if (cmd === "nix-env") {
+					return { stdout: "7 something current\n", stderr: "", exitCode: 0 };
+				}
+				if (cmd === "nix") {
+					return { stdout: "/nix/store/new-system\n", stderr: "", exitCode: 0 };
+				}
+				if (cmd === "nixos-rebuild") {
+					return { stdout: "", stderr: "failed", exitCode: 1 };
+				}
+				throw new Error(`unexpected command ${cmd}`);
+			},
+			{
+				files: new Map([["/etc/nixos/flake.nix", "{}"]]),
+				symlinks: new Map([["/run/current-system", "/nix/store/current-system"]]),
+			},
+		);
 
 		const exitCode = await runSystemUpdate(runtime, { primaryUser: "tester", flakeDir: "/etc/nixos" });
 		const status = JSON.parse(state.files.get("/home/tester/.nixpi/update-status.json") ?? "");

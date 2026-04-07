@@ -20,8 +20,11 @@ const MIME_TYPES: Record<string, string> = {
 	".json": "application/json",
 	".ico": "image/x-icon",
 };
+const MAX_CHAT_BODY_BYTES = 64 * 1024;
 
 type RouteMatch = "chat" | "reset" | "static" | "method_not_allowed";
+
+class RequestTooLargeError extends Error {}
 
 function warmSession(piSession: PiSessionBridge): void {
 	// Pre-create the in-process Pi SDK session so first request latency stays low.
@@ -32,7 +35,12 @@ function warmSession(piSession: PiSessionBridge): void {
 
 async function readRequestBody(req: http.IncomingMessage): Promise<string> {
 	let body = "";
+	let size = 0;
 	for await (const chunk of req) {
+		size += Buffer.isBuffer(chunk) ? chunk.byteLength : Buffer.byteLength(String(chunk));
+		if (size > MAX_CHAT_BODY_BYTES) {
+			throw new RequestTooLargeError("request body too large");
+		}
 		body += chunk;
 	}
 	return body;
@@ -126,7 +134,18 @@ async function handleChatRoute(
 	res: http.ServerResponse,
 	piSession: PiSessionBridge,
 ): Promise<void> {
-	const parsed = parseChatRequest(await readRequestBody(req));
+	let body: string;
+	try {
+		body = await readRequestBody(req);
+	} catch (error) {
+		if (error instanceof RequestTooLargeError) {
+			writeJsonError(res, 413, "request body too large");
+			return;
+		}
+		throw error;
+	}
+
+	const parsed = parseChatRequest(body);
 	if (!parsed.ok) {
 		writeJsonError(res, 400, parsed.error);
 		return;
