@@ -40,6 +40,7 @@
           app = appPackage;
           nixpi-bootstrap-vps = pkgs.callPackage ./core/os/pkgs/bootstrap { };
           nixpi-rebuild = pkgs.callPackage ./core/os/pkgs/nixpi-rebuild { };
+          nixpi-rebuild-pull = pkgs.callPackage ./core/os/pkgs/nixpi-rebuild-pull { };
           nixpi-setup-apply = pkgs.callPackage ./core/os/pkgs/nixpi-setup-apply { };
         };
       pkgs = mkPkgs system;

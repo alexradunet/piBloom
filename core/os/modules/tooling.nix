@@ -2,6 +2,7 @@
 
 let
   nixpiRebuild = pkgs.callPackage ../pkgs/nixpi-rebuild { };
+  nixpiRebuildPull = pkgs.callPackage ../pkgs/nixpi-rebuild-pull { };
   setupApplyPackage = pkgs.callPackage ../pkgs/nixpi-setup-apply { };
 in
 {
@@ -28,6 +29,7 @@ in
     qemu
     OVMF
     nixpiRebuild
+    nixpiRebuildPull
     setupApplyPackage
   ] ++ lib.optionals config.nixpi.security.fail2ban.enable [ pkgs.fail2ban ];
 }
