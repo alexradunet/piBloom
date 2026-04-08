@@ -131,9 +131,7 @@ async function handleSystemdRequest(
 	if (action === "start" || action === "stop" || action === "restart" || action === "enable-now") {
 		await ensureAllowedLevel(runtime, config, "maintain");
 		return runtime.runCommand(
-			action === "enable-now"
-				? ["systemctl", "enable", "--now", resolvedUnit]
-				: ["systemctl", action, resolvedUnit],
+			action === "enable-now" ? ["systemctl", "enable", "--now", resolvedUnit] : ["systemctl", action, resolvedUnit],
 		);
 	}
 	throw new Error(`unsupported systemd action: ${action}`);

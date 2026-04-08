@@ -97,35 +97,51 @@ describe("broker autonomy", () => {
 describe("broker socket activation", () => {
 	it("prefers the systemd-activated socket fd when LISTEN_PID matches and exactly one fd is passed", () => {
 		expect(
-			brokerListenTarget(baseConfig, {
-				LISTEN_PID: "4242",
-				LISTEN_FDS: "1",
-			}, 4242),
+			brokerListenTarget(
+				baseConfig,
+				{
+					LISTEN_PID: "4242",
+					LISTEN_FDS: "1",
+				},
+				4242,
+			),
 		).toEqual({ fd: 3 });
 	});
 
 	it("falls back to the configured socket path outside socket-activated contexts", () => {
 		expect(brokerListenTarget(baseConfig, {}, 4242)).toBe(baseConfig.socketPath);
 		expect(
-			brokerListenTarget(baseConfig, {
-				LISTEN_PID: "9999",
-				LISTEN_FDS: "1",
-			}, 4242),
+			brokerListenTarget(
+				baseConfig,
+				{
+					LISTEN_PID: "9999",
+					LISTEN_FDS: "1",
+				},
+				4242,
+			),
 		).toBe(baseConfig.socketPath);
 	});
 
 	it("falls back when systemd passes anything other than exactly one listen fd", () => {
 		expect(
-			brokerListenTarget(baseConfig, {
-				LISTEN_PID: "4242",
-				LISTEN_FDS: "2",
-			}, 4242),
+			brokerListenTarget(
+				baseConfig,
+				{
+					LISTEN_PID: "4242",
+					LISTEN_FDS: "2",
+				},
+				4242,
+			),
 		).toBe(baseConfig.socketPath);
 		expect(
-			brokerListenTarget(baseConfig, {
-				LISTEN_PID: "4242",
-				LISTEN_FDS: "0",
-			}, 4242),
+			brokerListenTarget(
+				baseConfig,
+				{
+					LISTEN_PID: "4242",
+					LISTEN_FDS: "0",
+				},
+				4242,
+			),
 		).toBe(baseConfig.socketPath);
 	});
 });

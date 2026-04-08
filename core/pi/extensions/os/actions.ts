@@ -7,10 +7,7 @@ import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type { ExtensionContext } from "@mariozechner/pi-coding-agent";
 import { run } from "../../../lib/exec.js";
-import {
-	getSystemFlakeDir,
-	getUpdateStatusPath,
-} from "../../../lib/filesystem.js";
+import { getSystemFlakeDir, getUpdateStatusPath } from "../../../lib/filesystem.js";
 import { requireConfirmation } from "../../../lib/interactions.js";
 import { errorResult, truncate } from "../../../lib/utils.js";
 import { guardServiceName } from "../../../lib/validation.js";

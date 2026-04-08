@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 const repoRoot = path.resolve(import.meta.dirname, "../..");
 const packageJsonPath = path.join(repoRoot, "package.json");
 const deployOvhScriptPath = path.join(repoRoot, "core/scripts/nixpi-deploy-ovh.sh");
+const deployOvhTestPath = path.join(repoRoot, "tests/integration/nixpi-deploy-ovh.test.ts");
 const ovhHostPath = path.join(repoRoot, "core/os/hosts/ovh-vps.nix");
 const ovhDiskoPath = path.join(repoRoot, "core/os/disko/ovh-single-disk.nix");
 const ovhDeployDocPath = path.join(repoRoot, "docs/operations/ovh-rescue-deploy.md");
@@ -191,6 +192,14 @@ describe("repo standards guards", () => {
 		expect(deployDoc).toContain("/srv/nixpi");
 	});
 
+	it("keeps deterministic regression tests for the OVH deploy wrapper", () => {
+		const deployScript = readFileSync(deployOvhScriptPath, "utf8");
+
+		expect(existsSync(deployOvhTestPath)).toBe(true);
+		expect(deployScript).toContain("build_deploy_flake()");
+		expect(deployScript).toContain(`if [[ "\${BASH_SOURCE[0]}" == "$0" ]]; then`);
+	});
+
 	it("defines the OVH root partition with size syntax that disko can realize on real disks", () => {
 		const ovhDisko = readFileSync(ovhDiskoPath, "utf8");
 
@@ -272,5 +281,4 @@ describe("repo standards guards", () => {
 		expect(serviceArchitecture).toContain("Zellij");
 		expect(serviceArchitecture).toContain("NIXPI_NO_ZELLIJ=1");
 	});
-
 });
