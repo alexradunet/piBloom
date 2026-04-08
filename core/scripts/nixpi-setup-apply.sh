@@ -35,10 +35,12 @@ PRIMARY_USER="$(resolve_primary_user)"
 PRIMARY_HOME="/home/${PRIMARY_USER}"
 NIXPI_STATE_DIR="${PRIMARY_HOME}/.nixpi"
 SYSTEM_READY_FILE="${NIXPI_STATE_DIR}/wizard-state/system-ready"
+FIRST_BOOT_SUDOERS_FILE="/var/lib/nixpi/sudoers.d/nixpi-first-boot"
 
 log() { printf '[setup] %s\n' "$*"; }
 
 mkdir -p "$(dirname "${SYSTEM_READY_FILE}")"
 touch "${SYSTEM_READY_FILE}"
 chown "${PRIMARY_USER}:${PRIMARY_USER}" "${SYSTEM_READY_FILE}"
+rm -f "${FIRST_BOOT_SUDOERS_FILE}"
 log "System ready"

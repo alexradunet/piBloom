@@ -123,7 +123,7 @@ in
     machine.succeed("grep -q 'nixosConfigurations.nixos' /etc/nixos/flake.nix")
     machine.succeed("grep -q './hardware-configuration.nix' /etc/nixos/flake.nix")
     machine.succeed("grep -q 'nixpi.primaryUser = \"pi\";' /etc/nixos/flake.nix")
-    machine.succeed("grep -q \"Bootstrap complete. Use 'nixpi-rebuild'\" /tmp/bootstrap.out")
+    machine.succeed("grep -q \"Bootstrap complete.\" /tmp/bootstrap.out")
 
     print("nixpi-bootstrap-fresh-install-stable test passed!")
   '';

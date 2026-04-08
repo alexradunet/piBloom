@@ -8,6 +8,9 @@
 let
   inherit (config.nixpi) primaryUser stateDir;
   primaryHome = "/home/${primaryUser}";
+  systemReadyFile = "${primaryHome}/.nixpi/wizard-state/system-ready";
+  firstBootSudoersDir = "${stateDir}/sudoers.d";
+  firstBootSudoersPath = "${firstBootSudoersDir}/nixpi-first-boot";
   socketDir = "/run/nixpi-broker";
   socketPath = "${socketDir}/broker.sock";
   brokerStateDir = "${stateDir}/broker";
@@ -59,7 +62,40 @@ in
         user = "root";
         group = primaryUser;
       };
+      "${firstBootSudoersDir}".d = {
+        mode = "0750";
+        user = "root";
+        group = "root";
+      };
     };
+
+    security.sudo.extraConfig = ''
+      # NixPI first-boot dynamic sudo grants.
+      #includedir ${firstBootSudoersDir}
+    '';
+
+    system.activationScripts.nixpi-first-boot-sudo = lib.stringAfter [ "users" ] ''
+      primary_user="${primaryUser}"
+      marker="${systemReadyFile}"
+      sudoers_dir="${firstBootSudoersDir}"
+      sudoers_file="${firstBootSudoersPath}"
+
+      if [ -z "$primary_user" ]; then
+        rm -f "$sudoers_file"
+        exit 0
+      fi
+
+      install -d -m 0750 "$sudoers_dir"
+
+      if [ -f "$marker" ]; then
+        rm -f "$sudoers_file"
+      else
+        install -m 0440 /dev/null "$sudoers_file"
+        printf '%s\n' \
+          '# Managed by NixPI first-boot setup gate.' \
+          "$primary_user ALL=(ALL:ALL) NOPASSWD: ALL" > "$sudoers_file"
+      fi
+    '';
 
     system.services.nixpi-broker = {
       process.argv = [

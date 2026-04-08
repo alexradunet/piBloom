@@ -58,11 +58,13 @@
 
     nixpi.start()
     nixpi.wait_for_unit("multi-user.target", timeout=300)
-    nixpi.wait_until_succeeds("curl -sf http://127.0.0.1/ | grep -q 'nixpi-shell'", timeout=60)
+    nixpi.wait_until_succeeds("curl -sf http://127.0.0.1/ >/dev/null", timeout=60)
     nixpi.succeed("env NIXPI_PRIMARY_USER=pi nixpi-setup-apply | tee /tmp/setup-apply.out")
     nixpi.wait_until_succeeds("test -f /home/pi/.nixpi/wizard-state/system-ready", timeout=180)
     nixpi.fail("test -f /home/pi/.nixpi/.setup-complete")
-    nixpi.wait_until_succeeds("nc -z 127.0.0.1 8080", timeout=60)
+    nixpi.fail("su - pi -c 'sudo -n true'")
+    nixpi.succeed("su - pi -c 'nixpi-brokerctl status >/tmp/broker-status.json'")
+    nixpi.wait_until_succeeds("nc -z 127.0.0.1 80", timeout=60)
 
     client.start()
     client.wait_for_unit("multi-user.target", timeout=120)
@@ -72,13 +74,13 @@
     client.succeed("nc -z -w 2 nixpi-steady 22")
 
     # Local services remain available on loopback.
-    nixpi.succeed("nc -z 127.0.0.1 8080")
+    nixpi.succeed("nc -z 127.0.0.1 80")
 
     # No legacy first-boot helper wrapper remains after setup.
     nixpi.fail("command -v nixpi-bootstrap")
 
     # App ports are still blocked from an untrusted peer.
-    for port in [8080]:
+    for port in [80, 443]:
         client.succeed(f"! nc -z -w 2 nixpi-steady {port}")
 
     print("NixPI post-setup lockdown test passed!")

@@ -94,6 +94,7 @@ After first boot, keep these boundaries in mind:
 - the browser Pi terminal is the default operator control plane
 - `/` exists for shell-first operation and recovery
 - a connected monitor on x86_64 hardware lands on a local `tty1` login prompt after boot
+- direct passwordless `sudo` is temporary during setup and is removed by `nixpi-setup-apply`
 - Pi runs in SDK mode inside the app runtime rather than through a separate local-session story
 - system services remain inspectable with normal NixOS and systemd tooling
 

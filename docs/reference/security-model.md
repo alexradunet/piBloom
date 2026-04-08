@@ -75,7 +75,8 @@ chmod 600 ~/.ssh/authorized_keys
 - The primary operator account is the normal human and Pi runtime identity
 - Interactive Pi state lives in `~/.pi`, while service and secret state lives under `/var/lib/nixpi`
 - The human operator keeps full OS administration through their own account
-- NixPI agent actions no longer rely on blanket passwordless sudo
+- During first boot (before `~/.nixpi/wizard-state/system-ready` exists), NixPI grants temporary passwordless sudo to the primary user via `/var/lib/nixpi/sudoers.d/nixpi-first-boot`
+- `nixpi-setup-apply` removes that temporary sudo grant when setup is marked complete
 - Privileged actions are routed through the root-owned `nixpi-broker` service
 
 Default autonomy:
@@ -92,7 +93,7 @@ sudo nixpi-brokerctl status
 sudo nixpi-brokerctl revoke-admin
 ```
 
-There is no separate first-boot helper sudo surface anymore. Privileged operations should go through normal `sudo` or the broker service.
+After setup is complete, direct blanket passwordless sudo is removed. Privileged operations should go through normal `sudo` prompts or the broker service.
 
 ## Pre-Deployment Checklist
 

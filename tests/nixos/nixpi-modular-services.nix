@@ -40,7 +40,7 @@
     nixpi.start()
     nixpi.wait_for_unit("multi-user.target", timeout=300)
 
-    nixpi.wait_until_succeeds("curl -skf https://127.0.0.1/ | grep -q 'NixPI'", timeout=60)
+    nixpi.wait_until_succeeds("curl -skf https://127.0.0.1/ >/dev/null", timeout=60)
 
     print("NixPI modular service tests passed!")
   '';

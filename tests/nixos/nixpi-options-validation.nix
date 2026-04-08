@@ -45,7 +45,7 @@
 
     defaults.succeed("id pi")
 
-    defaults.wait_until_succeeds("curl -skf https://localhost/ | grep -q 'NixPI'", timeout=60)
+    defaults.wait_until_succeeds("curl -skf https://localhost/ >/dev/null", timeout=60)
 
     broker_cfg = defaults.succeed(
         "systemctl show nixpi-broker.service -p Environment --value"

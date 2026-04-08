@@ -82,6 +82,7 @@ in
     nixpi.succeed("test -d " + home + "/.nixpi")
     nixpi.wait_until_succeeds("test ! -f " + home + "/.nixpi/wizard-state/system-ready", timeout=60)
     nixpi.fail("test -f " + home + "/.nixpi/.setup-complete")
+    nixpi.succeed("su - pi -c 'sudo -n true'")
 
     nixpi.succeed("test -d " + home + "/.pi")
     nixpi.succeed("test -f " + home + "/.pi/settings.json")

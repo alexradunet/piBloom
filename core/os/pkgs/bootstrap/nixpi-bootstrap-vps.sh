@@ -120,6 +120,16 @@ ensure_repo_permissions() {
   run_as_root chown -R "$PRIMARY_USER_VALUE:$PRIMARY_GROUP_VALUE" "$REPO_DIR"
 }
 
+ensure_repo_safe_directory() {
+  run_as_root git config --global --add safe.directory "$REPO_DIR" >/dev/null 2>&1 || true
+}
+
+run_git_in_repo() {
+  local git_dir
+  git_dir="$(run_as_root git -C "$REPO_DIR" rev-parse --absolute-git-dir)"
+  run_as_root git --git-dir="$git_dir" --work-tree="$REPO_DIR" "$@"
+}
+
 default_git_email() {
   local mail_user host_label
   mail_user="$(sanitize_mail_token "$PRIMARY_USER_VALUE")"
@@ -137,16 +147,16 @@ default_git_email() {
 
 ensure_repo_git_identity_defaults() {
   local current_name current_email fallback_email
-  current_name="$(run_as_root git -C "$REPO_DIR" config --get user.name 2>/dev/null || true)"
+  current_name="$(run_git_in_repo config --get user.name 2>/dev/null || true)"
   if [ -z "$current_name" ]; then
-    run_as_root git -C "$REPO_DIR" config user.name "$PRIMARY_USER_VALUE"
+    run_git_in_repo config user.name "$PRIMARY_USER_VALUE"
     log "Set default git user.name for $REPO_DIR to $PRIMARY_USER_VALUE"
   fi
 
-  current_email="$(run_as_root git -C "$REPO_DIR" config --get user.email 2>/dev/null || true)"
+  current_email="$(run_git_in_repo config --get user.email 2>/dev/null || true)"
   if [ -z "$current_email" ]; then
     fallback_email="$(default_git_email)"
-    run_as_root git -C "$REPO_DIR" config user.email "$fallback_email"
+    run_git_in_repo config user.email "$fallback_email"
     log "Set default git user.email for $REPO_DIR to $fallback_email"
   fi
 }
@@ -167,6 +177,7 @@ run_as_root git -C "$REPO_DIR" fetch origin "$BRANCH"
 run_as_root git -C "$REPO_DIR" checkout "$BRANCH"
 run_as_root git -C "$REPO_DIR" reset --hard "origin/$BRANCH"
 ensure_repo_permissions
+ensure_repo_safe_directory
 ensure_repo_git_identity_defaults
 
 log "Initializing standard /etc/nixos flake"

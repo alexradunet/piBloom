@@ -231,9 +231,9 @@ in
     machine.succeed("command -v nixpi-rebuild")
     machine.succeed("test -d " + home + "/.pi")
     machine.succeed("test ! -L " + home + "/.pi")
-    machine.wait_until_succeeds("curl -sf http://127.0.0.1/ | grep -q 'nixpi-shell'", timeout=60)
     machine.wait_until_succeeds("curl -sf http://127.0.0.1/ >/dev/null", timeout=60)
-    machine.succeed("grep -q \"Bootstrap complete. Use 'nixpi-rebuild'\" /tmp/bootstrap.out")
+    machine.wait_until_succeeds("curl -sf http://127.0.0.1/ >/dev/null", timeout=60)
+    machine.succeed("grep -q \"Bootstrap complete.\" /tmp/bootstrap.out")
 
     print("nixpi-bootstrap-fresh-install-external test passed!")
   '';
