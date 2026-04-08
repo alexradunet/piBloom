@@ -38,7 +38,7 @@ nix run .#qemu-clean
 
 ### First Remote Validation
 
-1. Confirm `nixpi-app-setup.service`, `sshd.service`, `wireguard-wg0.service`, and `systemd-networkd.service` reach their expected state.
+1. Confirm `nixpi-app-setup.service`, `sshd.service`, `wireguard-wg0.service`, and `nixpi-update.timer` reach their expected state.
 2. Confirm `pi` works from SSH.
 3. Confirm the same Pi workflow also works from a local terminal when available.
 4. Confirm outbound networking works and add at least one WireGuard peer before treating the host as ready for routine remote use.

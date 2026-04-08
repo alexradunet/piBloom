@@ -34,7 +34,7 @@ A fresh system should provide:
 systemctl status nixpi-app-setup.service
 systemctl status sshd.service
 systemctl status wireguard-wg0.service
-systemctl status systemd-networkd.service
+systemctl status nixpi-update.timer
 ```
 
 Expected result: all four services are active or activatable without any desktop login step.
@@ -59,8 +59,6 @@ Expected result:
 
 ```bash
 systemctl status wireguard-wg0.service
-systemctl status systemd-networkd.service
-networkctl status wg0
 wg show wg0
 ip link show wg0
 ```
@@ -68,9 +66,7 @@ ip link show wg0
 Expected result:
 
 - `wireguard-wg0.service` is active
-- `systemd-networkd.service` is active
 - `wg0` exists before you rely on the deployment as your preferred private operator path
-- `networkctl status wg0` shows the interface as networkd-managed
 - `wg show wg0` lists at least one peer once you have added your admin device
 
 ### 4. Verify the Canonical Repo Flow
@@ -110,4 +106,4 @@ After first boot, keep these boundaries in mind:
 - no desktop session is required to start operating NixPI
 - the primary user workflow is Pi in the terminal, reached from SSH or a local shell
 - on monitor-attached x86_64 hardware, `tty1` remains available for local recovery
-- updates and rollbacks are run from `/srv/nixpi`
+- updates run through the native `nixos-upgrade.service` / `nixpi-update.timer` path, while manual rebuilds and rollbacks still come from `/srv/nixpi`

@@ -62,10 +62,11 @@ Check core services:
 systemctl status nixpi-app-setup.service
 systemctl status sshd.service
 systemctl status wireguard-wg0.service
-networkctl status wg0
+systemctl status nixpi-update.timer
+wg show wg0
 ```
 
-`wireguard-wg0.service` remains the operator-facing compatibility unit, but the interface is backed by native `systemd-networkd` configuration.
+`wireguard-wg0.service` remains the operator-facing service name, but the interface is now configured through native NixOS `networking.wireguard.interfaces`.
 
 Rollback if needed:
 

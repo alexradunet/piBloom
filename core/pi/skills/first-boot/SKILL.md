@@ -22,8 +22,8 @@ The primary surface is the shell runtime. The same setup should work from SSH or
      - `git -C /srv/nixpi config user.name "$(id -un)"`
      - `git -C /srv/nixpi config user.email "$(id -un)@$(hostname -s).local"`
    - WireGuard configuration
-     - treat WireGuard as `systemd-networkd`-backed
-     - prefer checks like `systemctl status systemd-networkd.service`, `systemctl status wireguard-wg0.service`, `networkctl status wg0`, and `wg show wg0`
+     - treat WireGuard as the native NixOS `networking.wireguard.interfaces` path
+     - prefer checks like `systemctl status wireguard-wg0.service`, `wg show wg0`, and `ip link show wg0`
    - OS security configuration
    - a short NixPI intro/tutorial
 5. Only when the full flow is complete should Pi write `~/.nixpi/wizard-state/system-ready`

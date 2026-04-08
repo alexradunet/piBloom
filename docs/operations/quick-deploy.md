@@ -77,9 +77,8 @@ Useful checks:
 ```bash
 systemctl status sshd.service
 systemctl status wireguard-wg0.service
-systemctl status systemd-networkd.service
+systemctl status nixpi-update.timer
 systemctl status nixpi-app-setup.service
-networkctl status wg0
 wg show wg0
 ip link show wg0
 ```

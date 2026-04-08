@@ -22,8 +22,8 @@ sudo nixos-rebuild switch --rollback
 systemctl status nixpi-app-setup.service
 systemctl status sshd.service
 systemctl status wireguard-wg0.service
-systemctl status systemd-networkd.service
-networkctl status wg0
+systemctl status nixpi-update.timer
+wg show wg0
 ```
 
 ## Related

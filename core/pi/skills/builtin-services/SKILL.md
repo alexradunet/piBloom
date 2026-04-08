@@ -14,8 +14,8 @@ NixPI ships these services as part of the base NixOS system. They are not option
 ## Operational Notes
 
 - The runtime is prepared by the declarative `nixpi-app-setup.service` unit
-- WireGuard-backed access is provided by a `systemd-networkd`-managed `wg0` interface
-- `wireguard-wg0.service` remains the compatibility/operator-facing control unit
+- WireGuard-backed access is provided by the native NixOS WireGuard module on `wg0`
+- `wireguard-wg0.service` remains the operator-facing control unit
 - Use `systemd_control` for status, restart, and stop/start operations
 - It should be treated as a stable base OS capability, not as an optional service package
 

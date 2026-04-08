@@ -15,9 +15,8 @@
 multi-user.target
 ├─ sshd.service
 ├─ wireguard-wg0.service
-├─ systemd-networkd.service
 ├─ nixpi-app-setup.service
-└─ nixpi-update.service
+└─ nixpi-update.timer
 ```
 
 ## Key Files
@@ -41,6 +40,7 @@ multi-user.target
 systemctl status nixpi-app-setup.service
 systemctl status sshd.service
 systemctl status wireguard-wg0.service
+systemctl status nixpi-update.timer
 command -v pi
 pi --help
 ```
