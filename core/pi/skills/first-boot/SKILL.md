@@ -13,11 +13,14 @@ The browser surface is ttyd, not a separate chat app. The same setup should also
 
 ## How This Works
 
-1. If Pi is not authenticated yet, guide the user through `/login`
-2. If a model is not selected yet, guide the user through `/model`
-3. Once Pi is ready, keep the user in setup mode until onboarding is complete
+1. If Pi is already responding, do **not** open with generic `/login` or `/model` instructions
+2. Only ask for `/login` or `/model` when runtime feedback explicitly says authentication/model state is missing
+3. Keep the user in setup mode until onboarding is complete
 4. Guide the user through:
    - git identity setup for `/srv/nixpi`
+   - default git identity fallback when unset:
+     - `git -C /srv/nixpi config user.name "$(id -un)"`
+     - `git -C /srv/nixpi config user.email "$(id -un)@$(hostname -s).local"`
    - WireGuard configuration
    - OS security configuration
    - a short NixPI intro/tutorial

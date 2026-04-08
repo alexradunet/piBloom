@@ -84,7 +84,8 @@ describe("persona session_start", () => {
 
 		expect(result.systemPrompt).toContain("## System Setup");
 		expect(result.systemPrompt).toContain("BASE");
-		expect(result.systemPrompt).toContain("/login");
+		expect(result.systemPrompt).toContain("Do not open with generic `/login` or `/model` instructions");
+		expect(result.systemPrompt).toContain("user.email=$(id -un)@$(hostname -s).local");
 		expect(result.systemPrompt).toContain("/srv/nixpi");
 	});
 

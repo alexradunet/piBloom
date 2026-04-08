@@ -10,6 +10,7 @@ const terminalBootstrapScriptPath = path.join(repoRoot, "core/scripts/nixpi-term
 const serviceSurfaceModulePath = path.join(repoRoot, "core/os/modules/service-surface.nix");
 const selfEvolutionSkillPath = path.join(repoRoot, "core/pi/skills/self-evolution/SKILL.md");
 const appPackagePath = path.join(repoRoot, "core/os/pkgs/app/default.nix");
+const piPackagePath = path.join(repoRoot, "core/os/pkgs/pi/default.nix");
 const retiredBrowserRuntimePath = path.join(repoRoot, "core", "chat-server");
 const viteConfigPath = path.join(repoRoot, "vite.config.ts");
 
@@ -53,6 +54,11 @@ describe("repo standards guards", () => {
 		expect(serviceSurfaceModule).toContain("http://127.0.0.1:7681/");
 	});
 
+	it("keeps Pi command execution shell-capable by including bash in wrapper PATH", () => {
+		const piPackage = readFileSync(piPackagePath, "utf8");
+		expect(piPackage).toContain("makeBinPath [ bash fd ripgrep ]");
+	});
+
 	it("removes the old chat-first browser artifacts from the runtime path", () => {
 		expect(existsSync(retiredBrowserRuntimePath)).toBe(false);
 		expect(existsSync(viteConfigPath)).toBe(false);
@@ -80,6 +86,10 @@ describe("repo standards guards", () => {
 
 		expect(bootstrapScript).toContain("/srv/nixpi");
 		expect(bootstrapScript).toContain("nixpi-rebuild-pull");
+		expect(bootstrapScript).toContain("config --get user.name");
+		expect(bootstrapScript).toContain('config user.name "$PRIMARY_USER_VALUE"');
+		expect(bootstrapScript).toContain('config user.email "$fallback_email"');
+		expect(bootstrapScript).toContain(".local");
 
 		expect(osActions).toContain("/srv/nixpi");
 		expect(osActions).toContain("nixpi-rebuild-pull");

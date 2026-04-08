@@ -22,6 +22,12 @@ log() {
   printf '[nixpi-bootstrap-vps] %s\n' "$*"
 }
 
+sanitize_mail_token() {
+  printf '%s' "$1" \
+    | tr '[:upper:]' '[:lower:]' \
+    | tr -cs 'a-z0-9._-' '-'
+}
+
 run_as_root() {
   if [ "$(id -u)" -eq 0 ]; then
     "$@"
@@ -92,6 +98,37 @@ resolve_primary_user() {
   return 1
 }
 
+default_git_email() {
+  local mail_user host_label
+  mail_user="$(sanitize_mail_token "$PRIMARY_USER_VALUE")"
+  host_label="$(sanitize_mail_token "$HOSTNAME_VALUE")"
+
+  if [ -z "$mail_user" ]; then
+    mail_user="pi"
+  fi
+  if [ -z "$host_label" ]; then
+    host_label="nixpi"
+  fi
+
+  printf '%s@%s.local\n' "$mail_user" "$host_label"
+}
+
+ensure_repo_git_identity_defaults() {
+  local current_name current_email fallback_email
+  current_name="$(run_as_root git -C "$REPO_DIR" config --get user.name 2>/dev/null || true)"
+  if [ -z "$current_name" ]; then
+    run_as_root git -C "$REPO_DIR" config user.name "$PRIMARY_USER_VALUE"
+    log "Set default git user.name for $REPO_DIR to $PRIMARY_USER_VALUE"
+  fi
+
+  current_email="$(run_as_root git -C "$REPO_DIR" config --get user.email 2>/dev/null || true)"
+  if [ -z "$current_email" ]; then
+    fallback_email="$(default_git_email)"
+    run_as_root git -C "$REPO_DIR" config user.email "$fallback_email"
+    log "Set default git user.email for $REPO_DIR to $fallback_email"
+  fi
+}
+
 PRIMARY_USER_VALUE="$(resolve_primary_user)"
 COMBINED_NIX_CONFIG="$(compose_nix_config)"
 
@@ -106,6 +143,7 @@ fi
 run_as_root git -C "$REPO_DIR" fetch origin "$BRANCH"
 run_as_root git -C "$REPO_DIR" checkout "$BRANCH"
 run_as_root git -C "$REPO_DIR" reset --hard "origin/$BRANCH"
+ensure_repo_git_identity_defaults
 
 log "Initializing standard /etc/nixos flake"
 run_as_root env \

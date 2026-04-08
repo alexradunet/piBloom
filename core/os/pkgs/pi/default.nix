@@ -7,6 +7,7 @@
 , fetchurl
 , makeWrapper
 , runCommand
+, bash
 , fd
 , ripgrep
 }:
@@ -39,7 +40,7 @@ buildNpmPackage {
 
   postInstall = ''
     wrapProgram $out/bin/pi \
-      --prefix PATH : ${lib.makeBinPath [ fd ripgrep ]} \
+      --prefix PATH : ${lib.makeBinPath [ bash fd ripgrep ]} \
       --set PI_SKIP_VERSION_CHECK 1
   '';
 
