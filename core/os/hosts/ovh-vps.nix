@@ -15,7 +15,7 @@
   nixpi.primaryUser = lib.mkDefault "human";
   # Allow password login so the operator can reach the box after nixos-anywhere.
   # Temporary password is "changeMe123#@!"; replace with SSH keys once in.
-  nixpi.security.ssh.passwordAuthentication = lib.mkDefault true;
+  nixpi.security.ssh.passwordAuthentication = lib.mkOverride 900 true;
   users.users.${config.nixpi.primaryUser}.initialHashedPassword = lib.mkDefault "$6$1EKv4qt2If9iwJSE$4bY8JTN0./tQz2pdeiPhEDixGncvqAkPQolMjWos3EN/6.pXoVuaRjc6.6QaaLN8zhsdi4rAaP9XJXps6b2rQ1";
 
   boot.loader = {
