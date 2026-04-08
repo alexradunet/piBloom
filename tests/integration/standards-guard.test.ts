@@ -221,6 +221,7 @@ describe("repo standards guards", () => {
 		const deployScript = readFileSync(deployOvhScriptPath, "utf8");
 		const deployDoc = readFileSync(ovhDeployDocPath, "utf8");
 		const ovhHost = readFileSync(ovhHostPath, "utf8");
+		const shellModule = readFileSync(shellModulePath, "utf8");
 
 		expect(deployScript).toContain("--bootstrap-user");
 		expect(deployScript).toContain("--bootstrap-password-hash");
@@ -228,6 +229,8 @@ describe("repo standards guards", () => {
 		expect(deployScript).toContain("initialHashedPassword");
 		expect(ovhHost).toContain("nixpi-expire-bootstrap-password");
 		expect(ovhHost).toContain("/bin/chage -d 0");
+		expect(shellModule).toContain("Refusing to change nixpi.primaryUser");
+		expect(shellModule).toContain("allowPrimaryUserChange");
 		expect(deployDoc).toContain("bootstrap user");
 		expect(deployDoc).toContain("bootstrap password hash");
 		expect(deployDoc).toContain("initialHashedPassword");

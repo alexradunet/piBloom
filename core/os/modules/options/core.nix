@@ -13,6 +13,17 @@ in
       '';
     };
 
+    allowPrimaryUserChange = lib.mkOption {
+      type = lib.types.bool;
+      default = false;
+      description = ''
+        Allow a one-time intentional change to `nixpi.primaryUser` on an
+        already-activated system. When false, NixPI aborts activation before
+        user management if the configured primary user drifts from the recorded
+        operator account.
+      '';
+    };
+
     stateDir = lib.mkOption {
       type = absolutePath;
       default = "/var/lib/nixpi";

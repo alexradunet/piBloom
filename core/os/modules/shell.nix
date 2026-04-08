@@ -7,10 +7,11 @@
 }:
 
 let
-  inherit (config.nixpi) primaryUser stateDir;
+  inherit (config.nixpi) allowPrimaryUserChange primaryUser stateDir;
   primaryHome = "/home/${primaryUser}";
   inherit (config.nixpi.agent) piDir workspaceDir;
   nodeBinDir = "${builtins.head config.nixpi.agent.packagePaths}/node_modules/.bin";
+  primaryUserMarker = "${stateDir}/primary-user";
 in
 {
   imports = [ ./options.nix ];
@@ -22,6 +23,38 @@ in
         message = "nixpi.primaryUser must resolve to a real human user. Set `nixpi.primaryUser` explicitly.";
       }
     ];
+
+    system.activationScripts."00-nixpi-primary-user-guard" = {
+      deps = [ "specialfs" ];
+      supportsDryActivation = true;
+      text = ''
+        marker=${lib.escapeShellArg primaryUserMarker}
+        expected_user=${lib.escapeShellArg primaryUser}
+
+        install -d -m 0700 ${lib.escapeShellArg stateDir}
+
+        if [ ! -e "$marker" ]; then
+          printf '%s\n' "$expected_user" > "$marker"
+          chmod 0600 "$marker"
+          exit 0
+        fi
+
+        current_user="$(cat "$marker")"
+        if [ "$current_user" = "$expected_user" ]; then
+          exit 0
+        fi
+
+        if [ "${if allowPrimaryUserChange then "1" else "0"}" = "1" ]; then
+          printf '%s\n' "$expected_user" > "$marker"
+          chmod 0600 "$marker"
+          exit 0
+        fi
+
+        echo "Refusing to change nixpi.primaryUser from '$current_user' to '$expected_user'." >&2
+        echo "Set nixpi.allowPrimaryUserChange = true for one rebuild if this migration is intentional." >&2
+        exit 1
+      '';
+    };
 
     users.users.${primaryUser} = {
       isNormalUser = true;
