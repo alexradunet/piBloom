@@ -37,10 +37,12 @@ let
           plugin location="zellij:status-bar"
         }
       }
-      tab name="Pi" focus=true {
-        pane command="pi"
-      }
-      tab name="Shell" {
+      ${lib.optionalString zellijCfg.piLayout.enable ''
+        tab name="Pi" focus=true {
+          pane command="pi"
+        }
+      ''}
+      tab name="Shell"${if zellijCfg.piLayout.enable then "" else " focus=true"} {
         pane
       }
     }
@@ -75,6 +77,10 @@ let
       exit 0
     fi
 
+    if ! [ -t 0 ] || ! [ -t 1 ]; then
+      exit 0
+    fi
+
     export ZELLIJ_AUTO_EXIT='${if zellijCfg.exitShellOnExit then "true" else "false"}'
     export ZELLIJ_CONFIG_FILE='${generatedConfig}'
 
@@ -94,11 +100,6 @@ in
     ];
 
     systemd.tmpfiles.settings.nixpi-zellij = {
-      "${primaryHome}/.config".d = {
-        mode = "0755";
-        user = primaryUser;
-        group = primaryUser;
-      };
       "${primaryHome}/.config/zellij".d = {
         mode = "0755";
         user = primaryUser;
