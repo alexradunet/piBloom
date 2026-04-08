@@ -21,6 +21,10 @@ If the provider reorders disks after kexec, validate the temporary installer's
 `/dev/disk/by-id` mapping before the destructive `disko` phase and resume the
 install with the verified installer-side target disk ID.
 
+If KVM hangs at SeaBIOS `Booting from Hard Disk...` after an apparently
+successful install, fail the release check and confirm the deployed image was
+built from the hybrid BIOS+EFI OVH disk layout.
+
 ## First Remote Validation
 
 1. Confirm `nixpi-app-setup.service`, `sshd.service`, `wireguard-wg0.service`, and `nixpi-update.timer` reach their expected state.

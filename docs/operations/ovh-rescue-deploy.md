@@ -238,6 +238,29 @@ nix run .#nixpi-deploy-ovh -- \
 
 This was the successful recovery path for the live OVH run that initially
 failed with a misleading `No space left on device` error.
+
+### 4.5 If OVH KVM hangs at `Booting from Hard Disk...`
+
+If the install reports success but the OVH KVM stays at a SeaBIOS screen that
+ends with:
+
+```text
+Booting from Hard Disk...
+```
+
+then the machine did not reach the installed NixOS userspace. In our live OVH
+run, this happened because the earlier disk layout only created an EFI system
+partition, while the VPS firmware actually booted through SeaBIOS.
+
+The current `ovh-vps` layout in this repo now includes both:
+
+- a BIOS boot partition (`EF02`) for GRUB on SeaBIOS
+- an EFI system partition (`EF00`) for removable EFI boot
+
+If your failed install was created **before** that hybrid BIOS+EFI fix, put the
+machine back into rescue mode and reinstall from the updated repo. A successful
+`nixos-anywhere` run is not enough if the installed disk layout does not match
+the provider's actual firmware mode.
 ## 5. Reconnect after the reinstall
 
 After installation, the machine reboots into the installed NixOS system.

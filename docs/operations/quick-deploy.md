@@ -47,6 +47,11 @@ staged troubleshooting flow in [OVH Rescue Deploy](./ovh-rescue-deploy) to boot
 only the `kexec` phase, inspect `/dev/disk/by-id` inside the installer, and
 resume the remaining phases with the correct installer-side disk ID.
 
+If OVH KVM later stalls at SeaBIOS `Booting from Hard Disk...`, treat that as a
+boot-layout mismatch rather than a finished install. The current repo expects
+the hybrid BIOS+EFI OVH disk layout; reinstall from the updated repo if the
+failed run was created before that layout fix landed.
+
 ## 3. Validate first boot
 
 Useful checks:

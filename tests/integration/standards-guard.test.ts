@@ -241,13 +241,18 @@ describe("repo standards guards", () => {
 		expect(deployDoc).toContain("authorized_keys");
 		expect(deployDoc).toContain("/dev/disk/by-id");
 		expect(deployDoc).toContain("--phases disko,install,reboot");
+		expect(deployDoc).toContain("Booting from Hard Disk...");
+		expect(deployDoc).toContain("SeaBIOS");
+		expect(deployDoc).toContain("reinstall from the updated repo");
 
 		expect(quickDeployDoc).toContain("No space left on device");
 		expect(quickDeployDoc).toContain("temporary installer");
 		expect(quickDeployDoc).toContain("/dev/disk/by-id");
+		expect(quickDeployDoc).toContain("Booting from Hard Disk...");
 
 		expect(liveTestingDoc).toContain("/dev/disk/by-id");
 		expect(liveTestingDoc).toContain("installer-side target disk ID");
+		expect(liveTestingDoc).toContain("hybrid BIOS+EFI");
 	});
 
 	it("keeps headless VPS deployment as the documented install story", () => {
