@@ -56,7 +56,7 @@
       };
 
       bypassEnvVar = lib.mkOption {
-        type = lib.types.str;
+        type = lib.types.strMatching "[A-Za-z_][A-Za-z0-9_]*";
         default = "NIXPI_NO_ZELLIJ";
         description = ''
           Environment variable that skips Zellij auto-start when set to a non-empty value.
@@ -76,7 +76,7 @@
           type = lib.types.str;
           default = "nixpi";
           description = ''
-            Name of the generated default layout file.
+            Name of the generated default Zellij layout.
           '';
         };
       };
