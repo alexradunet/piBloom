@@ -1,13 +1,18 @@
 # Runtime Flows
 
-> End-to-end startup and operator-entry flow for the current NixPI runtime
+> End-to-end operator-entry flow for the target declarative NixPI runtime
 
-## Active Runtime Path
+## Install-Time Handoff
 
-1. `nixpi-app-setup.service` prepares `~/.pi`
-2. `sshd.service` and local login shells provide operator entry
-3. the operator runs `pi`
-4. Pi loads extensions, persona, and workspace state from the seeded runtime
+1. `nixos-anywhere` installs the final host configuration directly.
+2. The first boot hands off to the normal NixOS boot path with no repo-seeding step.
+
+## Runtime Entry Flow
+
+1. Boot selects bootstrap or steady-state behavior from declarative NixOS config.
+2. `sshd.service` and `wireguard-wg0.service` provide operator entry.
+3. `nixpi-app-setup.service` exposes the Pi runtime entry path.
+4. The operator runs `pi` from the deployed runtime.
 
 ## Boot and Service Startup Flow
 
@@ -31,8 +36,10 @@ multi-user.target
 
 - SSH and local terminals are the supported interactive entrypoints
 - Pi owns the actual user experience
-- `~/.pi` is seeded before the operator starts work
-- `/srv/nixpi` remains the canonical editable checkout for rebuilds
+- No boot-time repo clone or generated host flake step is part of the intended runtime
+- Bootstrap and steady-state are selected declaratively rather than from user-home marker files
+- shell behavior should come from NixOS modules rather than user-home mutation
+- an operator checkout such as `/srv/nixpi` is optional and separate from the deployed host configuration
 
 ## Verification Commands
 

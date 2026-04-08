@@ -33,16 +33,6 @@ in
         explicitly.
       '';
     };
-
-    keepSshAfterSetup = lib.mkOption {
-      type = lib.types.bool;
-      default = cfg.ssh.enable;
-      internal = true;
-      visible = false;
-      description = ''
-        Deprecated compatibility alias that mirrors nixpi.bootstrap.ssh.enable.
-      '';
-    };
   };
 
   config.nixpi.bootstrap = {
