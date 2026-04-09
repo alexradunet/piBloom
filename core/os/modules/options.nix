@@ -8,11 +8,6 @@ let
     with nixos-anywhere; NixPI no longer seeds /srv/nixpi or generates
     /etc/nixos/flake.nix at boot.
   '';
-  netbirdRemoved = ''
-    nixpi.netbird.* was removed. NixPI no longer manages NetBird as part of the
-    host security model. Remove the old NetBird settings and use
-    nixpi.security.ssh.allowedSourceCIDRs to restrict public SSH access.
-  '';
 in
 {
   imports = [
@@ -24,10 +19,6 @@ in
     (lib.mkRemovedOptionModule [ "nixpi" "install" "enable" ] installFinalizeRemoved)
     (lib.mkRemovedOptionModule [ "nixpi" "install" "repoUrl" ] installFinalizeRemoved)
     (lib.mkRemovedOptionModule [ "nixpi" "install" "repoBranch" ] installFinalizeRemoved)
-    (lib.mkRemovedOptionModule [ "nixpi" "netbird" "enable" ] netbirdRemoved)
-    (lib.mkRemovedOptionModule [ "nixpi" "netbird" "setupKeyFile" ] netbirdRemoved)
-    (lib.mkRemovedOptionModule [ "nixpi" "netbird" "clientName" ] netbirdRemoved)
-    (lib.mkRemovedOptionModule [ "nixpi" "netbird" "managementUrl" ] netbirdRemoved)
   ];
 
   options.nixpi = {

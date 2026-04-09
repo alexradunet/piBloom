@@ -356,10 +356,6 @@
               path = nixosTests.nixpi-security;
             }
             {
-              name = "nixpi-netbird";
-              path = nixosTests.nixpi-netbird;
-            }
-            {
               name = "nixpi-broker";
               path = nixosTests.nixpi-broker;
             }
@@ -393,10 +389,6 @@
             {
               name = "nixpi-security";
               path = nixosTests.nixpi-security;
-            }
-            {
-              name = "nixpi-netbird";
-              path = nixosTests.nixpi-netbird;
             }
             {
               name = "nixpi-modular-services";

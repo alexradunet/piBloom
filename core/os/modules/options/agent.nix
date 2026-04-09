@@ -17,7 +17,6 @@
     allowedUnits = lib.mkOption {
       type = lib.types.listOf lib.types.str;
       default = [
-        "netbird-wt0.service"
         "nixpi-update.service"
       ];
       description = ''

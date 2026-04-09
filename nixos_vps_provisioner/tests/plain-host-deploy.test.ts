@@ -103,7 +103,6 @@ describe("plain-host-deploy.sh", () => {
 		expect(result.stdout).toContain('disko.devices.disk.main.device = lib.mkForce "/dev/vda";');
 		expect(result.stdout).not.toContain("nixpi.primaryUser");
 		expect(result.stdout).not.toContain("initialHashedPassword");
-		expect(result.stdout).not.toContain("nixpi.netbird");
 	});
 
 	it("keeps the pure flake builder free of nixpi-specific bootstrap overrides", async () => {
@@ -121,7 +120,6 @@ describe("plain-host-deploy.sh", () => {
 		expect(result.stdout).not.toContain("nixpi.primaryUser");
 		expect(result.stdout).not.toContain("nixpi.security.ssh");
 		expect(result.stdout).not.toContain("initialHashedPassword");
-		expect(result.stdout).not.toContain("nixpi.netbird");
 	});
 
 	it("shows usage and exits non-zero when required arguments are missing", async () => {
@@ -193,7 +191,6 @@ describe("plain-host-deploy.sh", () => {
 	it.each([
 		"--bootstrap-user=alice",
 		"--bootstrap-password-hash=$6$hash",
-		"--netbird-setup-key-file=./netbird-key",
 	])("rejects legacy nixpi-specific bootstrap arguments passed as %s", async (legacyFlag) => {
 		const result = await runDeploy(["--target-host", "root@198.51.100.10", "--disk", "/dev/sda", legacyFlag]);
 
@@ -245,7 +242,6 @@ describe("plain-host-deploy.sh", () => {
 			expect(generatedFlake).toContain('disko.devices.disk.main.device = lib.mkForce "/dev/nvme0n1";');
 			expect(generatedFlake).not.toContain("nixpi.primaryUser");
 			expect(generatedFlake).not.toContain("initialHashedPassword");
-			expect(generatedFlake).not.toContain("nixpi.netbird");
 		} finally {
 			result.harness.cleanup();
 		}

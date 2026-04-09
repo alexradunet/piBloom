@@ -42,7 +42,7 @@ main() {
 				hostname="${2:?missing hostname}"
 				shift 2
 				;;
-			--bootstrap-user|--bootstrap-user=*|--bootstrap-password-hash|--bootstrap-password-hash=*|--netbird-setup-key-file|--netbird-setup-key-file=*)
+			--bootstrap-user|--bootstrap-user=*|--bootstrap-password-hash|--bootstrap-password-hash=*)
 				usage >&2
 				printf 'Unsupported legacy option: %s. Install the plain ovh-vps-base system, then run nixpi-bootstrap-host after first boot.\n' "${1%%=*}" >&2
 				exit 1
