@@ -30,7 +30,7 @@
 
     trustedInterface = lib.mkOption {
       type = lib.types.str;
-      default = "tailscale0";
+      default = "wt0";
       description = ''
         Network interface trusted to reach the externally exposed NixPI
         service surface.

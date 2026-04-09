@@ -274,7 +274,9 @@ describe("nixpi-deploy-ovh.sh", () => {
 
 			const generatedFlake = result.readGeneratedFlake();
 			expect(generatedFlake).toContain("nixpi.netbird.enable = lib.mkForce true;");
-			expect(generatedFlake).toContain('nixpi.netbird.setupKeyFile = lib.mkForce "/var/lib/nixpi/bootstrap/netbird-setup-key";');
+			expect(generatedFlake).toContain(
+				'nixpi.netbird.setupKeyFile = lib.mkForce "/var/lib/nixpi/bootstrap/netbird-setup-key";',
+			);
 			expect(generatedFlake).not.toContain("ACTUAL-SETUP-KEY-VALUE");
 		} finally {
 			fs.rmSync(tempDir, { recursive: true, force: true });
