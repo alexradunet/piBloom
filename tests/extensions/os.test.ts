@@ -11,6 +11,7 @@ vi.mock("../../core/lib/exec.js", () => ({
 
 import * as execModule from "../../core/lib/exec.js";
 import {
+	checkBootstrapDisable,
 	checkPendingUpdates,
 	handleNixosUpdate,
 	handleScheduleReboot,
@@ -415,6 +416,193 @@ describe("checkPendingUpdates", () => {
 		);
 
 		const result = await checkPendingUpdates("BASE PROMPT");
+		expect(result).toBeUndefined();
+	});
+});
+
+// ---------------------------------------------------------------------------
+// checkBootstrapDisable
+// ---------------------------------------------------------------------------
+
+const SAFE_CONTENT = `{
+  nixpi.bootstrap.enable = false;
+  services.openssh.enable = true;
+  nixpi.security.ssh.allowedSourceCIDRs = [ "1.2.3.4/32" ];
+}`;
+
+const SAFE_CONTENT_BOOTSTRAP_SSH = `{
+  nixpi.bootstrap.enable = false;
+  nixpi.bootstrap.ssh.enable = true;
+  nixpi.security.ssh.allowedSourceCIDRs = [ "1.2.3.4/32" ];
+}`;
+
+const UNSAFE_NO_SSH = `{
+  nixpi.bootstrap.enable = false;
+  nixpi.security.ssh.allowedSourceCIDRs = [ "1.2.3.4/32" ];
+}`;
+
+const UNSAFE_NO_CIDRS = `{
+  nixpi.bootstrap.enable = false;
+  services.openssh.enable = true;
+  nixpi.security.ssh.allowedSourceCIDRs = [  ];
+}`;
+
+const UNSAFE_BOTH_MISSING = `{
+  nixpi.bootstrap.enable = false;
+}`;
+
+const CONTENT_BOOTSTRAP_STILL_ENABLED = `{
+  nixpi.bootstrap.enable = true;
+}`;
+
+describe("checkBootstrapDisable", () => {
+	it("returns undefined for files outside /etc/nixos or not named nixpi-host.nix", () => {
+		expect(checkBootstrapDisable("/home/alex/other.nix", UNSAFE_BOTH_MISSING)).toBeUndefined();
+	});
+
+	it("returns undefined when bootstrap is not being disabled", () => {
+		expect(checkBootstrapDisable("/etc/nixos/nixpi-host.nix", CONTENT_BOOTSTRAP_STILL_ENABLED)).toBeUndefined();
+	});
+
+	it("returns undefined when both SSH and CIDRs are present (services.openssh)", () => {
+		expect(checkBootstrapDisable("/etc/nixos/nixpi-host.nix", SAFE_CONTENT)).toBeUndefined();
+	});
+
+	it("returns undefined when both SSH and CIDRs are present (bootstrap.ssh.enable)", () => {
+		expect(checkBootstrapDisable("/etc/nixos/nixpi-host.nix", SAFE_CONTENT_BOOTSTRAP_SSH)).toBeUndefined();
+	});
+
+	it("returns undefined for nixpi-host.nix matched by filename anywhere in path", () => {
+		expect(checkBootstrapDisable("/srv/checkout/nixpi-host.nix", SAFE_CONTENT)).toBeUndefined();
+	});
+
+	it("blocks when SSH is missing", () => {
+		const result = checkBootstrapDisable("/etc/nixos/nixpi-host.nix", UNSAFE_NO_SSH);
+		expect(result).toBeDefined();
+		expect(result?.block).toBe(true);
+		expect(result?.reason).toContain("services.openssh.enable = true");
+		expect(result?.reason).not.toContain("allowedSourceCIDRs");
+	});
+
+	it("blocks when CIDRs are missing", () => {
+		const result = checkBootstrapDisable("/etc/nixos/nixpi-host.nix", UNSAFE_NO_CIDRS);
+		expect(result).toBeDefined();
+		expect(result?.block).toBe(true);
+		expect(result?.reason).toContain("allowedSourceCIDRs");
+		expect(result?.reason).not.toContain("services.openssh.enable");
+	});
+
+	it("blocks and lists both items when both SSH and CIDRs are missing", () => {
+		const result = checkBootstrapDisable("/etc/nixos/nixpi-host.nix", UNSAFE_BOTH_MISSING);
+		expect(result).toBeDefined();
+		expect(result?.block).toBe(true);
+		expect(result?.reason).toContain("services.openssh.enable = true");
+		expect(result?.reason).toContain("allowedSourceCIDRs");
+	});
+
+	it("matches /etc/nixos/ subdirectory files that are directly under /etc/nixos/", () => {
+		const result = checkBootstrapDisable("/etc/nixos/custom.nix", UNSAFE_BOTH_MISSING);
+		expect(result).toBeDefined();
+		expect(result?.block).toBe(true);
+	});
+
+	it("does not match .nix files in subdirectories of /etc/nixos/", () => {
+		expect(checkBootstrapDisable("/etc/nixos/sub/deep.nix", UNSAFE_BOTH_MISSING)).toBeUndefined();
+	});
+});
+
+// ---------------------------------------------------------------------------
+// tool_call hook — bootstrap disable guard
+// ---------------------------------------------------------------------------
+
+describe("tool_call hook — write to nixpi-host.nix", () => {
+	it("blocks write with bootstrap.enable = false and no SSH/CIDRs", async () => {
+		const result = await api.fireEvent("tool_call", {
+			type: "tool_call",
+			toolCallId: "tc-1",
+			toolName: "write",
+			input: { path: "/etc/nixos/nixpi-host.nix", content: UNSAFE_BOTH_MISSING },
+		});
+		expect((result as { block: boolean }).block).toBe(true);
+		expect((result as { reason: string }).reason).toContain("Disabling bootstrap");
+	});
+
+	it("allows write with bootstrap.enable = false when SSH and CIDRs are present", async () => {
+		const result = await api.fireEvent("tool_call", {
+			type: "tool_call",
+			toolCallId: "tc-2",
+			toolName: "write",
+			input: { path: "/etc/nixos/nixpi-host.nix", content: SAFE_CONTENT },
+		});
+		expect(result).toBeUndefined();
+	});
+
+	it("allows write to unrelated .nix files", async () => {
+		const result = await api.fireEvent("tool_call", {
+			type: "tool_call",
+			toolCallId: "tc-3",
+			toolName: "write",
+			input: { path: "/etc/nixos/subdir/deep.nix", content: UNSAFE_BOTH_MISSING },
+		});
+		expect(result).toBeUndefined();
+	});
+});
+
+describe("tool_call hook — edit to nixpi-host.nix", () => {
+	it("blocks edit that introduces bootstrap.enable = false without SSH/CIDRs", async () => {
+		const hostFile = path.join(temp.nixPiDir, "nixpi-host.nix");
+		fs.writeFileSync(hostFile, "{ nixpi.bootstrap.enable = true; }", "utf-8");
+
+		const result = await api.fireEvent("tool_call", {
+			type: "tool_call",
+			toolCallId: "tc-4",
+			toolName: "edit",
+			input: {
+				path: hostFile,
+				oldText: "nixpi.bootstrap.enable = true;",
+				newText: "nixpi.bootstrap.enable = false;",
+			},
+		});
+		expect((result as { block: boolean }).block).toBe(true);
+		expect((result as { reason: string }).reason).toContain("Disabling bootstrap");
+	});
+
+	it("allows edit that introduces bootstrap.enable = false with SSH and CIDRs present", async () => {
+		const hostFile = path.join(temp.nixPiDir, "nixpi-host.nix");
+		fs.writeFileSync(
+			hostFile,
+			`{
+        nixpi.bootstrap.enable = true;
+        services.openssh.enable = true;
+        nixpi.security.ssh.allowedSourceCIDRs = [ "1.2.3.4/32" ];
+      }`,
+			"utf-8",
+		);
+
+		const result = await api.fireEvent("tool_call", {
+			type: "tool_call",
+			toolCallId: "tc-5",
+			toolName: "edit",
+			input: {
+				path: hostFile,
+				oldText: "nixpi.bootstrap.enable = true;",
+				newText: "nixpi.bootstrap.enable = false;",
+			},
+		});
+		expect(result).toBeUndefined();
+	});
+
+	it("returns undefined when edit target file does not exist", async () => {
+		const result = await api.fireEvent("tool_call", {
+			type: "tool_call",
+			toolCallId: "tc-6",
+			toolName: "edit",
+			input: {
+				path: "/etc/nixos/nixpi-host.nix",
+				oldText: "nixpi.bootstrap.enable = true;",
+				newText: "nixpi.bootstrap.enable = false;",
+			},
+		});
 		expect(result).toBeUndefined();
 	});
 });

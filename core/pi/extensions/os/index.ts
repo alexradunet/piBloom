@@ -2,14 +2,16 @@
  * os — OS management: NixOS lifecycle, systemd, health, and updates.
  *
  * @tools nixos_update, nix_config_proposal, systemd_control, system_health, update_status, schedule_reboot
- * @hooks before_agent_start
+ * @hooks before_agent_start, tool_call
  * @see {@link ../../AGENTS.md#os} Extension reference
  */
+import { readFile } from "node:fs/promises";
 import { StringEnum } from "@mariozechner/pi-ai";
-import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
+import { type ExtensionAPI, isToolCallEventType } from "@mariozechner/pi-coding-agent";
 import { type Static, Type } from "@sinclair/typebox";
 import { EmptyToolParams, type RegisteredExtensionTool, registerTools } from "../../../lib/utils.js";
 import {
+	checkBootstrapDisable,
 	checkPendingUpdates,
 	handleNixosUpdate,
 	handleScheduleReboot,
@@ -110,6 +112,23 @@ export default function (pi: ExtensionAPI) {
 		},
 	];
 	registerTools(pi, tools);
+
+	pi.on("tool_call", async (event) => {
+		if (isToolCallEventType("write", event)) {
+			return checkBootstrapDisable(event.input.path, event.input.content);
+		}
+
+		if (isToolCallEventType("edit", event)) {
+			let currentContent: string;
+			try {
+				currentContent = await readFile(event.input.path, "utf-8");
+			} catch {
+				return undefined;
+			}
+			const postEditContent = currentContent.replaceAll(event.input.oldText, event.input.newText);
+			return checkBootstrapDisable(event.input.path, postEditContent);
+		}
+	});
 
 	let updateChecked = false;
 

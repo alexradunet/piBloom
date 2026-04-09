@@ -181,3 +181,42 @@ export async function checkPendingUpdates(systemPrompt: string): Promise<{ syste
 		// No status file yet — timer hasn't run
 	}
 }
+
+// --- Bootstrap disable safety check ---
+
+const BOOTSTRAP_DISABLE_RE = /nixpi\.bootstrap\.enable\s*=\s*false/;
+const SSH_ENABLED_RE = /services\.openssh\.enable\s*=\s*true|nixpi\.bootstrap\.ssh\.enable\s*=\s*true/;
+const CIDRS_RE = /allowedSourceCIDRs\s*=\s*\[\s*"/;
+
+function isNixHostFile(filePath: string): boolean {
+	return filePath.endsWith("nixpi-host.nix") || /^\/etc\/nixos\/[^/]+\.nix$/.test(filePath);
+}
+
+export function checkBootstrapDisable(
+	filePath: string,
+	postEditContent: string,
+): { block: true; reason: string } | undefined {
+	if (!isNixHostFile(filePath)) return undefined;
+	if (!BOOTSTRAP_DISABLE_RE.test(postEditContent)) return undefined;
+
+	const sshEnabled = SSH_ENABLED_RE.test(postEditContent);
+	const cidrsConfigured = CIDRS_RE.test(postEditContent);
+
+	if (sshEnabled && cidrsConfigured) return undefined;
+
+	const missing: string[] = [];
+	if (!sshEnabled) missing.push("  services.openssh.enable = true;");
+	if (!cidrsConfigured) missing.push('  nixpi.security.ssh.allowedSourceCIDRs = [ "YOUR_IP/32" ];');
+
+	const reason = [
+		"Disabling bootstrap will remove passwordless sudo and may close SSH.",
+		"",
+		"Before this edit can proceed, add the following to your config:",
+		"",
+		...missing,
+		"",
+		"Add these lines to nixpi-host.nix, then retry.",
+	].join("\n");
+
+	return { block: true, reason };
+}
