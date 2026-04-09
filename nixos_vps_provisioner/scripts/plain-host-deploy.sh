@@ -6,7 +6,7 @@ source "${script_dir}/plain-host-ovh-common.sh"
 
 usage() {
 	cat <<'EOF_USAGE'
-Usage: plain-host-deploy --target-host root@IP --disk /dev/sdX [--flake .#ovh-base] [--hostname HOSTNAME] [extra nixos-anywhere args...]
+Usage: plain-host-deploy --target-host root@IP --disk /dev/sdX [--flake .#ovh-vps-base] [--hostname HOSTNAME] [extra nixos-anywhere args...]
 
 Destructive plain NixOS base install for an OVH VPS in rescue mode.
 Optionally bootstrap NixPI afterward on the installed machine with nixpi-bootstrap-host.
@@ -20,8 +20,8 @@ EOF_USAGE
 main() {
 	local target_host=""
 	local disk=""
-	local hostname="ovh-base"
-	local flake_ref="${NIXPI_REPO_ROOT:-.}#ovh-base"
+	local hostname="ovh-vps-base"
+	local flake_ref="${NIXPI_REPO_ROOT:-.}#ovh-vps-base"
 	local extra_args=()
 
 	while [[ $# -gt 0 ]]; do
@@ -44,7 +44,7 @@ main() {
 				;;
 			--bootstrap-user|--bootstrap-user=*|--bootstrap-password-hash|--bootstrap-password-hash=*|--netbird-setup-key-file|--netbird-setup-key-file=*)
 				usage >&2
-				printf 'Unsupported legacy option: %s. Install the plain ovh-base system, then run nixpi-bootstrap-host after first boot.\n' "${1%%=*}" >&2
+				printf 'Unsupported legacy option: %s. Install the plain ovh-vps-base system, then run nixpi-bootstrap-host after first boot.\n' "${1%%=*}" >&2
 				exit 1
 				;;
 			--help|-h)

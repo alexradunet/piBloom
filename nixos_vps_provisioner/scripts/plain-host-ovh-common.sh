@@ -73,14 +73,14 @@ run_ovh_deploy() {
 	local extra_args=("$@")
 
 	if [[ "$flake_ref" != *#* ]]; then
-		log "Flake ref must include a nixosConfigurations attribute, for example .#ovh-base"
+		log "Flake ref must include a nixosConfigurations attribute, for example .#ovh-vps-base"
 		return 1
 	fi
 
 	repo_ref="${flake_ref%%#*}"
 	base_attr="${flake_ref#*#}"
-	if [[ "$base_attr" != "ovh-base" ]]; then
-		log "Flake ref must target the ovh-base nixosConfigurations profile (for example .#ovh-base)"
+	if [[ "$base_attr" != "ovh-vps-base" ]]; then
+		log "Flake ref must target the ovh-vps-base nixosConfigurations profile (for example .#ovh-vps-base)"
 		return 1
 	fi
 	repo_url="$(resolve_repo_url "$repo_ref")"
@@ -91,7 +91,7 @@ run_ovh_deploy() {
 
 	log "WARNING: destructive install to ${target_host} using disk ${disk}"
 	log "Using base configuration ${flake_ref} with target hostname ${hostname}"
-	log "nixos-anywhere will install a plain OVH base system only"
+	log "nixos-anywhere will install a plain OVH VPS base system only"
 	log "After first boot, optionally run nixpi-bootstrap-host on the machine to layer NixPI onto /etc/nixos"
 
 	nixos_anywhere_args=(

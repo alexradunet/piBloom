@@ -16,11 +16,11 @@ pkgs.stdenvNoCC.mkDerivation {
     runHook preInstall
 
     mkdir -p "$out/bin" "$out/share/plain-host-deploy"
-    install -m 0755 ${../../../scripts/plain-host-deploy.sh} "$out/share/plain-host-deploy/plain-host-deploy.sh"
-    install -m 0755 ${../../../scripts/plain-host-ovh-common.sh} "$out/share/plain-host-deploy/plain-host-ovh-common.sh"
+    install -m 0755 ${../../scripts/plain-host-deploy.sh} "$out/share/plain-host-deploy/plain-host-deploy.sh"
+    install -m 0755 ${../../scripts/plain-host-ovh-common.sh} "$out/share/plain-host-deploy/plain-host-ovh-common.sh"
 
     makeWrapper ${pkgs.bash}/bin/bash "$out/bin/plain-host-deploy" \
-      --set NIXPI_REPO_ROOT ${../../../..} \
+      --set NIXPI_REPO_ROOT ${../../..} \
       --set NIXPI_NIXOS_ANYWHERE ${nixosAnywherePackage}/bin/nixos-anywhere \
       --prefix PATH : "${lib.makeBinPath [ pkgs.coreutils pkgs.nix ]}" \
       --add-flags "$out/share/plain-host-deploy/plain-host-deploy.sh"

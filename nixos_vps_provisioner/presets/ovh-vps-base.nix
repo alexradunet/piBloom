@@ -1,4 +1,4 @@
-# core/os/hosts/ovh-base.nix
+# nixos_vps_provisioner/presets/ovh-vps-base.nix
 # Plain OVH-compatible base NixOS profile for rescue-mode installs. This
 # intentionally does not import the NixPI module layer.
 { lib, modulesPath, ... }:
@@ -9,11 +9,17 @@
   ];
 
   system.stateVersion = "25.05";
+  nix.settings.experimental-features = [ "nix-command" "flakes" ];
 
-  networking.hostName = lib.mkOverride 900 "ovh-base";
+  networking.hostName = lib.mkOverride 900 "ovh-vps-base";
+  networking.firewall.allowedTCPPorts = [ 22 ];
   services.openssh = {
     enable = true;
-    settings.PasswordAuthentication = false;
+    settings = {
+      PasswordAuthentication = false;
+      PermitRootLogin = "prohibit-password";
+      PubkeyAuthentication = "yes";
+    };
   };
 
   boot.loader = {
