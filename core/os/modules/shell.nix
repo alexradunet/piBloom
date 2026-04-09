@@ -36,23 +36,20 @@ in
         if [ ! -e "$marker" ]; then
           printf '%s\n' "$expected_user" > "$marker"
           chmod 0600 "$marker"
-          exit 0
+        else
+          current_user="$(cat "$marker")"
         fi
 
-        current_user="$(cat "$marker")"
-        if [ "$current_user" = "$expected_user" ]; then
-          exit 0
-        fi
-
-        if [ "${if allowPrimaryUserChange then "1" else "0"}" = "1" ]; then
+        if [ -n "''${current_user:-}" ] && [ "$current_user" != "$expected_user" ] && [ "${if allowPrimaryUserChange then "1" else "0"}" = "1" ]; then
           printf '%s\n' "$expected_user" > "$marker"
           chmod 0600 "$marker"
-          exit 0
         fi
 
-        echo "Refusing to change nixpi.primaryUser from '$current_user' to '$expected_user'." >&2
-        echo "Set nixpi.allowPrimaryUserChange = true for one rebuild if this migration is intentional." >&2
-        exit 1
+        if [ -n "''${current_user:-}" ] && [ "$current_user" != "$expected_user" ] && [ "${if allowPrimaryUserChange then "1" else "0"}" != "1" ]; then
+          echo "Refusing to change nixpi.primaryUser from '$current_user' to '$expected_user'." >&2
+          echo "Set nixpi.allowPrimaryUserChange = true for one rebuild if this migration is intentional." >&2
+          false
+        fi
       '';
     };
 
