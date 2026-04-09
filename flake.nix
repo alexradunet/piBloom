@@ -50,7 +50,7 @@
             nixpiDefaultInput = nixpiBootstrapDefaultInput;
           };
           nixpi-rebuild = pkgs.callPackage ./core/os/pkgs/nixpi-rebuild { };
-          plain-host-deploy = pkgs.callPackage ./core/os/pkgs/plain-host-deploy {
+          plain-host-deploy = pkgs.callPackage ./nixos_vps_provisioner/pkgs/plain-host-deploy {
             nixosAnywherePackage = nixos-anywhere.packages.${system}.nixos-anywhere;
           };
         };
@@ -145,12 +145,12 @@
           modules = [ ./core/os/hosts/vps.nix ];
         };
 
-        ovh-base = mkConfiguredStableSystem {
+        ovh-vps-base = mkConfiguredStableSystem {
           inherit system;
           modules = [
             disko.nixosModules.disko
-            ./core/os/disko/ovh-single-disk.nix
-            ./core/os/hosts/ovh-base.nix
+            ./nixos_vps_provisioner/presets/ovh-single-disk.nix
+            ./nixos_vps_provisioner/presets/ovh-vps-base.nix
           ];
         };
 
