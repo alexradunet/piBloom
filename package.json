@@ -1,0 +1,63 @@
+{
+	"name": "pi-platform",
+	"version": "0.1.0",
+	"description": "Pi-native OS platform on NixOS",
+	"type": "module",
+	"private": true,
+	"engines": {
+		"node": ">=22"
+	},
+	"keywords": [
+		"pi-package"
+	],
+	"pi": {
+		"extensions": [
+			"./core/pi/extensions/persona",
+			"./core/pi/extensions/os",
+			"./core/pi/extensions/wiki",
+			"./core/pi/extensions/nixpi"
+		],
+		"skills": [
+			"./core/pi/skills"
+		]
+	},
+	"peerDependencies": {
+		"@mariozechner/pi-ai": "^0.60.0",
+		"@mariozechner/pi-coding-agent": "^0.60.0"
+	},
+	"dependencies": {
+		"@sinclair/typebox": "^0.34.0",
+		"js-yaml": "^4.1.0",
+		"neverthrow": "^8.2.0"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "^2.0.0",
+		"@mariozechner/pi-ai": "0.60.0",
+		"@mariozechner/pi-coding-agent": "0.60.0",
+		"@types/js-yaml": "^4.0.9",
+		"@vitest/coverage-v8": "^4.0.18",
+		"eslint-plugin-neverthrow": "^1.1.4",
+		"typescript": "^5.7.0",
+		"vitepress": "^1.6.4",
+		"vitest": "^4.0.18"
+	},
+	"scripts": {
+		"test": "vitest run",
+		"test:unit": "vitest run tests/lib tests/extensions tests/os",
+		"test:integration": "vitest run tests/integration",
+		"test:e2e": "vitest run tests/e2e",
+		"test:system:smoke": "nix build .#checks.x86_64-linux.nixos-smoke --no-link -L",
+		"test:system:full": "nix build .#checks.x86_64-linux.nixos-full --no-link -L",
+		"test:system:destructive": "nix build .#checks.x86_64-linux.nixos-destructive --no-link -L",
+		"test:ci": "npm run test:coverage && npm run test:system:smoke",
+		"test:watch": "vitest",
+		"test:coverage": "vitest run --coverage",
+		"build": "rm -rf dist && tsc --build",
+		"check": "biome check .",
+		"check:ci": "biome ci .",
+		"check:fix": "biome check --write .",
+		"docs:dev": "vitepress dev docs",
+		"docs:build": "vitepress build docs",
+		"docs:preview": "vitepress preview docs"
+	}
+}

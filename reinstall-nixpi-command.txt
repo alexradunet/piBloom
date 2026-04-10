@@ -1,0 +1,11 @@
+# Day-0 base install from a local checkout
+nix run .#plain-host-deploy -- \
+  --target-host root@51.210.151.48 \
+  --disk /dev/disk/by-id/scsi-0QEMU_QEMU_HARDDISK_drive-scsi0-0-0-1
+
+# Then, on the installed machine, layer NixPI onto the host-owned /etc/nixos tree
+nix run github:alexradunet/nixpi#nixpi-bootstrap-host -- \
+  --primary-user alex \
+  --authorized-key-file /root/.ssh/authorized_keys \
+  --timezone Europe/Bucharest \
+  --keyboard us

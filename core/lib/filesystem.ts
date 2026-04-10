@@ -1,0 +1,147 @@
+/** Safe filesystem operations: path traversal protection, temp dirs, and home resolution. */
+import { existsSync, mkdirSync, readFileSync, realpathSync, renameSync, writeFileSync } from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+export const CANONICAL_REPO_DIR = "/srv/nixpi";
+export const SYSTEM_FLAKE_DIR = "/etc/nixos";
+export const SYSTEM_FLAKE_FILE = "/etc/nixos/flake.nix";
+
+/** Ensure a directory exists. */
+export function ensureDir(dir: string, mode?: number): void {
+	if (existsSync(dir)) return;
+	mkdirSync(dir, { recursive: true, ...(mode ? { mode } : {}) });
+}
+
+/** Write a file atomically via temporary sibling + rename. */
+export function atomicWriteFile(filePath: string, content: string, mode?: number): void {
+	ensureDir(path.dirname(filePath), mode);
+	const tmpPath = `${filePath}.tmp`;
+	writeFileSync(tmpPath, content, "utf-8");
+	renameSync(tmpPath, filePath);
+}
+
+/**
+ * Resolve a path under a root directory and reject traversal, including
+ * escaping through existing symlinks.
+ */
+export function safePathWithin(root: string, ...segments: string[]): string {
+	const resolvedRoot = path.resolve(root);
+	const resolvedPath = path.resolve(resolvedRoot, ...segments);
+	if (segments.length === 0) return resolvedRoot;
+
+	if (resolvedPath !== resolvedRoot && !resolvedPath.startsWith(`${resolvedRoot}${path.sep}`)) {
+		throw new Error(`Path traversal blocked: ${segments.join("/")} escapes ${root}`);
+	}
+
+	const existingRoot = existsSync(resolvedRoot) ? realpathSync(resolvedRoot) : resolvedRoot;
+	const existingParent = existsSync(path.dirname(resolvedPath))
+		? realpathSync(path.dirname(resolvedPath))
+		: path.dirname(resolvedPath);
+	const existingTarget = existsSync(resolvedPath) ? realpathSync(resolvedPath) : resolvedPath;
+
+	for (const candidate of [existingParent, existingTarget]) {
+		if (candidate !== existingRoot && !candidate.startsWith(`${existingRoot}${path.sep}`)) {
+			throw new Error(`Path traversal blocked: ${segments.join("/")} escapes ${root}`);
+		}
+	}
+
+	return resolvedPath;
+}
+
+/** Resolve the configured user workspace directory. Checks `NIXPI_DIR`, then falls back to `~/nixpi`. */
+export function getNixPiDir(): string {
+	return process.env.NIXPI_DIR ?? path.join(os.homedir(), "nixpi");
+}
+
+/** Resolve the NixPI state directory under the user's home. */
+export function getNixPiStateDir(): string {
+	return process.env.NIXPI_STATE_DIR ?? path.join(os.homedir(), ".nixpi");
+}
+
+/** Resolve the configured Pi runtime directory. */
+export function getPiDir(): string {
+	return process.env.NIXPI_PI_DIR ?? path.join(os.homedir(), ".pi");
+}
+
+/** Resolve the declarative bootstrap mode exported by the NixOS runtime. */
+export function getBootstrapMode(): "bootstrap" | "steady" {
+	const raw = process.env.NIXPI_BOOTSTRAP_MODE?.trim().toLowerCase();
+	return raw === "bootstrap" || raw === "1" || raw === "true" ? "bootstrap" : "steady";
+}
+
+/** Whether the runtime is in declarative bootstrap mode. */
+export function isBootstrapMode(): boolean {
+	return getBootstrapMode() === "bootstrap";
+}
+
+/** Resolve the primary account name used for the canonical repo checkout. */
+export function assertValidPrimaryUser(primaryUser: string): string {
+	if (!/^[a-z_][a-z0-9_-]*[$]?$/i.test(primaryUser)) {
+		throw new Error(`Invalid primary user for canonical repo path: ${primaryUser}`);
+	}
+	return primaryUser;
+}
+
+/** Resolve the primary account name used for the canonical repo checkout. */
+export function getPrimaryUser(): string {
+	const envPrimaryUser = process.env.NIXPI_PRIMARY_USER;
+	if (envPrimaryUser) return assertValidPrimaryUser(envPrimaryUser);
+
+	const currentUser = os.userInfo().username;
+	if (currentUser === "root") {
+		throw new Error("NIXPI_PRIMARY_USER is required when resolving canonical repo paths as root");
+	}
+
+	return assertValidPrimaryUser(currentUser);
+}
+
+/** Resolve the canonical working repo path. */
+export function getCanonicalRepoDir(): string {
+	return CANONICAL_REPO_DIR;
+}
+
+/** Path to the user's Quadlet unit directory for rootless containers. */
+export function getQuadletDir(): string {
+	return path.join(os.homedir(), ".config", "containers", "systemd");
+}
+
+/** Path to the OS update status file written by the update-check timer. */
+export function getUpdateStatusPath(): string {
+	return path.join(getNixPiStateDir(), "update-status.json");
+}
+
+/** Path to the canonical system flake checkout used for rebuilds. */
+export function getSystemFlakeDir(): string {
+	return process.env.NIXPI_SYSTEM_FLAKE_DIR ?? SYSTEM_FLAKE_DIR;
+}
+
+/** Supported rebuilds only run from the canonical repo on main. */
+export function assertSupportedRebuildBranch(branch: string): void {
+	if (branch !== "main") {
+		throw new Error("Supported rebuilds require /srv/nixpi to be on main");
+	}
+}
+
+/** Resolve the package root by walking up from the current module URL. */
+export function resolvePackageDir(moduleUrl: string, maxDepth = 6): string {
+	let dir = path.dirname(fileURLToPath(moduleUrl));
+	for (let i = 0; i < maxDepth; i += 1) {
+		if (existsSync(path.join(dir, "package.json"))) return dir;
+		dir = path.dirname(dir);
+	}
+	return process.cwd();
+}
+
+/** Read the package version from a package root, defaulting to 0.1.0. */
+export function readPackageVersion(packageDir: string): string {
+	try {
+		const pkg = JSON.parse(readFileSync(path.join(packageDir, "package.json"), "utf-8")) as {
+			version?: string;
+		};
+		return pkg.version ?? "0.1.0";
+	} catch {
+		return "0.1.0";
+	}
+}
