@@ -91,7 +91,14 @@
       "Skill(commit-commands:commit)",
       "Bash(cat nixos_vps_provisioner/*.md)",
       "Bash(sshpass:*)",
-      "Bash(scp /home/alex/pi-bloom/core/scripts/nixpi-bootstrap-host.sh root@51.210.151.48:/tmp/nixpi-bootstrap-host.sh)"
+      "Bash(scp /home/alex/pi-bloom/core/scripts/nixpi-bootstrap-host.sh root@51.210.151.48:/tmp/nixpi-bootstrap-host.sh)",
+      "Bash(gh pr:*)",
+      "Bash(nix-prefetch-url:*)",
+      "Bash(tar -xz --strip-components=1)",
+      "Bash(wc -l /home/alex/pi-bloom/core/lib/*.ts /home/alex/pi-bloom/core/os/broker.ts /home/alex/pi-bloom/core/pi/extensions/*/*.ts)",
+      "Bash(wc -l /home/alex/pi-bloom/tests/**/*.test.ts)",
+      "Bash(wc:*)",
+      "Bash(ls /home/alex/pi-bloom/tests/extensions/persona*.test.ts)"
     ]
   }
 }
