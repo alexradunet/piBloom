@@ -70,12 +70,12 @@ describe("os local Nix proposal handler", () => {
 		const { handleNixConfigProposal } = await import("../../core/pi/extensions/os/actions-proposal.js");
 		const result = await handleNixConfigProposal("status", undefined, createMockExtensionContext() as never);
 
-		expect(result.isError).toBeUndefined();
-		expect(result.content[0].text).toContain(`Local proposal repo: ${PROPOSAL_REPO_DIR}`);
-		expect(result.content[0].text).not.toContain(CANONICAL_REPO_DIR);
-		expect(result.content[0].text).toContain("Branch: main");
-		expect(result.content[0].text).toContain("M flake.nix");
-		expect((result.details as { repoDir?: string } | undefined)?.repoDir).toBe(PROPOSAL_REPO_DIR);
+		expect(result.isErr()).toBe(false);
+		expect(result._unsafeUnwrap().text).toContain(`Local proposal repo: ${PROPOSAL_REPO_DIR}`);
+		expect(result._unsafeUnwrap().text).not.toContain(CANONICAL_REPO_DIR);
+		expect(result._unsafeUnwrap().text).toContain("Branch: main");
+		expect(result._unsafeUnwrap().text).toContain("M flake.nix");
+		expect((result._unsafeUnwrap().details as { repoDir?: string } | undefined)?.repoDir).toBe(PROPOSAL_REPO_DIR);
 	});
 
 	it("runs both flake and config validation in the local repo", async () => {
@@ -87,9 +87,9 @@ describe("os local Nix proposal handler", () => {
 		const { handleNixConfigProposal } = await import("../../core/pi/extensions/os/actions-proposal.js");
 		const result = await handleNixConfigProposal("validate", undefined, createMockExtensionContext() as never);
 
-		expect(result.isError).toBe(false);
-		expect(result.content[0].text).toContain("nix flake check --no-build: ok");
-		expect(result.content[0].text).toContain("nix build .#checks.x86_64-linux.config --no-link: ok");
+		expect(result.isErr()).toBe(false);
+		expect(result._unsafeUnwrap().text).toContain("nix flake check --no-build: ok");
+		expect(result._unsafeUnwrap().text).toContain("nix build .#checks.x86_64-linux.config --no-link: ok");
 		expect(runMock).toHaveBeenNthCalledWith(1, "nix", ["flake", "check", "--no-build"], undefined, PROPOSAL_REPO_DIR);
 		expect(runMock).toHaveBeenNthCalledWith(
 			2,
@@ -111,9 +111,9 @@ describe("os local Nix proposal handler", () => {
 		const result = await handleNixConfigProposal("update_flake_lock", undefined, ctx as never);
 
 		expect(ctx.ui.confirm).toHaveBeenCalled();
-		expect(result.isError).toBe(false);
-		expect(result.content[0].text).toContain("flake.lock status:");
-		expect(result.content[0].text).toContain("M flake.lock");
+		expect(result.isErr()).toBe(false);
+		expect(result._unsafeUnwrap().text).toContain("flake.lock status:");
+		expect(result._unsafeUnwrap().text).toContain("M flake.lock");
 	});
 
 	it("initializes the local proposal repo lazily when missing", async () => {
@@ -127,10 +127,10 @@ describe("os local Nix proposal handler", () => {
 		const { handleNixConfigProposal } = await import("../../core/pi/extensions/os/actions-proposal.js");
 		const result = await handleNixConfigProposal("status", undefined, createMockExtensionContext() as never);
 
-		expect(result.isError).toBeUndefined();
+		expect(result.isErr()).toBe(false);
 		expect(runMock).toHaveBeenNthCalledWith(1, "git", ["clone", expect.any(String), PROPOSAL_REPO_DIR], undefined);
 		expect(runMock).not.toHaveBeenCalledWith("git", ["clone", expect.any(String), CANONICAL_REPO_DIR], undefined);
-		expect(result.content[0].text).toContain("Initialized from:");
+		expect(result._unsafeUnwrap().text).toContain("Initialized from:");
 	});
 
 	it("returns isError when validate fails", async () => {
@@ -142,8 +142,8 @@ describe("os local Nix proposal handler", () => {
 		const { handleNixConfigProposal } = await import("../../core/pi/extensions/os/actions-proposal.js");
 		const result = await handleNixConfigProposal("validate", undefined, createMockExtensionContext() as never);
 
-		expect(result.isError).toBe(true);
-		expect(result.content[0].text).toContain("failed");
+		expect(result.isErr()).toBe(true);
+		expect(result._unsafeUnwrapErr()).toContain("failed");
 	});
 
 	it("returns isError when update_flake_lock command fails", async () => {
@@ -154,8 +154,8 @@ describe("os local Nix proposal handler", () => {
 		const { handleNixConfigProposal } = await import("../../core/pi/extensions/os/actions-proposal.js");
 		const result = await handleNixConfigProposal("update_flake_lock", undefined, ctx as never);
 
-		expect(result.isError).toBe(true);
-		expect(result.content[0].text).toContain("nix flake update failed");
+		expect(result.isErr()).toBe(true);
+		expect(result._unsafeUnwrapErr()).toContain("nix flake update failed");
 	});
 
 	it("returns an error when the proposal path exists but is not a clone", async () => {
@@ -164,7 +164,7 @@ describe("os local Nix proposal handler", () => {
 		const { handleNixConfigProposal } = await import("../../core/pi/extensions/os/actions-proposal.js");
 		const result = await handleNixConfigProposal("status", undefined, createMockExtensionContext() as never);
 
-		expect(result.isError).toBe(true);
-		expect(result.content[0].text).toContain("Proposal repo path exists but is not a git clone");
+		expect(result.isErr()).toBe(true);
+		expect(result._unsafeUnwrapErr()).toContain("Proposal repo path exists but is not a git clone");
 	});
 });

@@ -9,7 +9,7 @@ import { readFile } from "node:fs/promises";
 import { StringEnum } from "@mariozechner/pi-ai";
 import { type ExtensionAPI, isToolCallEventType } from "@mariozechner/pi-coding-agent";
 import { type Static, Type } from "@sinclair/typebox";
-import { EmptyToolParams, type RegisteredExtensionTool, registerTools } from "../../../lib/utils.js";
+import { EmptyToolParams, type RegisteredExtensionTool, registerTools, toToolResult } from "../../../lib/utils.js";
 import {
 	checkBootstrapDisable,
 	checkPendingUpdates,
@@ -58,7 +58,7 @@ export default function (pi: ExtensionAPI) {
 			parameters: NixosUpdateParams,
 			async execute(_toolCallId, params, signal, _onUpdate, ctx) {
 				const p = params as Static<typeof NixosUpdateParams>;
-				return handleNixosUpdate(p.action, signal, ctx);
+				return toToolResult(await handleNixosUpdate(p.action, signal, ctx));
 			},
 		},
 		{
@@ -69,7 +69,7 @@ export default function (pi: ExtensionAPI) {
 			parameters: NixConfigProposalParams,
 			async execute(_toolCallId, params, signal, _onUpdate, ctx) {
 				const p = params as Static<typeof NixConfigProposalParams>;
-				return handleNixConfigProposal(p.action, signal, ctx);
+				return toToolResult(await handleNixConfigProposal(p.action, signal, ctx));
 			},
 		},
 		{
@@ -79,7 +79,7 @@ export default function (pi: ExtensionAPI) {
 			parameters: SystemdControlParams,
 			async execute(_toolCallId, params, signal, _onUpdate, ctx) {
 				const p = params as Static<typeof SystemdControlParams>;
-				return handleSystemdControl(p.service, p.action, signal, ctx);
+				return toToolResult(await handleSystemdControl(p.service, p.action, signal, ctx));
 			},
 		},
 		{
@@ -88,7 +88,7 @@ export default function (pi: ExtensionAPI) {
 			description: "Reads the NixPI update status from the last scheduled check.",
 			parameters: UpdateStatusParams,
 			async execute() {
-				return handleUpdateStatus();
+				return toToolResult(await handleUpdateStatus());
 			},
 		},
 		{
@@ -98,7 +98,7 @@ export default function (pi: ExtensionAPI) {
 			parameters: ScheduleRebootParams,
 			async execute(_toolCallId, params, signal, _onUpdate, ctx) {
 				const p = params as Static<typeof ScheduleRebootParams>;
-				return handleScheduleReboot(p.delay_minutes, signal, ctx);
+				return toToolResult(await handleScheduleReboot(p.delay_minutes, signal, ctx));
 			},
 		},
 		{
@@ -107,7 +107,7 @@ export default function (pi: ExtensionAPI) {
 			description: "Composite health check: OS image status, containers, disk usage, system load, and memory.",
 			parameters: SystemHealthParams,
 			async execute(_toolCallId, _params, signal) {
-				return handleSystemHealth(signal);
+				return toToolResult(await handleSystemHealth(signal));
 			},
 		},
 	];

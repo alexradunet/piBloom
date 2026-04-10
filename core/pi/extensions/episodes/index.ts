@@ -7,7 +7,7 @@ import path from "node:path";
  */
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import { Type } from "@sinclair/typebox";
-import { type RegisteredExtensionTool, registerTools, truncate } from "../../../lib/utils.js";
+import { type RegisteredExtensionTool, ok, registerTools, toToolResult, truncate } from "../../../lib/utils.js";
 import { consolidateEpisodes, createEpisode, listEpisodes, promoteEpisode } from "./actions.js";
 
 type EpisodeCreateParams = Parameters<typeof createEpisode>[0] & {
@@ -62,28 +62,21 @@ export default function (pi: ExtensionAPI) {
 			async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
 				const typedParams = params as EpisodeCreateParams;
 				const episodeResult = createEpisode(typedParams);
-				if (("isError" in episodeResult && episodeResult.isError) || !typedParams.promote_to) {
-					return episodeResult;
+				if (episodeResult.isErr() || !typedParams.promote_to) {
+					return toToolResult(episodeResult);
 				}
+				const episodeId = String((episodeResult.value.details as { id: string }).id);
 				const promotion = promoteEpisode({
-					episode_id: String((episodeResult.details as { id: string }).id),
+					episode_id: episodeId,
 					target: typedParams.promote_to,
 					mode: "upsert",
 					projectName: projectNameFromCtx(ctx),
 				});
-				if ("isError" in promotion && promotion.isError) return promotion;
-				return {
-					content: [
-						{
-							type: "text" as const,
-							text: `${episodeResult.content[0]?.text}\n${promotion.content[0]?.text}`,
-						},
-					],
-					details: {
-						...episodeResult.details,
-						promotion: promotion.details,
-					},
-				};
+				if (promotion.isErr()) return toToolResult(promotion);
+				return toToolResult(ok({
+					text: `${episodeResult.value.text}\n${promotion.value.text}`,
+					details: { ...episodeResult.value.details, promotion: promotion.value.details },
+				}));
 			},
 		},
 		{
@@ -126,12 +119,12 @@ export default function (pi: ExtensionAPI) {
 			}),
 			async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
 				const typedParams = params as EpisodePromoteParams;
-				return promoteEpisode({
+				return toToolResult(promoteEpisode({
 					episode_id: typedParams.episode_id,
 					target: typedParams.target,
 					mode: typedParams.mode,
 					projectName: projectNameFromCtx(ctx),
-				});
+				}));
 			},
 		},
 		{
@@ -146,7 +139,7 @@ export default function (pi: ExtensionAPI) {
 			}),
 			async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
 				const typedParams = params as EpisodeConsolidateParams;
-				return consolidateEpisodes({ ...typedParams, projectName: projectNameFromCtx(ctx) });
+				return toToolResult(consolidateEpisodes({ ...typedParams, projectName: projectNameFromCtx(ctx) }));
 			},
 		},
 	];

@@ -277,9 +277,9 @@ describe("episode helper functions", () => {
 describe("loadEpisodes filters", () => {
 	it("only returns episodes from the specified day", () => {
 		const result1 = createEpisode({ title: "Today's episode", body: "body" });
-		expect(result1.isError).toBeFalsy();
+		expect(result1.isErr()).toBe(false);
 
-		const id = (result1.details as { id: string }).id;
+		const id = (result1._unsafeUnwrap().details as { id: string }).id;
 		const day = id.slice(0, 10);
 
 		const loaded = loadEpisodes({ day });
@@ -328,7 +328,7 @@ describe("consolidateEpisodes — promotion type inference", () => {
 			tags: ["preference"],
 		});
 		const result = consolidateEpisodes({ mode: "propose" });
-		expect(result.content[0].text).toContain("preference/");
+		expect(result._unsafeUnwrap().text).toContain("preference/");
 	});
 
 	it("infers procedure type from resolution kind", () => {
@@ -340,7 +340,7 @@ describe("consolidateEpisodes — promotion type inference", () => {
 			tags: ["recovery"],
 		});
 		const result = consolidateEpisodes({ mode: "propose" });
-		expect(result.content[0].text).toContain("procedure/");
+		expect(result._unsafeUnwrap().text).toContain("procedure/");
 	});
 
 	it("infers decision type from decision-point kind", () => {
@@ -352,7 +352,7 @@ describe("consolidateEpisodes — promotion type inference", () => {
 			tags: ["decision"],
 		});
 		const result = consolidateEpisodes({ mode: "propose" });
-		expect(result.content[0].text).toContain("decision/");
+		expect(result._unsafeUnwrap().text).toContain("decision/");
 	});
 
 	it("skips low-importance episodes with unrecognised kind", () => {
@@ -364,7 +364,7 @@ describe("consolidateEpisodes — promotion type inference", () => {
 			tags: [],
 		});
 		const result = consolidateEpisodes({ mode: "propose" });
-		expect(result.content[0].text).toContain("No conservative promotion candidates found");
+		expect(result._unsafeUnwrap().text).toContain("No conservative promotion candidates found");
 	});
 
 	it("skips speculative episodes even when high importance", () => {
@@ -376,7 +376,7 @@ describe("consolidateEpisodes — promotion type inference", () => {
 			tags: ["preference"],
 		});
 		const result = consolidateEpisodes({ mode: "propose" });
-		expect(result.content[0].text).toContain("No conservative promotion candidates found");
+		expect(result._unsafeUnwrap().text).toContain("No conservative promotion candidates found");
 	});
 
 	it("skips already-promoted episodes", () => {
@@ -387,7 +387,7 @@ describe("consolidateEpisodes — promotion type inference", () => {
 			importance: "high",
 			tags: ["preference"],
 		});
-		const episodeId = (created.details as { id: string }).id;
+		const episodeId = (created._unsafeUnwrap().details as { id: string }).id;
 
 		// Promote once to mark as derived
 		promoteEpisode({
@@ -397,6 +397,6 @@ describe("consolidateEpisodes — promotion type inference", () => {
 
 		// Consolidate — should no longer propose this episode
 		const result = consolidateEpisodes({ mode: "propose" });
-		expect(result.content[0].text).not.toContain("preference/cli-style");
+		expect(result._unsafeUnwrap().text).not.toContain("preference/cli-style");
 	});
 });

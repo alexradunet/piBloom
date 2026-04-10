@@ -4,14 +4,9 @@ import type { ExtensionContext } from "@mariozechner/pi-coding-agent";
 import { run } from "../../../lib/exec.js";
 import { getSystemFlakeDir } from "../../../lib/filesystem.js";
 import { requireConfirmation } from "../../../lib/interactions.js";
-import { errorResult, truncate } from "../../../lib/utils.js";
+import { type ActionResult, err, ok, truncate } from "../../../lib/utils.js";
 
 type NixConfigProposalAction = "status" | "validate" | "update_flake_lock";
-type ProposalActionResult = {
-	content: Array<{ type: "text"; text: string }>;
-	details: Record<string, unknown>;
-	isError?: boolean;
-};
 
 const DEFAULT_CHECK = "checks.x86_64-linux.config";
 const PROPOSAL_REPO_DIR = "/var/lib/nixpi/pi-nixpi";
@@ -55,7 +50,7 @@ async function ensureProposalRepo(
 	return { created: true, source: cloneSource };
 }
 
-async function handleProposalStatus(repoDir: string, repo: ProposalRepoState, signal: AbortSignal | undefined) {
+async function handleProposalStatus(repoDir: string, repo: ProposalRepoState, signal: AbortSignal | undefined): Promise<ActionResult> {
 	const [branch, status, diff] = await Promise.all([
 		run("git", ["branch", "--show-current"], signal, repoDir),
 		run("git", ["status", "--short"], signal, repoDir),
@@ -74,14 +69,10 @@ async function handleProposalStatus(repoDir: string, repo: ProposalRepoState, si
 		diff.stdout.trim() || "No diff in flake.nix, flake.lock, or core/os.",
 	];
 
-	return {
-		content: [{ type: "text" as const, text: truncate(lines.join("\n")) }],
-		details: {
-			repoDir,
-			branch: branch.stdout.trim(),
-			clean: status.stdout.trim().length === 0,
-		},
-	} satisfies ProposalActionResult;
+	return ok({
+		text: truncate(lines.join("\n")),
+		details: { repoDir, branch: branch.stdout.trim(), clean: status.stdout.trim().length === 0 },
+	});
 }
 
 async function handleFlakeLockRefresh(
@@ -89,42 +80,36 @@ async function handleFlakeLockRefresh(
 	repo: ProposalRepoState,
 	signal: AbortSignal | undefined,
 	ctx: ExtensionContext,
-) {
+): Promise<ActionResult> {
 	const denied = await requireConfirmation(ctx, `Refresh flake.lock in ${repoDir}`);
-	if (denied) return errorResult(denied);
+	if (denied) return err(denied);
 
 	const update = await run("nix", ["flake", "update"], signal, repoDir);
 	const status = await run("git", ["status", "--short", "--", "flake.lock"], signal, repoDir);
-	const text =
-		update.exitCode === 0
-			? [
-					`Updated flake inputs in ${repoDir}.`,
-					...initializedFrom(repo),
-					"",
-					"Command output:",
-					summarizeOutput(update),
-					"",
-					"flake.lock status:",
-					status.stdout.trim() || "flake.lock unchanged.",
-				].join("\n")
-			: `nix flake update failed:\n${summarizeOutput(update)}`;
-	return {
-		content: [{ type: "text" as const, text: truncate(text) }],
-		details: { repoDir, exitCode: update.exitCode },
-		isError: update.exitCode !== 0,
-	} satisfies ProposalActionResult;
+	if (update.exitCode !== 0) return err(`nix flake update failed:\n${summarizeOutput(update)}`);
+	const text = [
+		`Updated flake inputs in ${repoDir}.`,
+		...initializedFrom(repo),
+		"",
+		"Command output:",
+		summarizeOutput(update),
+		"",
+		"flake.lock status:",
+		status.stdout.trim() || "flake.lock unchanged.",
+	].join("\n");
+	return ok({ text: truncate(text), details: { repoDir, exitCode: update.exitCode } });
 }
 
 async function handleProposalValidation(
 	repoDir: string,
 	repo: ProposalRepoState,
 	signal: AbortSignal | undefined,
-): Promise<ProposalActionResult> {
+): Promise<ActionResult> {
 	const [flakeCheck, configBuild] = await Promise.all([
 		run("nix", ["flake", "check", "--no-build"], signal, repoDir),
 		run("nix", ["build", `.#${DEFAULT_CHECK}`, "--no-link"], signal, repoDir),
 	]);
-	const ok = flakeCheck.exitCode === 0 && configBuild.exitCode === 0;
+	const allOk = flakeCheck.exitCode === 0 && configBuild.exitCode === 0;
 	const text = [
 		`Validated local NixPI repo at ${repoDir}`,
 		...initializedFrom(repo),
@@ -136,22 +121,19 @@ async function handleProposalValidation(
 		summarizeOutput(configBuild),
 	].join("\n");
 
-	return {
-		content: [{ type: "text" as const, text: truncate(text) }],
-		details: { repoDir, flakeCheck: flakeCheck.exitCode, configBuild: configBuild.exitCode },
-		isError: !ok,
-	};
+	if (!allOk) return err(truncate(text));
+	return ok({ text: truncate(text), details: { repoDir, flakeCheck: flakeCheck.exitCode, configBuild: configBuild.exitCode } });
 }
 
 export async function handleNixConfigProposal(
 	action: NixConfigProposalAction,
 	signal: AbortSignal | undefined,
 	ctx: ExtensionContext,
-): Promise<ProposalActionResult> {
+): Promise<ActionResult> {
 	const repoDir = PROPOSAL_REPO_DIR;
 	const repo = await ensureProposalRepo(repoDir, signal);
 	if ("error" in repo) {
-		return errorResult(repo.error);
+		return err(repo.error);
 	}
 
 	switch (action) {

@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { getNixPiDir, safePathWithin } from "../../../lib/filesystem.js";
 import { parseFrontmatter, stringifyFrontmatter } from "../../../lib/frontmatter.js";
-import { errorResult, nowIso } from "../../../lib/utils.js";
+import { type ActionResult, err, ok, nowIso } from "../../../lib/utils.js";
 import { defaultObjectBody, mergeObjectState, readMemoryRecord, writeMemoryRecord } from "../objects/memory.js";
 
 export interface PromotionTarget {
@@ -102,14 +102,14 @@ export function createEpisode(params: {
 	importance?: string;
 	tags?: string[];
 	derived_objects?: string[];
-}) {
+}): ActionResult {
 	const created = nowIso();
 	const id = buildEpisodeId(created, params.room);
 	let filepath: string;
 	try {
 		filepath = resolveEpisodeFilepath(created, id);
 	} catch {
-		return errorResult("Path traversal blocked: invalid episode id");
+		return err("Path traversal blocked: invalid episode id");
 	}
 	fs.mkdirSync(path.dirname(filepath), { recursive: true });
 	const frontmatter = episodeFrontmatter({ ...params, id, created });
@@ -117,13 +117,10 @@ export function createEpisode(params: {
 		fs.writeFileSync(filepath, stringifyFrontmatter(frontmatter, buildEpisodeMarkdown(params.title, params.body)), {
 			flag: "wx",
 		});
-	} catch (err) {
-		return errorResult(`failed to create episode: ${(err as Error).message}`);
+	} catch (e) {
+		return err(`failed to create episode: ${(e as Error).message}`);
 	}
-	return {
-		content: [{ type: "text" as const, text: `created episode/${id}` }],
-		details: { path: filepath, id, frontmatter },
-	};
+	return ok({ text: `created episode/${id}`, details: { path: filepath, id, frontmatter } });
 }
 
 export function listEpisodes(params: { day?: string; kind?: string; limit?: number }) {
@@ -299,9 +296,7 @@ function applyPromotionProposal(
 		mode: "upsert",
 		projectName,
 	});
-	if ("isError" in result && result.isError) {
-		return null;
-	}
+	if (result.isErr()) return null;
 	return `${episodeRef(episodeId)} -> ${proposal.target.type}/${proposal.target.slug}`;
 }
 
@@ -311,7 +306,7 @@ export function consolidateEpisodes(params: {
 	limit?: number;
 	mode?: "propose" | "apply";
 	projectName?: string;
-}) {
+}): ActionResult {
 	const episodes = loadEpisodes(params);
 	const proposals = episodes
 		.map((episode) => ({
@@ -321,27 +316,21 @@ export function consolidateEpisodes(params: {
 		.filter((entry): entry is { episode: EpisodeRecord; target: PromotionTarget } => entry.target !== null);
 
 	if (proposals.length === 0) {
-		return {
-			content: [{ type: "text" as const, text: "No conservative promotion candidates found" }],
-			details: { count: 0, applied: 0 },
-		};
+		return ok({ text: "No conservative promotion candidates found", details: { count: 0, applied: 0 } });
 	}
 
 	if (params.mode === "apply") {
 		const applied = proposals
 			.map((proposal) => applyPromotionProposal(proposal, params.projectName))
 			.filter((entry): entry is string => entry !== null);
-		return {
-			content: [{ type: "text" as const, text: applied.join("\n") || "No candidates applied" }],
+		return ok({
+			text: applied.join("\n") || "No candidates applied",
 			details: { count: proposals.length, applied: applied.length },
-		};
+		});
 	}
 
 	const text = proposals.map((proposal) => summarizeProposal(proposal.episode, proposal.target)).join("\n");
-	return {
-		content: [{ type: "text" as const, text }],
-		details: { count: proposals.length, applied: 0 },
-	};
+	return ok({ text, details: { count: proposals.length, applied: 0 } });
 }
 
 export function promoteEpisode(params: {
@@ -349,9 +338,9 @@ export function promoteEpisode(params: {
 	target: PromotionTarget;
 	mode?: "upsert" | "create";
 	projectName?: string;
-}) {
+}): ActionResult {
 	const episodePath = findEpisodePath(params.episode_id);
-	if (!episodePath) return errorResult(`episode not found: ${params.episode_id}`);
+	if (!episodePath) return err(`episode not found: ${params.episode_id}`);
 
 	const raw = fs.readFileSync(episodePath, "utf-8");
 	const parsed = parseFrontmatter<Record<string, unknown>>(raw);
@@ -363,12 +352,12 @@ export function promoteEpisode(params: {
 	try {
 		objectPath = safePathWithin(objectsDir, `${target.slug}.md`);
 	} catch {
-		return errorResult("Path traversal blocked: invalid promotion slug");
+		return err("Path traversal blocked: invalid promotion slug");
 	}
 
 	const existing = readMemoryRecord(objectPath);
 	if (params.mode === "create" && existing) {
-		return errorResult(`object already exists: ${target.type}/${target.slug}`);
+		return err(`object already exists: ${target.type}/${target.slug}`);
 	}
 
 	const source = existing?.attributes.source;
@@ -402,8 +391,8 @@ export function promoteEpisode(params: {
 	});
 	updateEpisodeDerivedObjects(episodePath, `${target.type}/${target.slug}`);
 
-	return {
-		content: [{ type: "text" as const, text: `promoted ${sourceRef} -> ${target.type}/${target.slug}` }],
+	return ok({
+		text: `promoted ${sourceRef} -> ${target.type}/${target.slug}`,
 		details: { episode: sourceRef, target: `${target.type}/${target.slug}`, existed: Boolean(existing) },
-	};
+	});
 }

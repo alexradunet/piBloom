@@ -3,7 +3,7 @@
  */
 
 import { run } from "../../../lib/exec.js";
-import { textToolResult, truncate } from "../../../lib/utils.js";
+import { type ActionResult, ok, truncate } from "../../../lib/utils.js";
 
 function nixosSection(result: Awaited<ReturnType<typeof run>>): string {
 	if (result.exitCode !== 0) return "## OS\n(nixos-rebuild unavailable)";
@@ -56,7 +56,7 @@ function systemSection(
 	return loadParts.length > 0 ? `## System\n${loadParts.map((l) => `- ${l}`).join("\n")}` : null;
 }
 
-export async function handleSystemHealth(signal: AbortSignal | undefined) {
+export async function handleSystemHealth(signal: AbortSignal | undefined): Promise<ActionResult> {
 	const [nixos, ps, df, loadavg, meminfo, uptime] = await Promise.all([
 		run("nixos-rebuild", ["list-generations"], signal),
 		run("podman", ["ps", "--format", "json", "--filter", "name=nixpi-"], signal),
@@ -76,5 +76,5 @@ export async function handleSystemHealth(signal: AbortSignal | undefined) {
 	if (system) sections.push(system);
 
 	const text = sections.join("\n\n");
-	return textToolResult(truncate(text));
+	return ok({ text: truncate(text) });
 }

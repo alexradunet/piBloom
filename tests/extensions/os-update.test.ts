@@ -43,8 +43,8 @@ describe("os nixos_update handler", () => {
 
 		expect(ctx.ui.confirm).toHaveBeenCalled();
 		expect(runMock).toHaveBeenNthCalledWith(1, "nixpi-brokerctl", ["nixos-update", "apply", expectedFlake], undefined);
-		expect(result.isError).toBe(false);
-		expect(result.content[0].text).toContain(`from ${expectedFlake}`);
+		expect(result.isErr()).toBe(false);
+		expect(result._unsafeUnwrap().text).toContain(`from ${expectedFlake}`);
 	});
 
 	it("uses NIXPI_SYSTEM_FLAKE_DIR when explicitly set", async () => {
@@ -75,10 +75,10 @@ describe("os nixos_update handler", () => {
 		const result = await handleNixosUpdate("apply", undefined, ctx as never);
 
 		expect(runMock).not.toHaveBeenCalled();
-		expect(result.isError).toBe(true);
-		expect(result.content[0].text).toContain(`System flake not found at ${explicitFlakeDir}`);
-		expect(result.content[0].text).toContain("installed host flake");
-		expect(result.content[0].text).not.toContain("under /etc/nixos");
+		expect(result.isErr()).toBe(true);
+		expect(result._unsafeUnwrapErr()).toContain(`System flake not found at ${explicitFlakeDir}`);
+		expect(result._unsafeUnwrapErr()).toContain("installed host flake");
+		expect(result._unsafeUnwrapErr()).not.toContain("under /etc/nixos");
 	});
 
 	it("fails early if the installed system flake is missing", async () => {
@@ -89,11 +89,11 @@ describe("os nixos_update handler", () => {
 		const result = await handleNixosUpdate("apply", undefined, ctx as never);
 
 		expect(runMock).not.toHaveBeenCalled();
-		expect(result.isError).toBe(true);
-		expect(result.content[0].text).toContain("System flake not found at /etc/nixos");
-		expect(result.content[0].text).toContain("installed host flake");
-		expect(result.content[0].text).toContain("operator checkout");
-		expect(result.content[0].text).toContain("optional");
+		expect(result.isErr()).toBe(true);
+		expect(result._unsafeUnwrapErr()).toContain("System flake not found at /etc/nixos");
+		expect(result._unsafeUnwrapErr()).toContain("installed host flake");
+		expect(result._unsafeUnwrapErr()).toContain("operator checkout");
+		expect(result._unsafeUnwrapErr()).toContain("optional");
 	});
 
 	it("returns error result when apply exits non-zero", async () => {
@@ -104,8 +104,8 @@ describe("os nixos_update handler", () => {
 		const ctx = createMockExtensionContext({ hasUI: true });
 		const result = await handleNixosUpdate("apply", undefined, ctx as never);
 
-		expect(result.isError).toBe(true);
-		expect(result.content[0].text).toContain("build failed");
+		expect(result.isErr()).toBe(true);
+		expect(result._unsafeUnwrapErr()).toContain("build failed");
 	});
 
 	it("schedules a reboot after confirmation", async () => {
@@ -116,8 +116,8 @@ describe("os nixos_update handler", () => {
 		const result = await handleScheduleReboot(5, undefined, ctx as never);
 
 		expect(ctx.ui.confirm).toHaveBeenCalled();
-		expect((result as { isError?: boolean }).isError).toBeFalsy();
-		expect(result.content[0].text).toContain("5 minute");
+		expect(result.isErr()).toBe(false);
+		expect(result._unsafeUnwrap().text).toContain("5 minute");
 	});
 
 	it("returns error when schedule reboot command fails", async () => {
@@ -127,7 +127,7 @@ describe("os nixos_update handler", () => {
 		const ctx = createMockExtensionContext({ hasUI: true });
 		const result = await handleScheduleReboot(1, undefined, ctx as never);
 
-		expect((result as { isError?: boolean }).isError).toBe(true);
-		expect(result.content[0].text).toContain("Failed to schedule reboot");
+		expect(result.isErr()).toBe(true);
+		expect(result._unsafeUnwrapErr()).toContain("Failed to schedule reboot");
 	});
 });

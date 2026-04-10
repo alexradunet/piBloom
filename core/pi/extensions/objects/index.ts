@@ -6,7 +6,7 @@
  */
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import { Type } from "@sinclair/typebox";
-import { type RegisteredExtensionTool, registerTools } from "../../../lib/utils.js";
+import { type RegisteredExtensionTool, registerTools, toToolResult } from "../../../lib/utils.js";
 import { createObject, linkObjects, readObject, updateObject, upsertObject } from "./actions.js";
 import { listObjects, queryObjects, searchObjects } from "./actions-query.js";
 
@@ -53,7 +53,7 @@ export default function (pi: ExtensionAPI) {
 				),
 			}),
 			async execute(_toolCallId, params) {
-				return createObject(params as MemoryCreateParams);
+				return toToolResult(createObject(params as MemoryCreateParams));
 			},
 		},
 		{
@@ -68,7 +68,7 @@ export default function (pi: ExtensionAPI) {
 				path: Type.Optional(Type.String({ description: "Optional direct file path relative to home dir" })),
 			}),
 			async execute(_toolCallId, params) {
-				return updateObject(params as MemoryUpdateParams);
+				return toToolResult(updateObject(params as MemoryUpdateParams));
 			},
 		},
 		{
@@ -83,7 +83,7 @@ export default function (pi: ExtensionAPI) {
 				path: Type.Optional(Type.String({ description: "Optional direct file path relative to home dir" })),
 			}),
 			async execute(_toolCallId, params) {
-				return upsertObject(params as MemoryUpsertParams);
+				return toToolResult(upsertObject(params as MemoryUpsertParams));
 			},
 		},
 		{
@@ -96,7 +96,7 @@ export default function (pi: ExtensionAPI) {
 				path: Type.Optional(Type.String({ description: "Optional direct file path relative to home dir" })),
 			}),
 			async execute(_toolCallId, params) {
-				return readObject(params as MemoryReadParams);
+				return toToolResult(readObject(params as MemoryReadParams));
 			},
 		},
 		{
@@ -124,7 +124,7 @@ export default function (pi: ExtensionAPI) {
 				limit: Type.Optional(Type.Number({ description: "Max ranked results", default: 10 })),
 			}),
 			async execute(_toolCallId, params, signal) {
-				return queryObjects(params as MemoryQueryParams, signal);
+				return toToolResult(queryObjects(params as MemoryQueryParams, signal));
 			},
 		},
 		{
@@ -137,7 +137,7 @@ export default function (pi: ExtensionAPI) {
 				}),
 			}),
 			async execute(_toolCallId, params, signal) {
-				return searchObjects(params as MemorySearchParams, signal);
+				return toToolResult(searchObjects(params as MemorySearchParams, signal));
 			},
 		},
 		{
@@ -153,7 +153,7 @@ export default function (pi: ExtensionAPI) {
 				}),
 			}),
 			async execute(_toolCallId, params) {
-				return linkObjects(params as MemoryLinkParams);
+				return toToolResult(linkObjects(params as MemoryLinkParams));
 			},
 		},
 		{
@@ -170,7 +170,7 @@ export default function (pi: ExtensionAPI) {
 				),
 			}),
 			async execute(_toolCallId, params, signal) {
-				return listObjects(params as MemoryListParams, signal);
+				return toToolResult(listObjects(params as MemoryListParams, signal));
 			},
 		},
 	];

@@ -6,7 +6,8 @@ import os from "node:os";
 import path from "node:path";
 import { getNixPiDir, safePathWithin } from "../../../lib/filesystem.js";
 import { parseFrontmatter } from "../../../lib/frontmatter.js";
-import { errorResult, textToolResult, truncate } from "../../../lib/utils.js";
+import { type ActionResult, err, ok, truncate } from "../../../lib/utils.js";
+import type { Result } from "neverthrow";
 import { walkMdFiles } from "./actions.js";
 import { readMemoryRecord, type ScopePreference, scoreRecord } from "./memory.js";
 
@@ -22,12 +23,12 @@ type QueryParams = {
 	limit?: number;
 };
 
-function resolveObjectsDir(directory?: string) {
-	if (!directory) return { dir: path.join(getNixPiDir(), "Objects") };
+function resolveObjectsDir(directory?: string): Result<string, string> {
+	if (!directory) return ok(path.join(getNixPiDir(), "Objects"));
 	try {
-		return { dir: safePathWithin(os.homedir(), directory) };
+		return ok(safePathWithin(os.homedir(), directory));
 	} catch {
-		return { error: errorResult("Path traversal blocked: invalid directory") };
+		return err("Path traversal blocked: invalid directory");
 	}
 }
 
@@ -135,28 +136,28 @@ function formatRankedResult(result: {
 export function listObjects(
 	params: { type?: string; directory?: string; filters?: Record<string, string> },
 	signal?: AbortSignal,
-) {
+): ActionResult {
 	const filters = params.filters ?? {};
 	const resolved = resolveObjectsDir(params.directory);
-	if (resolved.error) return resolved.error;
+	if (resolved.isErr()) return err(resolved.error);
 
-	const results = collectObjectListEntries(resolved.dir, params.type, filters, signal);
+	const results = collectObjectListEntries(resolved.value, params.type, filters, signal);
 
 	const text = results.length > 0 ? results.join("\n") : "No objects found";
-	return textToolResult(truncate(text));
+	return ok({ text: truncate(text) });
 }
 
 /** Search markdown files in ~/nixpi/ for a pattern. */
-export function searchObjects(params: { pattern: string }, signal?: AbortSignal) {
+export function searchObjects(params: { pattern: string }, signal?: AbortSignal): ActionResult {
 	const workspaceDir = getNixPiDir();
 	const matches = collectSearchMatches(workspaceDir, params.pattern, signal);
 
 	const text = matches.length > 0 ? matches.join("\n") : "No matches found";
-	return textToolResult(truncate(text));
+	return ok({ text: truncate(text) });
 }
 
 /** Query ranked object matches from ~/nixpi/Objects/. */
-export function queryObjects(params: QueryParams, signal?: AbortSignal) {
+export function queryObjects(params: QueryParams, signal?: AbortSignal): ActionResult {
 	const workspaceDir = getNixPiDir();
 	const dir = path.join(workspaceDir, "Objects");
 	const limit = queryLimit(params.limit);
@@ -167,5 +168,5 @@ export function queryObjects(params: QueryParams, signal?: AbortSignal) {
 	const text =
 		top.length > 0 ? top.map((result) => formatRankedResult(result)).join("\n") : "No matching objects found";
 
-	return textToolResult(truncate(text), { count: top.length, results: top });
+	return ok({ text: truncate(text), details: { count: top.length, results: top } });
 }

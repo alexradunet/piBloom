@@ -9,15 +9,9 @@ import type { ExtensionContext } from "@mariozechner/pi-coding-agent";
 import { run } from "../../../lib/exec.js";
 import { getSystemFlakeDir, getUpdateStatusPath } from "../../../lib/filesystem.js";
 import { requireConfirmation } from "../../../lib/interactions.js";
-import { errorResult, truncate } from "../../../lib/utils.js";
+import { type ActionResult, err, ok, truncate } from "../../../lib/utils.js";
 import { guardServiceName } from "../../../lib/validation.js";
 import type { UpdateStatus } from "./types.js";
-
-type OsActionResult = {
-	content: Array<{ type: "text"; text: string }>;
-	details: Record<string, unknown>;
-	isError?: boolean;
-};
 
 // --- NixOS update handler ---
 
@@ -25,49 +19,33 @@ function generationStatusText(result: { stdout: string; stderr: string; exitCode
 	return result.exitCode === 0 ? result.stdout.trim() || "No generation info available." : `Error: ${result.stderr}`;
 }
 
-async function confirmOsMutation(action: "apply" | "rollback", ctx: ExtensionContext): Promise<{ denied?: string }> {
-	const denied = await requireConfirmation(ctx, `OS ${action}`);
-	return denied ? { denied } : {};
-}
-
-async function handleNixosStatus(signal: AbortSignal | undefined): Promise<OsActionResult> {
+async function handleNixosStatus(signal: AbortSignal | undefined): Promise<ActionResult> {
 	const gen = await run("nixos-rebuild", ["list-generations"], signal);
-	return {
-		content: [{ type: "text" as const, text: truncate(generationStatusText(gen)) }],
-		details: { exitCode: gen.exitCode },
-	} satisfies OsActionResult;
+	return ok({ text: truncate(generationStatusText(gen)), details: { exitCode: gen.exitCode } });
 }
 
-async function handleNixosRollback(signal: AbortSignal | undefined): Promise<OsActionResult> {
+async function handleNixosRollback(signal: AbortSignal | undefined): Promise<ActionResult> {
 	const result = await run("nixpi-brokerctl", ["nixos-update", "rollback"], signal);
 	const text =
 		result.exitCode === 0
 			? "Rolled back to previous generation. Reboot to complete."
 			: `Rollback failed: ${result.stderr}`;
-	return {
-		content: [{ type: "text" as const, text }],
-		details: { exitCode: result.exitCode },
-		isError: result.exitCode !== 0,
-	} satisfies OsActionResult;
+	if (result.exitCode !== 0) return err(text);
+	return ok({ text, details: { exitCode: result.exitCode } });
 }
 
-function ensureSystemFlakeExists(flake: string): OsActionResult | null {
-	if (fs.existsSync(path.join(flake, "flake.nix"))) {
-		return null;
-	}
-
-	return errorResult(
+function ensureSystemFlakeExists(flake: string): string | null {
+	if (fs.existsSync(path.join(flake, "flake.nix"))) return null;
+	return (
 		`System flake not found at ${flake}. The installed host flake at ${flake} is the running system's source of truth. ` +
-			`Repair or reinstall that installed host flake before applying updates. Any operator checkout such as /srv/nixpi is optional and separate from system convergence.`,
+		`Repair or reinstall that installed host flake before applying updates. Any operator checkout such as /srv/nixpi is optional and separate from system convergence.`
 	);
 }
 
-async function handleNixosApply(signal: AbortSignal | undefined): Promise<OsActionResult> {
+async function handleNixosApply(signal: AbortSignal | undefined): Promise<ActionResult> {
 	const flakeDir = getSystemFlakeDir();
 	const flakeError = ensureSystemFlakeExists(flakeDir);
-	if (flakeError) {
-		return flakeError;
-	}
+	if (flakeError) return err(flakeError);
 
 	const flake = `${flakeDir}#nixos`;
 	const result = await run("nixpi-brokerctl", ["nixos-update", "apply", flake], signal);
@@ -75,21 +53,18 @@ async function handleNixosApply(signal: AbortSignal | undefined): Promise<OsActi
 		result.exitCode === 0
 			? `Update applied successfully from ${flake}. New generation is active.`
 			: `Update failed: ${result.stderr}`;
-	return {
-		content: [{ type: "text" as const, text: truncate(text) }],
-		details: { exitCode: result.exitCode, flake, flakeDir },
-		isError: result.exitCode !== 0,
-	} satisfies OsActionResult;
+	if (result.exitCode !== 0) return err(text);
+	return ok({ text: truncate(text), details: { exitCode: result.exitCode, flake, flakeDir } });
 }
 
 export async function handleNixosUpdate(
 	action: "status" | "apply" | "rollback",
 	signal: AbortSignal | undefined,
 	ctx: ExtensionContext,
-): Promise<OsActionResult> {
+): Promise<ActionResult> {
 	if (action === "apply" || action === "rollback") {
-		const confirmation = await confirmOsMutation(action, ctx);
-		if (confirmation.denied) return errorResult(confirmation.denied);
+		const denied = await requireConfirmation(ctx, `OS ${action}`);
+		if (denied) return err(denied);
 	}
 
 	switch (action) {
@@ -109,37 +84,33 @@ export async function handleSystemdControl(
 	action: "start" | "stop" | "restart" | "status",
 	signal: AbortSignal | undefined,
 	ctx: ExtensionContext,
-) {
+): Promise<ActionResult> {
 	const guard = guardServiceName(service);
-	if (guard) return errorResult(guard);
+	if (guard) return err(guard);
 	const unit = `${service}.service`;
 	const readOnly = action === "status";
 	if (!readOnly) {
 		const denied = await requireConfirmation(ctx, `systemctl ${action} ${unit}`);
-		if (denied) return errorResult(denied);
+		if (denied) return err(denied);
 	}
-	const brokerAction = action;
-	const result = await run("nixpi-brokerctl", ["systemd", brokerAction, unit], signal);
+	const result = await run("nixpi-brokerctl", ["systemd", action, unit], signal);
 	const text = truncate(result.stdout || result.stderr || `systemctl ${action} ${unit} completed.`);
-	return {
-		content: [{ type: "text" as const, text }],
-		details: { exitCode: result.exitCode },
-		isError: result.exitCode !== 0,
-	};
+	if (result.exitCode !== 0) return err(text);
+	return ok({ text, details: { exitCode: result.exitCode } });
 }
 
 // --- Update status handler ---
 
-export async function handleUpdateStatus() {
+export async function handleUpdateStatus(): Promise<ActionResult> {
 	try {
 		const raw = await readFile(getUpdateStatusPath(), "utf-8");
 		const status = JSON.parse(raw) as UpdateStatus;
 		const text = status.available
 			? `Update available (checked ${status.checked}). Current generation: ${status.generation ?? "unknown"}`
 			: `System is up to date (checked ${status.checked}). Generation: ${status.generation ?? "unknown"}`;
-		return { content: [{ type: "text" as const, text }], details: status };
+		return ok({ text, details: status as unknown as Record<string, unknown> });
 	} catch {
-		return errorResult("No update status available. The update timer may not have run yet.");
+		return err("No update status available. The update timer may not have run yet.");
 	}
 }
 
@@ -149,18 +120,15 @@ export async function handleScheduleReboot(
 	delayMinutes: number,
 	signal: AbortSignal | undefined,
 	ctx: ExtensionContext,
-) {
+): Promise<ActionResult> {
 	const delay = Math.max(1, Math.min(7 * 24 * 60, Math.round(delayMinutes)));
 	const denied = await requireConfirmation(ctx, `Schedule reboot in ${delay} minute(s)`);
-	if (denied) return errorResult(denied);
+	if (denied) return err(denied);
 	const result = await run("nixpi-brokerctl", ["schedule-reboot", String(delay)], signal);
 	if (result.exitCode !== 0) {
-		return errorResult(`Failed to schedule reboot:\n${result.stderr}`);
+		return err(`Failed to schedule reboot:\n${result.stderr}`);
 	}
-	return {
-		content: [{ type: "text" as const, text: `Reboot scheduled in ${delay} minute(s).` }],
-		details: { delay_minutes: delay },
-	};
+	return ok({ text: `Reboot scheduled in ${delay} minute(s).`, details: { delay_minutes: delay } });
 }
 
 // --- Update check hook handler ---

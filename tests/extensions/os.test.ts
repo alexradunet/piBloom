@@ -127,13 +127,13 @@ describe("handleNixosUpdate — status", () => {
 	it("returns generation list on exit 0", async () => {
 		mockRun.mockResolvedValueOnce({ stdout: "gen1\ngen2", stderr: "", exitCode: 0 });
 		const result = await handleNixosUpdate("status", undefined, {} as never);
-		expect(result.content[0].text).toContain("gen1");
+		expect(result._unsafeUnwrap().text).toContain("gen1");
 	});
 
 	it("returns stderr on non-zero exit", async () => {
 		mockRun.mockResolvedValueOnce({ stdout: "", stderr: "permission denied", exitCode: 1 });
 		const result = await handleNixosUpdate("status", undefined, {} as never);
-		expect(result.content[0].text).toContain("permission denied");
+		expect(result._unsafeUnwrap().text).toContain("permission denied");
 	});
 });
 
@@ -142,7 +142,7 @@ describe("handleNixosUpdate — rollback", () => {
 		const ctx = createMockExtensionContext();
 		mockRun.mockResolvedValueOnce({ stdout: "", stderr: "", exitCode: 0 });
 		const result = await handleNixosUpdate("rollback", undefined, ctx as never);
-		expect(result.content[0].text).toContain("Rolled back");
+		expect(result._unsafeUnwrap().text).toContain("Rolled back");
 	});
 });
 
@@ -151,11 +151,11 @@ describe("handleNixosUpdate — apply (missing system flake)", () => {
 		vi.spyOn(fs, "existsSync").mockReturnValue(false);
 		const ctx = createMockExtensionContext();
 		const result = await handleNixosUpdate("apply", undefined, ctx as never);
-		expect(result.isError).toBe(true);
-		expect(result.content[0].text).toContain("System flake not found at /etc/nixos");
-		expect(result.content[0].text).toContain("installed host flake");
-		expect(result.content[0].text).toContain("operator checkout");
-		expect(result.content[0].text).toContain("optional");
+		expect(result.isErr()).toBe(true);
+		expect(result._unsafeUnwrapErr()).toContain("System flake not found at /etc/nixos");
+		expect(result._unsafeUnwrapErr()).toContain("installed host flake");
+		expect(result._unsafeUnwrapErr()).toContain("operator checkout");
+		expect(result._unsafeUnwrapErr()).toContain("optional");
 	});
 });
 
@@ -163,21 +163,21 @@ describe("handleSystemdControl", () => {
 	it("rejects non-nixpi services", async () => {
 		const ctx = createMockExtensionContext();
 		const result = await handleSystemdControl("sshd", "status", undefined, ctx as never);
-		expect(result.isError).toBe(true);
+		expect(result.isErr()).toBe(true);
 	});
 
 	it("runs systemctl for nixpi-update status", async () => {
 		mockRun.mockResolvedValueOnce({ stdout: "active", stderr: "", exitCode: 0 });
 		const ctx = createMockExtensionContext();
 		const result = await handleSystemdControl("nixpi-update", "status", undefined, ctx as never);
-		expect(result.content[0].text).toContain("active");
+		expect(result._unsafeUnwrap().text).toContain("active");
 	});
 });
 
 describe("handleUpdateStatus", () => {
 	it("returns a defined text result (file absent case)", async () => {
 		const result = await handleUpdateStatus();
-		expect(result.content[0].text).toBeDefined();
+		expect(result._unsafeUnwrapErr()).toBeDefined();
 	});
 });
 
@@ -191,15 +191,15 @@ describe("handleSystemHealth", () => {
 			.mockResolvedValueOnce({ stdout: "Mem: 4G 2G 2G\n", stderr: "", exitCode: 0 }) // free
 			.mockResolvedValueOnce({ stdout: "up 2 hours", stderr: "", exitCode: 0 }); // uptime
 		const result = await handleSystemHealth(undefined);
-		expect(result.content[0].text).toContain("## OS");
-		expect(result.content[0].text).toContain("gen1 (current)");
+		expect(result._unsafeUnwrap().text).toContain("## OS");
+		expect(result._unsafeUnwrap().text).toContain("gen1 (current)");
 	});
 
 	it("returns text content even when all commands fail", async () => {
 		mockRun.mockResolvedValue({ stdout: "", stderr: "error", exitCode: 1 });
 		const result = await handleSystemHealth(undefined);
-		expect(result.content[0].text).toContain("## OS");
-		expect(result.content[0].text).toContain("nixos-rebuild unavailable");
+		expect(result._unsafeUnwrap().text).toContain("## OS");
+		expect(result._unsafeUnwrap().text).toContain("nixos-rebuild unavailable");
 	});
 
 	it("includes container info when podman returns containers", async () => {
@@ -215,8 +215,8 @@ describe("handleSystemHealth", () => {
 			.mockResolvedValueOnce({ stdout: "", stderr: "", exitCode: 1 }) // free
 			.mockResolvedValueOnce({ stdout: "", stderr: "", exitCode: 1 }); // uptime
 		const result = await handleSystemHealth(undefined);
-		expect(result.content[0].text).toContain("nixpi-runtime");
-		expect(result.content[0].text).toContain("Up 1 hour");
+		expect(result._unsafeUnwrap().text).toContain("nixpi-runtime");
+		expect(result._unsafeUnwrap().text).toContain("Up 1 hour");
 	});
 
 	it("handles podman JSON parse error gracefully", async () => {
@@ -228,7 +228,7 @@ describe("handleSystemHealth", () => {
 			.mockResolvedValueOnce({ stdout: "", stderr: "", exitCode: 1 }) // free
 			.mockResolvedValueOnce({ stdout: "", stderr: "", exitCode: 1 }); // uptime
 		const result = await handleSystemHealth(undefined);
-		expect(result.content[0].text).toContain("parse error");
+		expect(result._unsafeUnwrap().text).toContain("parse error");
 	});
 
 	it("handles partial failures — nixos success but disk failure", async () => {
@@ -240,8 +240,8 @@ describe("handleSystemHealth", () => {
 			.mockResolvedValueOnce({ stdout: "", stderr: "", exitCode: 1 }) // free fails
 			.mockResolvedValueOnce({ stdout: "", stderr: "", exitCode: 1 }); // uptime fails
 		const result = await handleSystemHealth(undefined);
-		expect(result.content[0].text).toContain("gen1 (current)");
-		expect(result.content[0].text).toContain("## OS");
+		expect(result._unsafeUnwrap().text).toContain("gen1 (current)");
+		expect(result._unsafeUnwrap().text).toContain("## OS");
 	});
 });
 
@@ -254,8 +254,8 @@ describe("handleNixosUpdate — apply (success)", () => {
 		mockRun.mockResolvedValueOnce({ stdout: "", stderr: "", exitCode: 0 }); // brokerctl apply
 		const ctx = createMockExtensionContext();
 		const result = await handleNixosUpdate("apply", undefined, ctx as never);
-		expect(result.isError).toBeFalsy();
-		expect(result.content[0].text).toContain("Update applied successfully");
+		expect(result.isErr()).toBe(false);
+		expect(result._unsafeUnwrap().text).toContain("Update applied successfully");
 		expect(mockRun).toHaveBeenCalledTimes(1);
 		expect(mockRun).toHaveBeenCalledWith("nixpi-brokerctl", ["nixos-update", "apply", "/etc/nixos#nixos"], undefined);
 	});
@@ -265,8 +265,8 @@ describe("handleNixosUpdate — apply (success)", () => {
 		mockRun.mockResolvedValueOnce({ stdout: "", stderr: "build failed", exitCode: 1 }); // brokerctl apply
 		const ctx = createMockExtensionContext();
 		const result = await handleNixosUpdate("apply", undefined, ctx as never);
-		expect(result.isError).toBe(true);
-		expect(result.content[0].text).toContain("build failed");
+		expect(result.isErr()).toBe(true);
+		expect(result._unsafeUnwrapErr()).toContain("build failed");
 	});
 });
 
@@ -277,8 +277,8 @@ describe("handleNixosUpdate — confirmation denial", () => {
 	it("returns error when user declines rollback confirmation", async () => {
 		const ctx = { hasUI: true, ui: { confirm: vi.fn().mockResolvedValue(false) } } as never;
 		const result = await handleNixosUpdate("rollback", undefined, ctx);
-		expect(result.isError).toBe(true);
-		expect(result.content[0].text).toContain("declined");
+		expect(result.isErr()).toBe(true);
+		expect(result._unsafeUnwrapErr()).toContain("declined");
 	});
 });
 
@@ -290,36 +290,36 @@ describe("handleSystemdControl — mutating actions", () => {
 		mockRun.mockResolvedValueOnce({ stdout: "started", stderr: "", exitCode: 0 });
 		const ctx = createMockExtensionContext();
 		const result = await handleSystemdControl("nixpi-update", "start", undefined, ctx as never);
-		expect(result.isError).toBeFalsy();
-		expect(result.content[0].text).toContain("started");
+		expect(result.isErr()).toBe(false);
+		expect(result._unsafeUnwrap().text).toContain("started");
 	});
 
 	it("runs stop action on a valid nixpi service", async () => {
 		mockRun.mockResolvedValueOnce({ stdout: "", stderr: "", exitCode: 0 });
 		const ctx = createMockExtensionContext();
 		const result = await handleSystemdControl("nixpi-update", "stop", undefined, ctx as never);
-		expect(result.isError).toBeFalsy();
+		expect(result.isErr()).toBe(false);
 	});
 
 	it("runs restart action on a valid nixpi service", async () => {
 		mockRun.mockResolvedValueOnce({ stdout: "", stderr: "", exitCode: 0 });
 		const ctx = createMockExtensionContext();
 		const result = await handleSystemdControl("nixpi-update", "restart", undefined, ctx as never);
-		expect(result.isError).toBeFalsy();
+		expect(result.isErr()).toBe(false);
 	});
 
 	it("returns error when user declines start confirmation", async () => {
 		const ctx = { hasUI: true, ui: { confirm: vi.fn().mockResolvedValue(false) } } as never;
 		const result = await handleSystemdControl("nixpi-update", "start", undefined, ctx);
-		expect(result.isError).toBe(true);
-		expect(result.content[0].text).toContain("declined");
+		expect(result.isErr()).toBe(true);
+		expect(result._unsafeUnwrapErr()).toContain("declined");
 	});
 
 	it("returns error on non-zero exit code", async () => {
 		mockRun.mockResolvedValueOnce({ stdout: "", stderr: "unit not found", exitCode: 5 });
 		const ctx = createMockExtensionContext();
 		const result = await handleSystemdControl("nixpi-update", "start", undefined, ctx as never);
-		expect(result.isError).toBe(true);
+		expect(result.isErr()).toBe(true);
 	});
 });
 
@@ -331,36 +331,36 @@ describe("handleScheduleReboot", () => {
 		mockRun.mockResolvedValueOnce({ stdout: "", stderr: "", exitCode: 0 });
 		const ctx = createMockExtensionContext();
 		const result = await handleScheduleReboot(10, undefined, ctx as never);
-		expect(result.isError).toBeFalsy();
-		expect(result.content[0].text).toContain("Reboot scheduled in 10 minute(s)");
+		expect(result.isErr()).toBe(false);
+		expect(result._unsafeUnwrap().text).toContain("Reboot scheduled in 10 minute(s)");
 	});
 
 	it("clamps delay to minimum of 1 minute", async () => {
 		mockRun.mockResolvedValueOnce({ stdout: "", stderr: "", exitCode: 0 });
 		const ctx = createMockExtensionContext();
 		const result = await handleScheduleReboot(0, undefined, ctx as never);
-		expect(result.content[0].text).toContain("1 minute(s)");
+		expect(result._unsafeUnwrap().text).toContain("1 minute(s)");
 	});
 
 	it("clamps delay to maximum of 7 days (10080 minutes)", async () => {
 		mockRun.mockResolvedValueOnce({ stdout: "", stderr: "", exitCode: 0 });
 		const ctx = createMockExtensionContext();
 		const result = await handleScheduleReboot(99999, undefined, ctx as never);
-		expect(result.content[0].text).toContain("10080 minute(s)");
+		expect(result._unsafeUnwrap().text).toContain("10080 minute(s)");
 	});
 
 	it("returns error when brokerctl fails", async () => {
 		mockRun.mockResolvedValueOnce({ stdout: "", stderr: "permission denied", exitCode: 1 });
 		const ctx = createMockExtensionContext();
 		const result = await handleScheduleReboot(5, undefined, ctx as never);
-		expect(result.isError).toBe(true);
-		expect(result.content[0].text).toContain("Failed to schedule reboot");
+		expect(result.isErr()).toBe(true);
+		expect(result._unsafeUnwrapErr()).toContain("Failed to schedule reboot");
 	});
 
 	it("returns error when user declines confirmation", async () => {
 		const ctx = { hasUI: true, ui: { confirm: vi.fn().mockResolvedValue(false) } } as never;
 		const result = await handleScheduleReboot(5, undefined, ctx);
-		expect(result.isError).toBe(true);
+		expect(result.isErr()).toBe(true);
 	});
 });
 
