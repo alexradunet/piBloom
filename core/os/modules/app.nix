@@ -7,6 +7,7 @@
 }:
 
 let
+  cfg = config.nixpi.app;
   inherit (config.nixpi) primaryUser stateDir;
   inherit (config.nixpi.agent) piDir;
   agentStateDir = piDir;
@@ -44,7 +45,14 @@ in
 {
   imports = [ ./options.nix ];
 
-  environment.systemPackages = [
+  options.nixpi.app.enable = lib.mkOption {
+    type = lib.types.bool;
+    default = true;
+    description = "Whether the NixPI Pi agent app service and packages are installed.";
+  };
+
+  config = lib.mkIf cfg.enable {
+    environment.systemPackages = [
     appPackage
     piCommand
   ];
@@ -93,6 +101,8 @@ in
       User = "root";
       ExecStart = "${appSetupScript}";
     };
+  };
+
   };
 
 }
