@@ -7,6 +7,7 @@
 }:
 
 let
+  cfg = config.nixpi.shell;
   inherit (config.nixpi) allowPrimaryUserChange primaryUser stateDir;
   primaryHome = "/home/${primaryUser}";
   inherit (config.nixpi.agent) piDir workspaceDir;
@@ -16,7 +17,13 @@ in
 {
   imports = [ ./options.nix ];
 
-  config = {
+  options.nixpi.shell.enable = lib.mkOption {
+    type = lib.types.bool;
+    default = true;
+    description = "Whether the NixPI shell environment (user account, bash, session variables) is enabled. Defaults true for OVH KVM console access.";
+  };
+
+  config = lib.mkIf cfg.enable {
     assertions = [
       {
         assertion = primaryUser != "";
