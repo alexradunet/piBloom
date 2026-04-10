@@ -5,6 +5,20 @@
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import { truncateHead } from "@mariozechner/pi-coding-agent";
 import { Type } from "@sinclair/typebox";
+import { type Result, err, ok } from "neverthrow";
+
+/** Canonical result type for all extension action functions. */
+export type ActionResult = Result<{ text: string; details?: Record<string, unknown> }, string>;
+
+export { ok, err };
+
+/** Convert an ActionResult to the tool result shape expected by pi-coding-agent. */
+export function toToolResult(result: ActionResult) {
+	if (result.isErr()) {
+		return textToolResult(result.error, {}, true);
+	}
+	return textToolResult(result.value.text, result.value.details ?? {});
+}
 
 export function truncate(text: string): string {
 	return truncateHead(text, { maxLines: 2000, maxBytes: 50000 }).content;
