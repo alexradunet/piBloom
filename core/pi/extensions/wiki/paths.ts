@@ -39,16 +39,20 @@ export function dedupeSlug(baseSlug: string, existingSlugs: string[]): string {
 	return `${baseSlug}-${i}`;
 }
 
+function startsWithDir(rel: string, dir: string): boolean {
+	return rel === dir || rel.startsWith(`${dir}${path.sep}`);
+}
+
 export function isProtectedPath(wikiRoot: string, absolutePath: string): boolean {
 	const rel = path.relative(wikiRoot, absolutePath);
 	if (rel.startsWith("..") || path.isAbsolute(rel)) return false;
-	return rel.startsWith(`raw${path.sep}`) || rel.startsWith("raw/") || rel.startsWith(`meta${path.sep}`) || rel.startsWith("meta/");
+	return startsWithDir(rel, "raw") || startsWithDir(rel, "meta");
 }
 
 export function isWikiPagePath(wikiRoot: string, absolutePath: string): boolean {
 	const rel = path.relative(wikiRoot, absolutePath);
 	if (rel.startsWith("..") || path.isAbsolute(rel)) return false;
-	return rel.startsWith(`pages${path.sep}`) || rel.startsWith("pages/");
+	return startsWithDir(rel, "pages");
 }
 
 export function normalizeWikiLink(target: string): string | undefined {

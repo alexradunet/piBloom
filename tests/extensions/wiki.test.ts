@@ -6,6 +6,7 @@ import {
 	extractHeadings,
 	extractWikiLinks,
 	isProtectedPath,
+	isWikiPagePath,
 	makeSourceId,
 	normalizeWikiLink,
 	slugifyTitle,
@@ -125,6 +126,36 @@ describe("isProtectedPath", () => {
 
 	it("does not block paths outside the wiki root", () => {
 		expect(isProtectedPath(WIKI_ROOT, "/tmp/some-other-file.txt")).toBe(false);
+	});
+
+	it("returns true for the raw/ directory itself", async () => {
+		const { isProtectedPath } = await import("../../core/pi/extensions/wiki/paths.js");
+		expect(isProtectedPath("/home/user/nixpi/Wiki", "/home/user/nixpi/Wiki/raw")).toBe(true);
+	});
+});
+
+// ---------------------------------------------------------------------------
+// isWikiPagePath
+// ---------------------------------------------------------------------------
+describe("isWikiPagePath", () => {
+	it("returns true for pages/ paths", async () => {
+		const { isWikiPagePath } = await import("../../core/pi/extensions/wiki/paths.js");
+		expect(isWikiPagePath("/home/user/nixpi/Wiki", "/home/user/nixpi/Wiki/pages/my-page.md")).toBe(true);
+	});
+
+	it("returns true for the pages/ directory itself", async () => {
+		const { isWikiPagePath } = await import("../../core/pi/extensions/wiki/paths.js");
+		expect(isWikiPagePath("/home/user/nixpi/Wiki", "/home/user/nixpi/Wiki/pages")).toBe(true);
+	});
+
+	it("returns false for raw/ paths", async () => {
+		const { isWikiPagePath } = await import("../../core/pi/extensions/wiki/paths.js");
+		expect(isWikiPagePath("/home/user/nixpi/Wiki", "/home/user/nixpi/Wiki/raw/SRC-001/manifest.json")).toBe(false);
+	});
+
+	it("returns false for paths outside wiki root", async () => {
+		const { isWikiPagePath } = await import("../../core/pi/extensions/wiki/paths.js");
+		expect(isWikiPagePath("/home/user/nixpi/Wiki", "/home/user/other/file.md")).toBe(false);
 	});
 });
 

@@ -26,7 +26,7 @@ export interface RegistryEntry {
 	title: string;
 	aliases: string[];
 	summary: string;
-	status: string;
+	status: "draft" | "active" | "contested" | "superseded" | "archived" | "captured" | "integrated";
 	tags: string[];
 	updated: string;
 	sourceIds: string[];
