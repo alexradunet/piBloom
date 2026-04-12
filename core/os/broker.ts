@@ -20,6 +20,10 @@ export interface BrokerConfig {
 	defaultAutonomy: AutonomyLevel;
 	elevationDuration: string;
 	osUpdateEnable: boolean;
+	stagedHostConfigEnable?: boolean;
+	stagedHostConfigSourceFile?: string;
+	stagedHostConfigTargetFile?: string;
+	stagedHostConfigFileMode?: string;
 	allowedUnits: string[];
 	defaultFlake: string;
 }
@@ -155,6 +159,61 @@ async function handleNixosUpdateRequest(
 	throw new Error(`unsupported nixos-update action: ${request.action}`);
 }
 
+function stagedHostConfigMode(config: BrokerConfig): string {
+	const mode = config.stagedHostConfigFileMode?.trim() || "0644";
+	if (!/^0?[0-7]{3,4}$/.test(mode)) {
+		throw new Error(`invalid staged host config file mode: ${mode}`);
+	}
+	return mode.startsWith("0") ? mode : `0${mode}`;
+}
+
+async function syncStagedHostConfig(runtime: BrokerRuntime, config: BrokerConfig): Promise<BrokerCommandResult> {
+	const source = config.stagedHostConfigSourceFile?.trim();
+	const target = config.stagedHostConfigTargetFile?.trim();
+	if (!config.stagedHostConfigEnable) {
+		throw new PermissionError("Staged host config sync is disabled");
+	}
+	if (!source || !target) {
+		throw new Error("staged host config source or target is not configured");
+	}
+
+	const sync = await runtime.runCommand(["install", "-D", "-m", stagedHostConfigMode(config), source, target]);
+	if (sync.exitCode !== 0) {
+		return sync;
+	}
+	return {
+		ok: true,
+		stdout: `Synced staged host config: ${source} -> ${target}\n`,
+		stderr: "",
+		exitCode: 0,
+	};
+}
+
+async function handleStagedHostConfigRequest(
+	runtime: BrokerRuntime,
+	config: BrokerConfig,
+	request: BrokerRequest,
+): Promise<BrokerCommandResult> {
+	await ensureAllowedLevel(runtime, config, "admin");
+	if (request.action === "sync") {
+		return syncStagedHostConfig(runtime, config);
+	}
+	if (request.action === "apply") {
+		const sync = await syncStagedHostConfig(runtime, config);
+		if (sync.exitCode !== 0) {
+			return sync;
+		}
+		const apply = await runtime.runCommand(["nixos-rebuild", "switch", "--flake", config.defaultFlake]);
+		return {
+			ok: apply.exitCode === 0,
+			stdout: `${sync.stdout}${apply.stdout}`,
+			stderr: apply.stderr,
+			exitCode: apply.exitCode,
+		};
+	}
+	throw new Error(`unsupported staged-host-config action: ${request.action}`);
+}
+
 async function handleScheduleRebootRequest(
 	runtime: BrokerRuntime,
 	config: BrokerConfig,
@@ -175,6 +234,8 @@ export async function handleRequest(
 			return handleSystemdRequest(runtime, config, request);
 		case "nixos-update":
 			return handleNixosUpdateRequest(runtime, config, request);
+		case "staged-host-config":
+			return handleStagedHostConfigRequest(runtime, config, request);
 		case "schedule-reboot":
 			return handleScheduleRebootRequest(runtime, config, request);
 		default:
@@ -310,7 +371,7 @@ export async function serve(
 
 export async function main(runtime: BrokerRuntime, config: BrokerConfig, argv: string[]): Promise<number> {
 	if (argv.length < 2) {
-		runtime.stderr("usage: nixpi-broker <server|status|grant-admin|revoke-admin|systemd|nixos-update|schedule-reboot>");
+		runtime.stderr("usage: nixpi-broker <server|status|grant-admin|revoke-admin|systemd|nixos-update|staged-host-config|schedule-reboot>");
 		return 1;
 	}
 
@@ -344,6 +405,13 @@ export async function main(runtime: BrokerRuntime, config: BrokerConfig, argv: s
 			return 1;
 		}
 		return request(runtime, config, { operation: "nixos-update", action: argv[2] });
+	}
+	if (cmd === "staged-host-config") {
+		if (argv.length !== 3) {
+			runtime.stderr("usage: nixpi-broker staged-host-config <sync|apply>");
+			return 1;
+		}
+		return request(runtime, config, { operation: "staged-host-config", action: argv[2] });
 	}
 	if (cmd === "schedule-reboot") {
 		if (argv.length !== 3) {

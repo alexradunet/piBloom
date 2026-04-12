@@ -170,6 +170,34 @@ in
         default = true;
         description = "Whether the broker may apply or roll back NixOS generations.";
       };
+      stagedHostConfig = {
+        enable = lib.mkOption {
+          type = lib.types.bool;
+          default = true;
+          description = ''
+            Whether the broker may sync a staged host-local NixOS file into the
+            installed `/etc/nixos` tree and optionally rebuild immediately.
+            Defaults true so hosts following the `/srv/<hostname>-private`
+            mirror convention can apply staged `nixpi-host.nix` changes through
+            the broker without blanket sudo.
+          '';
+        };
+        sourceFile = lib.mkOption {
+          type = absolutePath;
+          default = "/srv/${config.networking.hostName}-private/nixpi-host.nix";
+          description = "Absolute path to the staged host-specific NixOS file that should be synced into /etc/nixos before rebuild.";
+        };
+        targetFile = lib.mkOption {
+          type = absolutePath;
+          default = "/etc/nixos/nixpi-host.nix";
+          description = "Absolute target path inside the installed host flake that receives the staged host config file.";
+        };
+        fileMode = lib.mkOption {
+          type = lib.types.str;
+          default = "0644";
+          description = "File mode used when syncing the staged host config into the installed /etc/nixos tree.";
+        };
+      };
       packagePaths = lib.mkOption {
         type = lib.types.listOf lib.types.str;
         default = [ "/usr/local/share/nixpi" ];

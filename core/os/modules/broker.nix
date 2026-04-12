@@ -23,6 +23,10 @@ let
       defaultAutonomy = config.nixpi.agent.autonomy;
       elevationDuration = config.nixpi.agent.elevation.duration;
       osUpdateEnable = config.nixpi.agent.osUpdate.enable;
+      stagedHostConfigEnable = config.nixpi.agent.stagedHostConfig.enable;
+      stagedHostConfigSourceFile = config.nixpi.agent.stagedHostConfig.sourceFile;
+      stagedHostConfigTargetFile = config.nixpi.agent.stagedHostConfig.targetFile;
+      stagedHostConfigFileMode = config.nixpi.agent.stagedHostConfig.fileMode;
       inherit (config.nixpi.agent) allowedUnits;
       defaultFlake = config.nixpi.flake;
     }

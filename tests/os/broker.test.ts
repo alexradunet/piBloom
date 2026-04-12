@@ -28,6 +28,10 @@ const baseConfig: BrokerConfig = {
 	defaultAutonomy: "maintain",
 	elevationDuration: "30m",
 	osUpdateEnable: true,
+	stagedHostConfigEnable: true,
+	stagedHostConfigSourceFile: "/srv/tester-private/nixpi-host.nix",
+	stagedHostConfigTargetFile: "/etc/nixos/nixpi-host.nix",
+	stagedHostConfigFileMode: "0644",
 	allowedUnits: ["nixpi-update.service"],
 	defaultFlake: "/etc/nixos#nixos",
 };
@@ -224,6 +228,46 @@ describe("handleRequest", () => {
 		});
 
 		expect(state.commands).toEqual([["nixos-rebuild", "switch", "--flake", baseConfig.defaultFlake]]);
+	});
+
+	it("syncs staged host config and rebuilds from the installed flake when elevated", async () => {
+		const { runtime, state } = createRuntime(
+			async (_args) => ({
+				ok: true,
+				stdout: "",
+				stderr: "",
+				exitCode: 0,
+			}),
+			{
+				files: new Map([[baseConfig.elevationPath, JSON.stringify({ until: 5000, grantedAt: 1000 })]]),
+			},
+		);
+
+		const result = await handleRequest(runtime, baseConfig, {
+			operation: "staged-host-config",
+			action: "apply",
+		});
+
+		expect(result.exitCode).toBe(0);
+		expect(result.stdout).toContain("Synced staged host config");
+		expect(state.commands).toEqual([
+			["install", "-D", "-m", "0644", baseConfig.stagedHostConfigSourceFile!, baseConfig.stagedHostConfigTargetFile!],
+			["nixos-rebuild", "switch", "--flake", baseConfig.defaultFlake],
+		]);
+	});
+
+	it("returns the explicit staged host config disable error after elevation", async () => {
+		const config = { ...baseConfig, stagedHostConfigEnable: false };
+		const { runtime } = createRuntime(async () => ({ ok: true, stdout: "", stderr: "", exitCode: 0 }), {
+			files: new Map([[config.elevationPath, JSON.stringify({ until: 5000, grantedAt: 1000 })]]),
+		});
+
+		await expect(
+			handleRequest(runtime, config, {
+				operation: "staged-host-config",
+				action: "apply",
+			}),
+		).rejects.toEqual(new PermissionError("Staged host config sync is disabled"));
 	});
 
 	it("clamps reboot scheduling to one week", async () => {
