@@ -55,28 +55,31 @@ let
       touch ${cfg.stateDir}/.migrated-from-legacy
     fi
 
-    if [ -f ${lib.escapeShellArg cfg.sourceAgentDir}/auth.json ] && [ ! -e ${cfg.agentDir}/auth.json ]; then
-      install -m 0600 -o ${cfg.user} -g ${cfg.group} ${lib.escapeShellArg cfg.sourceAgentDir}/auth.json ${cfg.agentDir}/auth.json
-    fi
+    if [ ! -e ${cfg.agentDir}/.seeded-from-source-agent ]; then
+      if [ -f ${lib.escapeShellArg cfg.sourceAgentDir}/auth.json ] && [ ! -e ${cfg.agentDir}/auth.json ]; then
+        install -m 0600 -o ${cfg.user} -g ${cfg.group} ${lib.escapeShellArg cfg.sourceAgentDir}/auth.json ${cfg.agentDir}/auth.json
+      fi
 
-    if [ -f ${lib.escapeShellArg cfg.sourceAgentDir}/settings.json ]; then
-      install -m 0644 -o ${cfg.user} -g ${cfg.group} ${lib.escapeShellArg cfg.sourceAgentDir}/settings.json ${cfg.agentDir}/settings.json
-    fi
+      if [ -f ${lib.escapeShellArg cfg.sourceAgentDir}/settings.json ] && [ ! -e ${cfg.agentDir}/settings.json ]; then
+        install -m 0644 -o ${cfg.user} -g ${cfg.group} ${lib.escapeShellArg cfg.sourceAgentDir}/settings.json ${cfg.agentDir}/settings.json
+      fi
 
-    if [ -f ${lib.escapeShellArg cfg.sourceAgentDir}/agent/settings.json ]; then
-      sed "s|${cfg.sourceAgentDir}/agent|${cfg.agentDir}/agent|g" \
-        ${lib.escapeShellArg cfg.sourceAgentDir}/agent/settings.json \
-        > ${cfg.agentDir}/agent/settings.json
-      chown ${cfg.user}:${cfg.group} ${cfg.agentDir}/agent/settings.json
-      chmod 0644 ${cfg.agentDir}/agent/settings.json
-    fi
+      if [ -f ${lib.escapeShellArg cfg.sourceAgentDir}/agent/settings.json ] && [ ! -e ${cfg.agentDir}/agent/settings.json ]; then
+        sed "s|${cfg.sourceAgentDir}/agent|${cfg.agentDir}/agent|g" \
+          ${lib.escapeShellArg cfg.sourceAgentDir}/agent/settings.json \
+          > ${cfg.agentDir}/agent/settings.json
+        chown ${cfg.user}:${cfg.group} ${cfg.agentDir}/agent/settings.json
+        chmod 0644 ${cfg.agentDir}/agent/settings.json
+      fi
 
-    rm -rf ${cfg.agentDir}/agent/extensions ${cfg.agentDir}/agent/local-packages
-    if [ -d ${lib.escapeShellArg cfg.sourceAgentDir}/agent/extensions ]; then
-      cp -a ${lib.escapeShellArg cfg.sourceAgentDir}/agent/extensions ${cfg.agentDir}/agent/extensions
-    fi
-    if [ -d ${lib.escapeShellArg cfg.sourceAgentDir}/agent/local-packages ]; then
-      cp -a ${lib.escapeShellArg cfg.sourceAgentDir}/agent/local-packages ${cfg.agentDir}/agent/local-packages
+      if [ -d ${lib.escapeShellArg cfg.sourceAgentDir}/agent/extensions ] && [ ! -e ${cfg.agentDir}/agent/extensions ]; then
+        cp -a ${lib.escapeShellArg cfg.sourceAgentDir}/agent/extensions ${cfg.agentDir}/agent/extensions
+      fi
+      if [ -d ${lib.escapeShellArg cfg.sourceAgentDir}/agent/local-packages ] && [ ! -e ${cfg.agentDir}/agent/local-packages ]; then
+        cp -a ${lib.escapeShellArg cfg.sourceAgentDir}/agent/local-packages ${cfg.agentDir}/agent/local-packages
+      fi
+
+      touch ${cfg.agentDir}/.seeded-from-source-agent
     fi
 
     if [ -e ${cfg.agentDir}/auth.json ]; then
