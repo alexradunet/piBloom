@@ -10,6 +10,7 @@ let
   signalCfg = cfg.modules.signal;
   gatewayPackage = pkgs.callPackage ../pkgs/pi-gateway { };
   signalCliDataDir = "${signalCfg.stateDir}/signal-cli-data";
+  enabledModuleCount = lib.length (lib.filter (x: x) [ signalCfg.enable ]);
   gatewayConfig = pkgs.writeText "nixpi-gateway.yml" (
     lib.generators.toYAML { } {
       gateway = {
@@ -66,20 +67,26 @@ let
       ${cfg.stateDir} \
       ${cfg.stateDir}/pi-sessions \
       ${cfg.stateDir}/tmp \
-      ${signalCfg.stateDir} \
-      ${signalCliDataDir} \
       ${cfg.agentDir} \
       ${cfg.agentDir}/agent
+
+${lib.optionalString signalCfg.enable ''
+    install -d -m 0700 -o ${cfg.user} -g ${cfg.group} \
+      ${signalCfg.stateDir} \
+      ${signalCliDataDir}
+''}
 
     migrate_legacy_state() {
       local legacy_dir="$1"
       [ -d "$legacy_dir" ] || return 0
 
+${lib.optionalString signalCfg.enable ''
       if [ -d "$legacy_dir/signal-cli-data" ] \
         && [ ! -e ${signalCliDataDir}/accounts.json ] \
         && [ ! -e ${signalCliDataDir}/data/accounts.json ]; then
         cp -a "$legacy_dir/signal-cli-data/." ${signalCliDataDir}/
       fi
+''}
 
       if [ -d "$legacy_dir/pi-sessions" ] && [ ! -e ${cfg.stateDir}/pi-sessions/.migrated-from-legacy ]; then
         cp -a "$legacy_dir/pi-sessions/." ${cfg.stateDir}/pi-sessions/
@@ -159,8 +166,13 @@ in
 {
   imports = [ ./options.nix ];
 
-  config = lib.mkIf (cfg.enable && signalCfg.enable) {
+  config = lib.mkIf cfg.enable {
     assertions = [
+      {
+        assertion = enabledModuleCount > 0;
+        message = "At least one nixpi.gateway.modules.* transport must be enabled when nixpi.gateway.enable is true.";
+      }
+    ] ++ lib.optionals signalCfg.enable [
       {
         assertion = signalCfg.account != "";
         message = "nixpi.gateway.modules.signal.account must not be empty when the Signal module is enabled.";
@@ -168,10 +180,6 @@ in
       {
         assertion = signalCfg.allowedNumbers != [ ];
         message = "nixpi.gateway.modules.signal.allowedNumbers must not be empty when the Signal module is enabled.";
-      }
-      {
-        assertion = signalCfg.adminNumbers != [ ];
-        message = "nixpi.gateway.modules.signal.adminNumbers must not be empty when the Signal module is enabled.";
       }
     ];
 
@@ -184,7 +192,7 @@ in
       description = "NixPI gateway service account";
     };
 
-    environment.systemPackages = [ gatewayPackage pkgs.signal-cli ];
+    environment.systemPackages = [ gatewayPackage ] ++ lib.optional signalCfg.enable pkgs.signal-cli;
 
     systemd.tmpfiles.settings.nixpi-gateway = {
       "${cfg.stateDir}".d = {
@@ -202,16 +210,6 @@ in
         user = cfg.user;
         group = cfg.group;
       };
-      "${signalCfg.stateDir}".d = {
-        mode = "0700";
-        user = cfg.user;
-        group = cfg.group;
-      };
-      "${signalCliDataDir}".d = {
-        mode = "0700";
-        user = cfg.user;
-        group = cfg.group;
-      };
       "${cfg.agentDir}".d = {
         mode = "0700";
         user = cfg.user;
@@ -222,12 +220,23 @@ in
         user = cfg.user;
         group = cfg.group;
       };
+    } // lib.optionalAttrs signalCfg.enable {
+      "${signalCfg.stateDir}".d = {
+        mode = "0700";
+        user = cfg.user;
+        group = cfg.group;
+      };
+      "${signalCliDataDir}".d = {
+        mode = "0700";
+        user = cfg.user;
+        group = cfg.group;
+      };
     };
 
     systemd.services.nixpi-gateway-setup = {
       description = "NixPI gateway setup and migration";
       wantedBy = [ "multi-user.target" ];
-      before = [ "nixpi-signal-daemon.service" "nixpi-gateway.service" ];
+      before = [ "nixpi-gateway.service" ] ++ lib.optionals signalCfg.enable [ "nixpi-signal-daemon.service" ];
       after = [ "systemd-tmpfiles-setup.service" "nixpi-app-setup.service" ];
       requires = [ "nixpi-app-setup.service" ];
       aliases = [ "nixpi-signal-gateway-setup.service" ];
@@ -241,7 +250,7 @@ in
       restartTriggers = [ gatewayConfig defaultPiSettings defaultAgentSettings ];
     };
 
-    systemd.services.nixpi-signal-daemon = {
+    systemd.services.nixpi-signal-daemon = lib.mkIf signalCfg.enable {
       description = "NixPI Signal transport daemon";
       wantedBy = [ "multi-user.target" ];
       after = [ "network-online.target" "nixpi-gateway-setup.service" ];
@@ -272,8 +281,8 @@ in
     systemd.services.nixpi-gateway = {
       description = "NixPI gateway";
       wantedBy = [ "multi-user.target" ];
-      after = [ "network-online.target" "nixpi-signal-daemon.service" "nixpi-gateway-setup.service" ];
-      wants = [ "network-online.target" "nixpi-signal-daemon.service" "nixpi-gateway-setup.service" ];
+      after = [ "network-online.target" "nixpi-gateway-setup.service" ] ++ lib.optionals signalCfg.enable [ "nixpi-signal-daemon.service" ];
+      wants = [ "network-online.target" "nixpi-gateway-setup.service" ] ++ lib.optionals signalCfg.enable [ "nixpi-signal-daemon.service" ];
       aliases = [ "nixpi-signal-gateway.service" ];
       restartTriggers = [ defaultPiSettings defaultAgentSettings gatewayConfig ];
       serviceConfig = {
@@ -281,7 +290,6 @@ in
         User = cfg.user;
         Group = cfg.group;
         WorkingDirectory = cfg.agentDir;
-        ExecStartPre = waitForSignalDaemon;
         ExecStart = lib.escapeShellArgs [ "${gatewayPackage}/bin/nixpi-gateway" gatewayConfig ];
         Restart = "on-failure";
         RestartSec = 3;
@@ -293,6 +301,8 @@ in
           "NIXPI_STATE_DIR=${config.nixpi.stateDir}"
           "NIXPI_BOOTSTRAP_MODE=${bootstrapMode}"
         ];
+      } // lib.optionalAttrs signalCfg.enable {
+        ExecStartPre = waitForSignalDaemon;
       };
     };
   };

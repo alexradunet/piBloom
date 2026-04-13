@@ -6,6 +6,10 @@ export class Policy {
     return msg.access.allowedSenderIds.includes(msg.senderId);
   }
 
+  isAdminSender(msg: InboundMessage): boolean {
+    return msg.access.adminSenderIds.includes(msg.senderId);
+  }
+
   isAllowedMessage(msg: InboundMessage): boolean {
     if (msg.access.directMessagesOnly && msg.isGroup) return false;
     return true;

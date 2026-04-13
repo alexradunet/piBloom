@@ -1,5 +1,6 @@
 export type InboundAccessPolicy = {
   allowedSenderIds: string[];
+  adminSenderIds: string[];
   directMessagesOnly: boolean;
   selfSenderIds: string[];
 };

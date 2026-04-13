@@ -42,7 +42,7 @@ export class Router {
       return { replies: [], markProcessed: true };
     }
 
-    const builtin = this.handleBuiltin(msg.chatId, msg.channel, text);
+    const builtin = this.handleBuiltin(msg, text);
     if (builtin) {
       return {
         replies: chunkText(
@@ -86,24 +86,45 @@ export class Router {
     }
   }
 
-  private handleBuiltin(chatId: string, channel: string, text: string): string | null {
+  private handleBuiltin(msg: InboundMessage, text: string): string | null {
     const lowered = text.toLowerCase();
+    const isAdmin = this.policy.isAdminSender(msg);
 
     if (lowered === "help") {
-      return [
-        `You can chat with Pi here through ${channel}.`,
+      const lines = [
+        `You can chat with Pi here through ${msg.channel}.`,
         "",
         "Built-ins:",
         "- help",
         "- reset",
-        "",
-        "Everything else is sent to Pi.",
-      ].join("\n");
+      ];
+
+      if (isAdmin) {
+        lines.push("- admin status");
+      }
+
+      lines.push("", "Everything else is sent to Pi.");
+      return lines.join("\n");
     }
 
     if (lowered === "reset") {
-      this.store.resetChatSession(chatId);
-      return `Started a fresh conversation for this ${channel} chat.`;
+      this.store.resetChatSession(msg.chatId);
+      return `Started a fresh conversation for this ${msg.channel} chat.`;
+    }
+
+    if (lowered === "admin status") {
+      if (!isAdmin) {
+        return "That command is admin-only for this gateway module.";
+      }
+
+      const existing = this.store.getChatSession(msg.chatId);
+      return [
+        `channel: ${msg.channel}`,
+        `sender: ${msg.senderId}`,
+        `admin: yes`,
+        `chat_id: ${msg.chatId}`,
+        `session: ${existing ? existing.sessionPath : "none"}`,
+      ].join("\n");
     }
 
     return null;

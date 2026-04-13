@@ -23,6 +23,7 @@ export class SignalModule implements GatewayModule {
         ...msg,
         access: {
           allowedSenderIds: this.config.allowedNumbers,
+          adminSenderIds: this.config.adminNumbers,
           directMessagesOnly: this.config.directMessagesOnly,
           selfSenderIds: [this.config.account],
         },
