@@ -47,14 +47,17 @@
   networking.firewall.allowedUDPPorts = [ 51820 ];
   networking.firewall.interfaces.wg0.allowedTCPPorts = [ 22 ];
 
-  nixpi.signalGateway = {
+  nixpi.gateway = {
     enable = true;
-    account = "+40749599297";
-    allowedNumbers = [ "+40724417990" ];
-    adminNumbers = [ "+40724417990" ];
     piCwd = "/home/alex";
     defaultProvider = "cortecs";
     defaultModel = "minimax-m2.5";
+    modules.signal = {
+      enable = true;
+      account = "+40749599297";
+      allowedNumbers = [ "+40724417990" ];
+      adminNumbers = [ "+40724417990" ];
+    };
   };
 
   networking.wireguard.interfaces.wg0 = {

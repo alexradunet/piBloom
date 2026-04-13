@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+BASE="$(cd -- "$SCRIPT_DIR/.." && pwd)"
+STATE_DIR="${PI_GATEWAY_STATE_DIR:-${SIGNAL_GATEWAY_STATE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/nixpi-gateway}}"
+TMP="$STATE_DIR/tmp"
+LOG="$TMP/gateway.log"
+PIDFILE="$TMP/gateway.pid"
+CONFIG_PATH="${PI_GATEWAY_CONFIG:-${SIGNAL_GATEWAY_CONFIG:-${XDG_CONFIG_HOME:-$HOME/.config}/nixpi-gateway/config.yml}}"
+
+mkdir -p "$TMP"
+
+if [ -f "$PIDFILE" ]; then
+  PID=$(cat "$PIDFILE" || true)
+  if [ -n "${PID:-}" ] && kill -0 "$PID" 2>/dev/null; then
+    echo "gateway already running (pid $PID)"
+    exit 0
+  fi
+  rm -f "$PIDFILE"
+fi
+
+cd "$BASE"
+nohup /run/current-system/sw/bin/node dist/main.js "$CONFIG_PATH" > "$LOG" 2>&1 &
+echo $! > "$PIDFILE"
+sleep 3
+if ! grep -q "Pi gateway started" "$LOG"; then
+  echo "gateway may not have started cleanly; check $LOG"
+  exit 1
+fi
+
+echo "gateway started (pid $(cat "$PIDFILE"))"

@@ -9,7 +9,7 @@
     ../modules/app.nix
     ../modules/broker.nix
     ../modules/tooling.nix
-    ../modules/signal-gateway.nix
+    ../modules/gateway.nix
     ../modules/shell.nix
   ];
 
