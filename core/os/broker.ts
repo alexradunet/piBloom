@@ -57,6 +57,8 @@ export interface BrokerRequest {
 	action?: string;
 	unit?: string;
 	flake?: string;
+	overrideInputName?: string;
+	overrideInputRef?: string;
 	minutes?: number;
 }
 
@@ -155,7 +157,18 @@ async function handleNixosUpdateRequest(
 		return runtime.runCommand([NIXOS_REBUILD_COMMAND, "switch", "--rollback"]);
 	}
 	if (request.action === "apply") {
-		return runtime.runCommand([NIXOS_REBUILD_COMMAND, "switch", "--flake", config.defaultFlake]);
+		const requestedFlake = request.flake?.trim();
+		const flake = requestedFlake || config.defaultFlake;
+		const overrideInputName = request.overrideInputName?.trim();
+		const overrideInputRef = request.overrideInputRef?.trim();
+		const args = [NIXOS_REBUILD_COMMAND, "switch", "--flake", flake];
+		if (overrideInputName || overrideInputRef) {
+			if (!overrideInputName || !overrideInputRef) {
+				throw new Error("nixos-update apply override-input requires both name and ref");
+			}
+			args.push("--override-input", overrideInputName, overrideInputRef);
+		}
+		return runtime.runCommand(args);
 	}
 	throw new Error(`unsupported nixos-update action: ${request.action}`);
 }
@@ -404,10 +417,44 @@ export async function main(runtime: BrokerRuntime, config: BrokerConfig, argv: s
 	}
 	if (cmd === "nixos-update") {
 		if (argv.length < 3) {
-			runtime.stderr("usage: nixpi-broker nixos-update <apply|rollback>");
+			runtime.stderr("usage: nixpi-broker nixos-update <apply [flake] [--override-input name ref]|rollback>");
 			return 1;
 		}
-		return request(runtime, config, { operation: "nixos-update", action: argv[2] });
+		const action = argv[2];
+		if (action === "rollback") {
+			if (argv.length !== 3) {
+				runtime.stderr("usage: nixpi-broker nixos-update <apply [flake] [--override-input name ref]|rollback>");
+				return 1;
+			}
+			return request(runtime, config, { operation: "nixos-update", action });
+		}
+		if (action === "apply") {
+			let flake: string | undefined;
+			let overrideInputName: string | undefined;
+			let overrideInputRef: string | undefined;
+			let index = 3;
+			if (argv[index] && argv[index] !== "--override-input") {
+				flake = argv[index];
+				index += 1;
+			}
+			if (argv[index]) {
+				if (argv[index] !== "--override-input" || !argv[index + 1] || !argv[index + 2] || argv[index + 3]) {
+					runtime.stderr("usage: nixpi-broker nixos-update <apply [flake] [--override-input name ref]|rollback>");
+					return 1;
+				}
+				overrideInputName = argv[index + 1];
+				overrideInputRef = argv[index + 2];
+			}
+			return request(runtime, config, {
+				operation: "nixos-update",
+				action,
+				flake,
+				overrideInputName,
+				overrideInputRef,
+			});
+		}
+		runtime.stderr("usage: nixpi-broker nixos-update <apply [flake] [--override-input name ref]|rollback>");
+		return 1;
 	}
 	if (cmd === "staged-host-config") {
 		if (argv.length !== 3) {

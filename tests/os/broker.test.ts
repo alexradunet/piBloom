@@ -208,7 +208,7 @@ describe("handleRequest", () => {
 		).rejects.toEqual(new PermissionError("OS updates are disabled"));
 	});
 
-	it("always uses the configured default flake for apply", async () => {
+	it("uses the requested flake for apply when one is provided", async () => {
 		const { runtime, state } = createRuntime(
 			async () => ({
 				ok: true,
@@ -224,7 +224,64 @@ describe("handleRequest", () => {
 		await handleRequest(runtime, baseConfig, {
 			operation: "nixos-update",
 			action: "apply",
-			flake: "evil#host",
+			flake: "/var/lib/nixpi/pi-nixpi#nixos",
+		});
+
+		expect(state.commands).toEqual([
+			["/run/current-system/sw/bin/nixos-rebuild", "switch", "--flake", "/var/lib/nixpi/pi-nixpi#nixos"],
+		]);
+	});
+
+	it("passes through override-input arguments for apply when provided", async () => {
+		const { runtime, state } = createRuntime(
+			async () => ({
+				ok: true,
+				stdout: "",
+				stderr: "",
+				exitCode: 0,
+			}),
+			{
+				files: new Map([[baseConfig.elevationPath, JSON.stringify({ until: 5000, grantedAt: 1000 })]]),
+			},
+		);
+
+		await handleRequest(runtime, baseConfig, {
+			operation: "nixos-update",
+			action: "apply",
+			flake: "/etc/nixos#nixos",
+			overrideInputName: "nixpi",
+			overrideInputRef: "path:/var/lib/nixpi/pi-nixpi",
+		});
+
+		expect(state.commands).toEqual([
+			[
+				"/run/current-system/sw/bin/nixos-rebuild",
+				"switch",
+				"--flake",
+				"/etc/nixos#nixos",
+				"--override-input",
+				"nixpi",
+				"path:/var/lib/nixpi/pi-nixpi",
+			],
+		]);
+	});
+
+	it("falls back to the configured default flake when no apply override is provided", async () => {
+		const { runtime, state } = createRuntime(
+			async () => ({
+				ok: true,
+				stdout: "",
+				stderr: "",
+				exitCode: 0,
+			}),
+			{
+				files: new Map([[baseConfig.elevationPath, JSON.stringify({ until: 5000, grantedAt: 1000 })]]),
+			},
+		);
+
+		await handleRequest(runtime, baseConfig, {
+			operation: "nixos-update",
+			action: "apply",
 		});
 
 		expect(state.commands).toEqual([
@@ -304,7 +361,7 @@ describe("handleRequest", () => {
 });
 
 describe("main", () => {
-	it("documents nixos-update without a flake override argument", async () => {
+	it("documents nixos-update with optional flake and override-input arguments", async () => {
 		const stderr: string[] = [];
 		const runtime: BrokerRuntime = {
 			async mkdir() {},
@@ -328,6 +385,6 @@ describe("main", () => {
 		const exitCode = await main(runtime, baseConfig, ["nixpi-broker", "nixos-update"]);
 
 		expect(exitCode).toBe(1);
-		expect(stderr).toEqual(["usage: nixpi-broker nixos-update <apply|rollback>"]);
+		expect(stderr).toEqual(["usage: nixpi-broker nixos-update <apply [flake] [--override-input name ref]|rollback>"]);
 	});
 });

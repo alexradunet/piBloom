@@ -233,12 +233,29 @@ async function handleRepoApply(
 	const denied = await requireConfirmation(ctx, `Apply NixPI repo state from ${repoDir}`);
 	if (denied) return err(denied);
 
-	const flake = `${repoDir}#nixos`;
-	const apply = await run("nixpi-brokerctl", ["nixos-update", "apply", flake], signal);
-	if (apply.exitCode !== 0) return err(`Failed to apply ${flake}:\n${summarizeOutput(apply)}`);
+	const systemFlakeDir = getSystemFlakeDir();
+	if (!existsSync(join(systemFlakeDir, "flake.nix"))) {
+		return err(
+			`System flake not found at ${systemFlakeDir}. The installed host flake at ${systemFlakeDir} is the running system's source of truth. ` +
+				`Repair or reinstall that installed host flake before applying local repo overrides.`,
+		);
+	}
+
+	const flake = `${systemFlakeDir}#nixos`;
+	const repoRef = `path:${repoDir}`;
+	const apply = await run(
+		"nixpi-brokerctl",
+		["nixos-update", "apply", flake, "--override-input", "nixpi", repoRef],
+		signal,
+	);
+	if (apply.exitCode !== 0) {
+		return err(`Failed to apply local repo state from ${repoDir} through ${flake}:\n${summarizeOutput(apply)}`);
+	}
 
 	return ok({
-		text: truncate(`Applied local NixPI repo state from ${flake}.\n\n${summarizeOutput(apply)}`),
+		text: truncate(
+			`Applied local NixPI repo state from ${repoDir} by overriding nixpi in ${flake}.\n\n${summarizeOutput(apply)}`,
+		),
 		details: { repoDir, exitCode: apply.exitCode },
 	});
 }

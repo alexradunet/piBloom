@@ -163,7 +163,7 @@ describe("os local NixPI repo handler", () => {
 		expect(result.isErr()).toBe(false);
 	});
 
-	it("applies the local repo flake through nixpi-brokerctl after confirmation", async () => {
+	it("applies local repo state by overriding nixpi in the installed host flake", async () => {
 		fs.mkdirSync(path.join(repoDir, ".git"), { recursive: true });
 		runMock.mockResolvedValueOnce({ stdout: "applied\n", stderr: "", exitCode: 0 });
 
@@ -174,11 +174,19 @@ describe("os local NixPI repo handler", () => {
 		expect(ctx.ui.confirm).toHaveBeenCalled();
 		expect(runMock).toHaveBeenCalledWith(
 			"nixpi-brokerctl",
-			["nixos-update", "apply", `${PROPOSAL_REPO_DIR}#nixos`],
+			[
+				"nixos-update",
+				"apply",
+				"/etc/nixos#nixos",
+				"--override-input",
+				"nixpi",
+				`path:${PROPOSAL_REPO_DIR}`,
+			],
 			undefined,
 		);
 		expect(result.isErr()).toBe(false);
-		expect(result._unsafeUnwrap().text).toContain("Applied local NixPI repo");
+		expect(result._unsafeUnwrap().text).toContain("Applied local NixPI repo state");
+		expect(result._unsafeUnwrap().text).toContain("overriding nixpi in /etc/nixos#nixos");
 	});
 
 	it("initializes the local proposal repo lazily when missing", async () => {
@@ -249,6 +257,20 @@ describe("os local NixPI repo handler", () => {
 		expect(result.isErr()).toBe(true);
 		expect(result._unsafeUnwrapErr()).toContain("Local NixPI repo is not initialized");
 		expect(result._unsafeUnwrapErr()).toContain("setup");
+		expect(runMock).not.toHaveBeenCalled();
+	});
+
+	it("returns an actionable error when the installed host flake is missing for apply", async () => {
+		fs.mkdirSync(path.join(repoDir, ".git"), { recursive: true });
+		process.env.NIXPI_SYSTEM_FLAKE_DIR = path.join(repoDir, "missing-system-flake");
+
+		const ctx = createMockExtensionContext({ hasUI: true });
+		const { handleNixConfigProposal } = await import("../../core/pi/extensions/os/actions-proposal.js");
+		const result = await handleNixConfigProposal("apply", undefined, ctx as never);
+
+		expect(result.isErr()).toBe(true);
+		expect(result._unsafeUnwrapErr()).toContain("System flake not found at");
+		expect(result._unsafeUnwrapErr()).toContain("running system's source of truth");
 		expect(runMock).not.toHaveBeenCalled();
 	});
 
