@@ -11,6 +11,8 @@ let
   socketDir = "/run/nixpi-broker";
   socketPath = "${socketDir}/broker.sock";
   brokerStateDir = "${stateDir}/broker";
+  brokerHomeDir = "${brokerStateDir}/home";
+  brokerCacheDir = "${brokerStateDir}/cache";
   elevationPath = "${brokerStateDir}/elevation.json";
 
   brokerConfig = pkgs.writeText "nixpi-broker-config.json" (
@@ -69,6 +71,16 @@ in
         user = "root";
         group = primaryUser;
       };
+      "${brokerHomeDir}".d = {
+        mode = "0700";
+        user = "root";
+        group = "root";
+      };
+      "${brokerCacheDir}".d = {
+        mode = "0700";
+        user = "root";
+        group = "root";
+      };
     };
 
     systemd.sockets.nixpi-broker = {
@@ -90,10 +102,15 @@ in
         ExecStart = "${brokerCtl}/bin/nixpi-brokerctl server";
         User = "root";
         Group = "root";
+        WorkingDirectory = brokerStateDir;
         ProtectHome = true;
         Restart = "always";
         RestartSec = 5;
         UMask = "0007";
+        Environment = [
+          "HOME=${brokerHomeDir}"
+          "XDG_CACHE_HOME=${brokerCacheDir}"
+        ];
       };
     };
 

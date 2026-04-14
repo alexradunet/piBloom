@@ -14,7 +14,7 @@
         primaryUser = "maintainer";
         agent = {
           autonomy = "maintain";
-          osUpdate.enable = false;
+          osUpdate.enable = true;
         };
       };
 
@@ -74,6 +74,10 @@
         for prop in broker_hardening_props:
             machine.succeed(f"systemctl show nixpi-broker.service -p {prop} --value | grep -qx yes")
         machine.succeed("systemctl show nixpi-broker.service -p ProtectHome --value | grep -qx yes")
+        machine.succeed("systemctl show nixpi-broker.service -p Environment --value | grep -F 'HOME=/var/lib/nixpi/broker/home'")
+        machine.succeed("systemctl show nixpi-broker.service -p Environment --value | grep -F 'XDG_CACHE_HOME=/var/lib/nixpi/broker/cache'")
+        machine.succeed("stat -c '%U:%G %a' /var/lib/nixpi/broker/home | grep -qx 'root:root 700'")
+        machine.succeed("stat -c '%U:%G %a' /var/lib/nixpi/broker/cache | grep -qx 'root:root 700'")
 
     maintain_status = json.loads(succeed_as_user(maintain, "maintainer", "nixpi-brokerctl status"))
     assert maintain_status["defaultAutonomy"] == "maintain", maintain_status
@@ -102,9 +106,11 @@
     elevated = json.loads(succeed_as_user(maintain, "maintainer", "sudo -n nixpi-brokerctl status"))
     assert elevated["effectiveAutonomy"] == "admin", elevated
 
-    # Admin passes the permission gate, then hits the explicit OS-update disable check.
-    fail_as_user(maintain, "maintainer", "nixpi-brokerctl nixos-update apply >/tmp/update.out 2>/tmp/update.err")
-    succeed_as_user(maintain, "maintainer", "grep -q 'OS updates are disabled' /tmp/update.err")
+    # Admin reaches the Nix invocation path with a missing flake and should fail for
+    # that reason rather than trying to write under /root while ProtectHome is enabled.
+    fail_as_user(maintain, "maintainer", "nixpi-brokerctl nixos-update apply /definitely-missing-flake#nixos >/tmp/update.out 2>/tmp/update.err")
+    succeed_as_user(maintain, "maintainer", "grep -q '/definitely-missing-flake' /tmp/update.err")
+    succeed_as_user(maintain, "maintainer", "! grep -q '/root/.cache/nix' /tmp/update.err")
 
     succeed_as_user(maintain, "maintainer", "sudo -n nixpi-brokerctl revoke-admin >/tmp/revoke.json")
     revoked = json.loads(succeed_as_user(maintain, "maintainer", "sudo -n nixpi-brokerctl status"))
