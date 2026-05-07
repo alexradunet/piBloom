@@ -20,5 +20,24 @@ jobs:
       - name: Configure Magic Nix Cache
         uses: DeterminateSystems/magic-nix-cache-action@main
 
-      - name: Run flake checks
-        run: nix flake check --accept-flake-config
+      - name: Run flake checks (non-VM)
+        # NixOS VM tests (nixos-*) are excluded: GitHub Actions runners lack KVM.
+        # Run them locally with: nix flake check
+        run: |
+          nix build --accept-flake-config \
+            .#checks.x86_64-linux.deadnix \
+            .#checks.x86_64-linux.formatting \
+            .#checks.x86_64-linux.statix \
+            .#checks.x86_64-linux.nixpi-host-configurations-eval \
+            .#checks.x86_64-linux.nixpi-vps-security-eval \
+            .#checks.x86_64-linux.nixpi-gateway-module-eval \
+            .#checks.x86_64-linux.nixpi-gateway-package \
+            .#checks.x86_64-linux.nixpi-openssh-native-abuse-eval \
+            .#checks.x86_64-linux.nixpi-pi-extension-startup-smoke \
+            .#checks.x86_64-linux.nixpi-planner-package \
+            .#checks.x86_64-linux.nixpi-purity-check \
+            .#checks.x86_64-linux.nixpi-wiki-adapter-api-boundary \
+            .#checks.x86_64-linux.nixpi-wiki-cli-smoke \
+            .#checks.x86_64-linux.nixpi-wiki-npm-pack-smoke \
+            .#checks.x86_64-linux.nixpi-wiki-package \
+            .#checks.x86_64-linux.nixpi-wiki-stale-identities
