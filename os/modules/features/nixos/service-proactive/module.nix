@@ -76,10 +76,6 @@
         OWNLOOM_WIKI_WORKSPACE = config.ownloom.wiki.workspace;
         OWNLOOM_WIKI_DEFAULT_DOMAIN = config.ownloom.wiki.defaultDomain;
         OWNLOOM_WIKI_HOST = config.networking.hostName;
-        NIXPI_WIKI_ROOT = config.ownloom.wiki.root;
-        NIXPI_WIKI_WORKSPACE = config.ownloom.wiki.workspace;
-        NIXPI_WIKI_DEFAULT_DOMAIN = config.ownloom.wiki.defaultDomain;
-        NIXPI_WIKI_HOST = config.networking.hostName;
         PI_SYNTHETIC_API_KEY_FILE = "%d/synthetic_api_key";
       }
       // config.ownloom.plannerEnvVars;
@@ -205,7 +201,6 @@
   };
 in {
   imports = [
-    (lib.mkRenamedOptionModule ["services" "nixpi-proactive-timers"] ["services" "ownloom-proactive-timers"])
   ];
 
   options.services.ownloom-proactive-timers = {

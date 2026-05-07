@@ -35,7 +35,7 @@
           group = "gateway";
           stateDir = "/var/lib/ownloom-gateway";
           settings = {
-            pi.cwd = "/srv/nixpi";
+            pi.cwd = "/srv/ownloom";
             wiki.dir = "/srv/wiki";
             transports = {
               websocket = {

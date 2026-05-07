@@ -9,7 +9,6 @@
 in {
   imports = [
     ../paths/module.nix
-    (lib.mkRenamedOptionModule ["services" "nixpi-code-server"] ["services" "ownloom-code-server"])
   ];
 
   options.services.ownloom-code-server = {

@@ -21,7 +21,7 @@ export function formatFleetHostStatus() {
 }
 
 function currentHost(): string {
-  const env = process.env.OWNLOOM_WIKI_HOST?.trim() || process.env.NIXPI_WIKI_HOST?.trim() || process.env.HOSTNAME?.trim();
+  const env = process.env.OWNLOOM_WIKI_HOST?.trim() || process.env.HOSTNAME?.trim();
   if (env) return env;
   try {
     const h = readFileSync("/etc/hostname", "utf-8").trim();
@@ -31,8 +31,8 @@ function currentHost(): string {
 }
 
 function isFleetHost(host: string): boolean {
-  let root = process.env.OWNLOOM_ROOT ?? process.env.NIXPI_ROOT ?? join(process.env.HOME || "/tmp", "ownloom");
-  if (!existsSync(root) && existsSync(join(process.env.HOME || "/tmp", "NixPI"))) root = join(process.env.HOME || "/tmp", "NixPI");
+  let root = process.env.OWNLOOM_ROOT ?? join(process.env.HOME || "/tmp", "ownloom");
+  if (!existsSync(root)) root = join(process.env.HOME || "/tmp", "ownloom");
   try {
     return readdirSync(join(root, "hosts"), { withFileTypes: true })
       .some((e) => e.isDirectory() && e.name === host && existsSync(join(root, "hosts", host, "default.nix")));

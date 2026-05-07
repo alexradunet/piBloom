@@ -11,13 +11,6 @@
     ownloom-context = context;
     ownloom-gateway = gateway;
     ownloom-planner = planner;
-
-    # Transitional aliases. Keep these until all host config, skills, and
-    # agent context have moved to ownloom names.
-    nixpi-wiki = wiki;
-    nixpi-context = context;
-    nixpi-gateway = gateway;
-    nixpi-planner = planner;
   };
 in {
   perSystem = {
@@ -65,7 +58,6 @@ in {
     packages = {
       inherit (pkgs) pi;
       inherit (pkgs) ownloom-wiki ownloom-context ownloom-gateway ownloom-planner;
-      inherit (pkgs) nixpi-wiki nixpi-context nixpi-gateway nixpi-planner;
       default = pkgs.pi;
     };
 
@@ -85,9 +77,6 @@ in {
       ownloom-wiki = ownloomWikiApp;
       ownloom-context = ownloomContextApp;
       ownloom-planner = ownloomPlannerApp;
-      nixpi-wiki = ownloomWikiApp;
-      nixpi-context = ownloomContextApp;
-      nixpi-planner = ownloomPlannerApp;
       default = piApp;
     };
   };

@@ -40,7 +40,7 @@ in
       networking.hostName = "gateway-test";
       system.stateVersion = "26.05";
 
-      # Gateway runs as the nixpi human user (default "human" from paths).
+      # Gateway runs as the ownloom human user (default "human" from paths).
       users.users.human = {
         isSystemUser = true;
         group = "users";

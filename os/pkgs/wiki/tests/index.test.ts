@@ -48,8 +48,8 @@ describe("PI adapter", () => {
     rmSync(state.wikiRoot, { recursive: true, force: true });
     mkdirSync(path.join(state.wikiRoot, "objects"), { recursive: true });
     process.env.HOME = path.join(process.cwd(), ".tmp-test-home");
-    mkdirSync(path.join(process.env.HOME, "ownloom", "hosts", "nixpi-vps"), { recursive: true });
-    writeFileSync(path.join(process.env.HOME, "ownloom", "hosts", "nixpi-vps", "default.nix"), "{}\n");
+    mkdirSync(path.join(process.env.HOME, "ownloom", "hosts", "ownloom-vps"), { recursive: true });
+    writeFileSync(path.join(process.env.HOME, "ownloom", "hosts", "ownloom-vps", "default.nix"), "{}\n");
   });
 
   afterEach(() => {

@@ -119,8 +119,3 @@ os/pkgs/pi-adapter/
 ```
 
 For now, the only active adapter is PI.
-
-
-## Compatibility during rebrand
-
-Old `nixpi-*` command names and the `nixpi_planner` PI tool may remain available temporarily as compatibility aliases. New adapters and docs should use `ownloom-*` names. The live host is still `nixpi-vps` until a separate host-identity migration.

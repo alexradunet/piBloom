@@ -35,9 +35,9 @@ Usage:
   ownloom-planner server
 
 Environment:
-  OWNLOOM_PLANNER_CALDAV_URL  default http://127.0.0.1:5232/ (falls back to NIXPI_PLANNER_CALDAV_URL)
-  OWNLOOM_PLANNER_USER        default alex (falls back to NIXPI_PLANNER_USER)
-  OWNLOOM_PLANNER_COLLECTION  default planner (falls back to NIXPI_PLANNER_COLLECTION)`;
+  OWNLOOM_PLANNER_CALDAV_URL  default http://127.0.0.1:5232/
+  OWNLOOM_PLANNER_USER        default alex
+  OWNLOOM_PLANNER_COLLECTION  default planner`;
 }
 
 function parseArgs(argv: string[]): ParsedArgs {

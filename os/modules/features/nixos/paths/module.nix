@@ -6,7 +6,6 @@
   cfg = config.ownloom;
 in {
   imports = [
-    (lib.mkRenamedOptionModule ["nixpi"] ["ownloom"])
     (lib.mkRenamedOptionModule ["ownloom" "user"] ["ownloom" "human"])
   ];
 
@@ -16,13 +15,6 @@ in {
     OWNLOOM_WIKI_WORKSPACE = cfg.wiki.workspace;
     OWNLOOM_WIKI_DEFAULT_DOMAIN = cfg.wiki.defaultDomain;
     OWNLOOM_WIKI_HOST = config.networking.hostName;
-
-    # Transitional aliases for old prompts/scripts during the rebrand.
-    NIXPI_ROOT = cfg.root;
-    NIXPI_WIKI_ROOT = cfg.wiki.root;
-    NIXPI_WIKI_WORKSPACE = cfg.wiki.workspace;
-    NIXPI_WIKI_DEFAULT_DOMAIN = cfg.wiki.defaultDomain;
-    NIXPI_WIKI_HOST = config.networking.hostName;
   };
 
   options.ownloom.plannerEnvVars = lib.mkOption {

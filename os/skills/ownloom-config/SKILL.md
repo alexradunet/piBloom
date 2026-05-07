@@ -14,7 +14,7 @@ Always know the host and flake dir first:
 ```bash
 # Host name from environment or /etc/hostname
 HOST="${OWNLOOM_WIKI_HOST:-$(cat /etc/hostname)}"
-FLAKE_DIR="${OWNLOOM_FLAKE_DIR:-${OWNLOOM_ROOT:-${NIXPI_ROOT:-${HOME}/NixPI}}}"
+FLAKE_DIR="${OWNLOOM_FLAKE_DIR:-${OWNLOOM_ROOT:-${HOME}/ownloom}}"
 ```
 
 ## Commands

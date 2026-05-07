@@ -2,8 +2,8 @@ import * as http from "node:http";
 import { URL } from "node:url";
 import { PlannerClient } from "./caldav.js";
 
-const PORT = Number(process.env.OWNLOOM_PLANNER_PORT ?? process.env.NIXPI_PLANNER_PORT ?? "8082");
-const LISTEN = process.env.OWNLOOM_PLANNER_LISTEN ?? process.env.NIXPI_PLANNER_LISTEN ?? "127.0.0.1";
+const PORT = Number(process.env.OWNLOOM_PLANNER_PORT ?? "8082");
+const LISTEN = process.env.OWNLOOM_PLANNER_LISTEN ?? "127.0.0.1";
 
 const client = new PlannerClient();
 

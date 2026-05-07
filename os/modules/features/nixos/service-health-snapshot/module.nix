@@ -18,7 +18,6 @@
 in {
   imports = [
     ../paths/module.nix
-    (lib.mkRenamedOptionModule ["services" "nixpi-health-snapshot"] ["services" "ownloom-health-snapshot"])
   ];
 
   options.services.ownloom-health-snapshot = {
@@ -38,7 +37,7 @@ in {
 
     stateDirectory = lib.mkOption {
       type = lib.types.str;
-      default = "nixpi-health";
+      default = "ownloom-health";
       description = "systemd StateDirectory name (relative to /var/lib/).";
     };
 

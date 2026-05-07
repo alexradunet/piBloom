@@ -90,7 +90,7 @@ async function main(): Promise<void> {
     config.gateway.maxReplyChunks,
     channelConfigs,
     audioTranscriber,
-    process.env.OWNLOOM_LOCAL_PROVIDER_MODEL || process.env.NIXPI_LOCAL_PROVIDER_MODEL || undefined,
+    process.env.OWNLOOM_LOCAL_PROVIDER_MODEL || undefined,
   );
 
   const delivery = new DeliveryService(transports);

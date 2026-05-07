@@ -15,11 +15,11 @@
 
   # Extension source tree: copy os/pkgs/ without node_modules so that the
   # extension's relative import of ../../../../ownloom-wiki/src/api.ts resolves.
-  nixpiPkgs =
+  ownloomPkgs =
     builtins.filterSource
     (path: type: type != "directory" || builtins.baseNameOf path != "node_modules")
     ../../../pkgs;
-  nixpiExt = "${nixpiPkgs}/pi-adapter/extension";
+  ownloomExt = "${ownloomPkgs}/pi-adapter/extension";
 
   # models.json teaching pi to use our fake provider on 127.0.0.1:11434.
   modelsJson = pkgs.writeText "models.json" (builtins.toJSON {
@@ -129,7 +129,7 @@ in
       # ownloom_planner tool call; pi executes it against real Radicale.
       out = vm.succeed(
           f"{env} pi"
-          " --extension ${nixpiExt}"
+          " --extension ${ownloomExt}"
           " --provider fake-llm"
           " --model test:latest"
           " --print"

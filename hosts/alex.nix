@@ -1,6 +1,6 @@
 _: {
   ownloom = {
-    root = "/home/alex/NixPI";
+    root = "/home/alex/ownloom";
 
     human = {
       name = "alex";

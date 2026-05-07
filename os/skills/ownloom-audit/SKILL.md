@@ -27,7 +27,7 @@ ownloom-wiki mutate wiki_decay_pass '{"dry_run":true}' 2>&1 | tail -20
 
 ### Step 2: Gather config state
 ```bash
-FLAKE_DIR="${OWNLOOM_FLAKE_DIR:-${OWNLOOM_ROOT:-${NIXPI_ROOT:-${HOME}/NixPI}}}"
+FLAKE_DIR="${OWNLOOM_FLAKE_DIR:-${OWNLOOM_ROOT:-${HOME}/ownloom}}"
 cd "$FLAKE_DIR"
 git log --oneline -5
 git status --short

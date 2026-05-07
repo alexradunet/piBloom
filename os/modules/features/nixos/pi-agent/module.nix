@@ -9,10 +9,8 @@
   userHome = config.ownloom.human.homeDirectory;
   userGroup = config.users.users.${userName}.group or "users";
 
-  extensionSources = rec {
+  extensionSources = {
     ownloom = "${config.ownloom.root}/os/pkgs/pi-adapter/extension";
-    # Transitional alias for old host configs during the rebrand.
-    nixpi = ownloom;
   };
 
   desiredSettings =
@@ -90,7 +88,7 @@ in {
 
   config = lib.mkIf cfg.enable {
     # Expose the Synthetic API key from the NixOS sops secret to interactive Pi sessions.
-    # This replaces the deleted nixpi-syntethic extension: no TypeScript needed for a file-read.
+    # No TypeScript extension needed for a simple file-read.
     programs.bash.interactiveShellInit = ''
       if [ -r /run/secrets/synthetic_api_key ] && [ -z "''${SYNTHETIC_API_KEY:-}" ]; then
         export SYNTHETIC_API_KEY="$(< /run/secrets/synthetic_api_key)"

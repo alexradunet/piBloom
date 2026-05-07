@@ -170,7 +170,7 @@ describe("slug, ids, and wiki links", () => {
     // v2: sources/ is a top-level directory
     expect(normalizeWikiLink("sources/SRC-2026-04-19-001")).toBe("sources/SRC-2026-04-19-001.md");
     // v2: objects/ is a top-level directory
-    expect(normalizeWikiLink("objects/nixpi-vps")).toBe("objects/nixpi-vps.md");
+    expect(normalizeWikiLink("objects/ownloom-vps")).toBe("objects/ownloom-vps.md");
     // legacy pages/ still works
     expect(normalizeWikiLink("pages/resources/technical/system-landscape")).toBe(
       "pages/resources/technical/system-landscape.md",

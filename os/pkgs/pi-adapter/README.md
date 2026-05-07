@@ -11,7 +11,7 @@ PI remains the only shipped ownloom agent today, but this package should stay sm
 
 ## Compatibility
 
-The registered planner tool currently keeps the `nixpi_planner` name as a temporary compatibility alias for existing prompts/harness config. It shells out to `ownloom-planner`.
+The registered planner tool is exposed as `ownloom_planner`. It shells out to `ownloom-planner`.
 
 ## Design rules
 

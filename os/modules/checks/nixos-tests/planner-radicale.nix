@@ -11,7 +11,7 @@ pkgs.testers.runNixOSTest {
     networking.hostName = "planner-radicale-test";
     system.stateVersion = "26.05";
 
-    # nixpi.human.name defaults to "human" from paths.
+    # ownloom.human.name defaults to "human" from paths.
     # Disable the web-view server — we only need CalDAV + planner CLI here.
     services.ownloom-planner = {
       enable = true;

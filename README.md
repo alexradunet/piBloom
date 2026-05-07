@@ -11,30 +11,30 @@ The wiki/notes content is intentionally **not** part of this repository — it l
 ├── flake.nix              # root flake: host, modules, packages, checks
 ├── os/                    # reusable NixOS modules and local packages
 └── hosts/                 # host-specific NixOS configuration
-    └── nixpi-vps/         # the current VPS host; host rename is deferred
+    └── ownloom-vps/         # the current VPS host; host rename is deferred
 ```
 
 ## Build and apply
 
 ```sh
 nix flake show
-nix build .#nixosConfigurations.nixpi-vps.config.system.build.toplevel
+nix build .#nixosConfigurations.ownloom-vps.config.system.build.toplevel
 ```
 
 On the host, validate then apply with standard Nix tooling:
 
 ```sh
 nix flake check --accept-flake-config
-sudo nixos-rebuild switch --flake .#nixpi-vps --accept-flake-config
+sudo nixos-rebuild switch --flake .#ownloom-vps --accept-flake-config
 ```
 
-Agents should follow the ownloom config skill workflow for the full status → diff → validate → confirm → apply workflow. During the transition, existing `nixpi-*` command and skill names may still exist as compatibility aliases; prefer `ownloom-*` for new work.
+Agents should follow the ownloom config skill workflow for the full status → diff → validate → confirm → apply workflow. 
 
 For a manual remote deploy from a workstation, set the target host explicitly:
 
 ```sh
 nixos-rebuild switch \
-  --flake .#nixpi-vps \
+  --flake .#ownloom-vps \
   --target-host alex@<your-vps-ip> \
   --use-remote-sudo
 ```
@@ -45,26 +45,25 @@ The canonical remote is GitHub. Standard `git commit` / `git push` is the only p
 
 ## Secrets and host-local config
 
-Stable host secrets live in encrypted `sops-nix` files under `hosts/nixpi-vps/secrets.yaml`. Host-local overlays live in `*.private.nix` files alongside the host config and are tracked in git **with placeholder values**:
+Stable host secrets live in encrypted `sops-nix` files under `hosts/ownloom-vps/secrets.yaml`. Host-local overlays live in `*.private.nix` files alongside the host config and are tracked in git **with placeholder values**:
 
-- `hosts/nixpi-vps/networking.private.nix` — VPS WAN address + gateway (TEST-NET-3 placeholder)
-- `hosts/nixpi-vps/secrets.private.nix` — code-server argon2 hash (placeholder)
-- `hosts/nixpi-vps/ownloom-gateway.private.nix` — WhatsApp transport owner numbers (disabled by default; file rename deferred)
+- `hosts/ownloom-vps/networking.private.nix` — VPS WAN address + gateway (TEST-NET-3 placeholder)
+- `hosts/ownloom-vps/secrets.private.nix` — code-server argon2 hash (placeholder)
+- `hosts/ownloom-vps/ownloom-gateway.private.nix` — WhatsApp transport owner numbers (disabled by default; file rename deferred)
 
 After cloning, edit each file with real values, then mark them as locally-modified-only so git won't include the changes in commits or pulls:
 
 ```sh
 git update-index --skip-worktree \
-  hosts/nixpi-vps/networking.private.nix \
-  hosts/nixpi-vps/secrets.private.nix \
-  hosts/nixpi-vps/ownloom-gateway.private.nix
+  hosts/ownloom-vps/networking.private.nix \
+  hosts/ownloom-vps/secrets.private.nix \
+  hosts/ownloom-vps/ownloom-gateway.private.nix
 ```
 
-A first install can boot without `hosts/nixpi-vps/secrets.yaml`; SSH keys are enough. After first boot, copy `.sops.example.yaml` to `.sops.yaml`, create a real encrypted `secrets.yaml`, force-add it past the ignore rule, and rebuild.
+A first install can boot without `hosts/ownloom-vps/secrets.yaml`; SSH keys are enough. After first boot, copy `.sops.example.yaml` to `.sops.yaml`, create a real encrypted `secrets.yaml`, force-add it past the ignore rule, and rebuild.
 
 ## Rebrand status
 
-ownloom is the new project brand. The live host remains `nixpi-vps` for now, and old `nixpi-*` CLI names are retained temporarily as compatibility wrappers.
 
 ## License
 

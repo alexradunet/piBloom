@@ -9,7 +9,7 @@
     modules = [
       ../../features/nixos/service-openssh/module.nix
       {
-        networking.hostName = "nixpi-openssh-native-abuse-test";
+        networking.hostName = "ownloom-openssh-native-abuse-test";
         system.stateVersion = "26.05";
       }
     ];

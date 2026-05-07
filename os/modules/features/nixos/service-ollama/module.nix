@@ -20,7 +20,6 @@
     else pkgs.ollama;
 in {
   imports = [
-    (lib.mkRenamedOptionModule ["services" "nixpi-ollama"] ["services" "ownloom-ollama"])
   ];
 
   options.services.ownloom-ollama = {

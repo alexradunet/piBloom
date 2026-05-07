@@ -69,8 +69,8 @@ interface DoctorCheck {
 
 function runInit(args: string[]): void {
   const root = absolutePath(flagValue(args, "--root") ?? getWikiRoot());
-  const workspace = flagValue(args, "--workspace") ?? process.env.OWNLOOM_WIKI_WORKSPACE ?? process.env.NIXPI_WIKI_WORKSPACE ?? "ownloom";
-  const domain = flagValue(args, "--domain") ?? process.env.OWNLOOM_WIKI_DEFAULT_DOMAIN ?? process.env.NIXPI_WIKI_DEFAULT_DOMAIN ?? "technical";
+  const workspace = flagValue(args, "--workspace") ?? process.env.OWNLOOM_WIKI_WORKSPACE ?? "ownloom";
+  const domain = flagValue(args, "--domain") ?? process.env.OWNLOOM_WIKI_DEFAULT_DOMAIN ?? "technical";
   const stats = initWikiRoot({ root, workspace, domain });
 
   if (hasFlag(args, "--json")) console.log(JSON.stringify({ ok: true, ...stats }, null, 2));
@@ -80,7 +80,7 @@ function runInit(args: string[]): void {
 async function runDoctor(args: string[], json: boolean): Promise<void> {
   const checks: DoctorCheck[] = [];
   const domain = normalizeDomain(flagValue(args, "--domain")) ?? getWorkspaceProfile().defaultDomain;
-  const repo = process.env.OWNLOOM_WIKI_REPO_ROOT ?? process.env.NIXPI_WIKI_REPO_ROOT ?? process.cwd();
+  const repo = process.env.OWNLOOM_WIKI_REPO_ROOT ?? process.cwd();
   checks.push({ name: "runtime", ok: true, detail: `node ${process.version}` });
   checks.push({ name: "repo-root", ok: existsSync(repo), detail: repo, remediation: "Run from an existing workspace directory or set OWNLOOM_WIKI_REPO_ROOT." });
 
@@ -96,7 +96,7 @@ async function runDoctor(args: string[], json: boolean): Promise<void> {
   const frontmatter = await callWikiTool("wiki_lint", { mode: "frontmatter", domain });
   checks.push({ name: "wiki-frontmatter", ok: !frontmatter.isError && /Lint: 0 issues/.test(frontmatter.content[0]?.text ?? ""), detail: frontmatter.content[0]?.text ?? "no output", remediation: `Run ownloom-wiki call wiki_lint '{"mode":"frontmatter","domain":"${domain}"}' --json and fix listed pages.` });
 
-  const bodySearchBin = process.env.OWNLOOM_WIKI_BODY_SEARCH_BIN ?? process.env.NIXPI_WIKI_BODY_SEARCH_BIN;
+  const bodySearchBin = process.env.OWNLOOM_WIKI_BODY_SEARCH_BIN;
   if (bodySearchBin) {
     const bodySearch = commandOk(bodySearchBin, ["--version"]);
     checks.push({ name: "body-search", ok: bodySearch.ok, detail: bodySearch.ok ? bodySearch.output.split("\n")[0] || bodySearchBin : bodySearch.output, remediation: `Install or correct OWNLOOM_WIKI_BODY_SEARCH_BIN (${bodySearchBin}).` });
@@ -191,8 +191,8 @@ async function main(): Promise<void> {
     const paramsArg = args.find((arg, index) => index >= 2 && !arg.startsWith("--"));
     const params = parseJsonParams(paramsArg);
     const wikiWrite = Boolean(entry.mutatesWiki);
-    const envAllowsMutation = process.env.OWNLOOM_WIKI_ALLOW_MUTATION === "1" || process.env.NIXPI_WIKI_ALLOW_MUTATION === "1";
-    const envAllowsCacheMutation = process.env.OWNLOOM_WIKI_ALLOW_CACHE_MUTATION === "1" || process.env.NIXPI_WIKI_ALLOW_CACHE_MUTATION === "1" || envAllowsMutation;
+    const envAllowsMutation = process.env.OWNLOOM_WIKI_ALLOW_MUTATION === "1";
+    const envAllowsCacheMutation = process.env.OWNLOOM_WIKI_ALLOW_CACHE_MUTATION === "1" || envAllowsMutation;
     const allowMutation = command === "mutate" || hasFlag(args, "--yes") || envAllowsMutation;
     const allowCacheMutation = command === "mutate" || hasFlag(args, "--yes") || envAllowsCacheMutation;
     if ((wikiWrite || entry.requiresConfirmation || entry.risk === "system-write" || entry.risk === "high-impact") && !allowMutation) {

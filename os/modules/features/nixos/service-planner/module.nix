@@ -29,7 +29,6 @@
   };
 in {
   imports = [
-    (lib.mkRenamedOptionModule ["services" "nixpi-planner"] ["services" "ownloom-planner"])
   ];
 
   options.services.ownloom-planner = {
@@ -136,9 +135,6 @@ in {
       OWNLOOM_PLANNER_CALDAV_URL = caldavUrl;
       OWNLOOM_PLANNER_USER = cfg.user;
       OWNLOOM_PLANNER_COLLECTION = cfg.collection;
-      NIXPI_PLANNER_CALDAV_URL = caldavUrl;
-      NIXPI_PLANNER_USER = cfg.user;
-      NIXPI_PLANNER_COLLECTION = cfg.collection;
     };
 
     environment.sessionVariables =
@@ -147,9 +143,6 @@ in {
         OWNLOOM_PLANNER_BACKEND = "caldav-radicale";
         OWNLOOM_PLANNER_COLLECTION_URL = "${caldavUrl}${cfg.user}/${cfg.collection}/";
         OWNLOOM_PLANNER_COLLECTIONS_DIR = cfg.storageDir;
-        NIXPI_PLANNER_BACKEND = "caldav-radicale";
-        NIXPI_PLANNER_COLLECTION_URL = "${caldavUrl}${cfg.user}/${cfg.collection}/";
-        NIXPI_PLANNER_COLLECTIONS_DIR = cfg.storageDir;
       };
 
     networking.firewall.allowedTCPPorts = lib.optional cfg.openFirewall cfg.port;
@@ -194,8 +187,6 @@ in {
           // {
             OWNLOOM_PLANNER_PORT = toString cfg.serverPort;
             OWNLOOM_PLANNER_LISTEN = cfg.serverListen;
-            NIXPI_PLANNER_PORT = toString cfg.serverPort;
-            NIXPI_PLANNER_LISTEN = cfg.serverListen;
           });
         User = "radicale";
         Group = "radicale";

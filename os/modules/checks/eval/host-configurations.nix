@@ -13,7 +13,7 @@
   assertFleet = name: host: let
     userHome = host.config.ownloom.human.homeDirectory;
   in
-    assert lib.asserts.assertMsg (host.config.environment.sessionVariables.OWNLOOM_ROOT == "${userHome}/NixPI") "${name} must export OWNLOOM_ROOT";
+    assert lib.asserts.assertMsg (host.config.environment.sessionVariables.OWNLOOM_ROOT == "${userHome}/ownloom") "${name} must export OWNLOOM_ROOT";
     assert lib.asserts.assertMsg (host.config.environment.sessionVariables.OWNLOOM_WIKI_ROOT == "${userHome}/wiki") "${name} must export the ownloom wiki root as ~/wiki";
     assert lib.asserts.assertMsg (host.config.environment.sessionVariables.OWNLOOM_WIKI_WORKSPACE == "ownloom") "${name} must export the ownloom wiki workspace label"; true;
   assertHost = name: host: let

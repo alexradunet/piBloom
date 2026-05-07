@@ -59,7 +59,6 @@
 in {
   imports = [
     ../paths/module.nix
-    (lib.mkRenamedOptionModule ["services" "nixpi-gateway"] ["services" "ownloom-gateway"])
   ];
 
   options.services.ownloom-gateway = {
@@ -400,16 +399,11 @@ in {
           OWNLOOM_WIKI_WORKSPACE = config.ownloom.wiki.workspace;
           OWNLOOM_WIKI_DEFAULT_DOMAIN = config.ownloom.wiki.defaultDomain;
           OWNLOOM_WIKI_HOST = config.networking.hostName;
-          NIXPI_WIKI_ROOT = settings.wiki.dir;
-          NIXPI_WIKI_WORKSPACE = config.ownloom.wiki.workspace;
-          NIXPI_WIKI_DEFAULT_DOMAIN = config.ownloom.wiki.defaultDomain;
-          NIXPI_WIKI_HOST = config.networking.hostName;
           PI_SYNTHETIC_API_KEY_FILE = "%d/synthetic_api_key";
         }
         // config.ownloom.plannerEnvVars
         // lib.optionalAttrs settings.localProvider.enable {
           OWNLOOM_LOCAL_PROVIDER_MODEL = settings.localProvider.fallbackModel;
-          NIXPI_LOCAL_PROVIDER_MODEL = settings.localProvider.fallbackModel;
         };
 
       serviceConfig = let

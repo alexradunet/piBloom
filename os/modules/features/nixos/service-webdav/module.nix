@@ -8,7 +8,6 @@
   userName = config.ownloom.human.name;
 in {
   imports = [
-    (lib.mkRenamedOptionModule ["services" "nixpi-webdav"] ["services" "ownloom-webdav"])
   ];
 
   options.services.ownloom-webdav = {
