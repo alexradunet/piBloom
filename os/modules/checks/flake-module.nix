@@ -191,8 +191,6 @@
                   nixpi-gateway = final.writeShellScriptBin "nixpi-gateway" "exit 0";
                   nixpi-planner = final.writeShellScriptBin "nixpi-planner" "exit 0";
                   nixpi-context = final.writeShellScriptBin "nixpi-context" "exit 0";
-                  nixpi-health = final.writeShellScriptBin "nixpi-health" "exit 0";
-                  nixpi-status = final.writeShellScriptBin "nixpi-status" "exit 0";
                   nixpi-wiki = final.writeShellScriptBin "nixpi-wiki" "exit 0";
                 })
               ];

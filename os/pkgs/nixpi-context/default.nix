@@ -5,8 +5,11 @@
   findutils,
   gnugrep,
   jq,
+  nixos-rebuild,
   nixpi-planner,
   nixpi-wiki,
+  podman,
+  procps,
 }:
 writeShellApplication {
   name = "nixpi-context";
@@ -16,14 +19,18 @@ writeShellApplication {
     findutils
     gnugrep
     jq
+    nixos-rebuild
     nixpi-planner
     nixpi-wiki
+    podman
+    procps
   ];
 
   text = ''
     set -euo pipefail
 
     format="markdown"
+    include_health=0
     while [ "$#" -gt 0 ]; do
       case "$1" in
         --format)
@@ -34,11 +41,16 @@ writeShellApplication {
           format="$2"
           shift 2
           ;;
+        --health)
+          include_health=1
+          shift
+          ;;
         --help|-h)
           cat <<'EOF'
-    Usage: nixpi-context [--format markdown|json]
+    Usage: nixpi-context [--format markdown|json] [--health]
 
     Print the current NixPI agent context for prompt injection.
+    --health includes a composite health snapshot (OS gen, containers, disk, load).
     EOF
           exit 0
           ;;
@@ -94,9 +106,7 @@ writeShellApplication {
 
     cli_policy='[NIXPI CLI TOOLS]
     Prefer NixPI CLIs over harness-specific tools so the workflow stays agent-agnostic.
-    - nixpi-context --format markdown|json: print live agent context.
-    - nixpi-status [--json]: show runtime paths and host state.
-    - nixpi-health [--json]: broad host health snapshot.
+    - nixpi-context --format markdown|json [--health]: print live agent context with optional health snapshot.
     - nixpi-config (use skill nixpi-config): inspect, validate, and apply this host config. Run validate before apply. Confirm with Alex before apply.
     - Use standard git commit/push for publishing changes.
     - nixpi-audit (use skill nixpi-audit): current-state baseline/config audit.
@@ -161,8 +171,89 @@ writeShellApplication {
 
     [OS CONTEXT]
     Current host: $current_host
-    Canonical flake repo: $flake_dir
-    Use nixpi-health for diagnosis. Use the nixpi-config skill for validate/apply."
+    Canonical flake repo: $flake_dir"
+
+    health_block=""
+    if [ "$include_health" -eq 1 ]; then
+      current_generation_line() {
+        awk '
+          BEGIN { found = 0 }
+          NR == 1 && $1 ~ /^Generation$/ { next }
+          /True[[:space:]]*$/ {
+            sub(/[[:space:]]+True[[:space:]]*$/, " (current)")
+            print
+            found = 1
+            exit
+          }
+          /\(current\)|current/ && found == 0 {
+            print
+            found = 1
+            exit
+          }
+          found == 0 && NF > 0 {
+            first = $0
+            found = 2
+          }
+          END {
+            if (found == 2) print first
+            if (found == 0) print "No generation info available."
+          }
+        '
+      }
+
+      sections_file="$(mktemp)"
+      trap 'rm -f "$sections_file"' EXIT
+
+      if generations="$(nixos-rebuild list-generations 2>/dev/null)"; then
+        current_line="$(printf '%s\n' "$generations" | current_generation_line)"
+        printf '## OS\nNixOS — %s\n\n' "$current_line" >> "$sections_file"
+      else
+        printf '## OS\n(nixos-rebuild unavailable)\n\n' >> "$sections_file"
+      fi
+
+      if containers_json="$(podman ps --format json --filter name=nixpi- 2>/dev/null)"; then
+        containers_text="$(printf '%s' "$containers_json" | jq -r '
+          if type == "array" and length > 0 then
+            .[] | "- " + (((.Names // []) | join(", ")) // "unknown") + ": " + (.Status // .State // "unknown")
+          else
+            "No nixpi-* containers running."
+          end
+        ' 2>/dev/null || printf '%s' '(parse error)')"
+        printf '## Containers\n%s\n\n' "$containers_text" >> "$sections_file"
+      fi
+
+      if disk="$(df -h / /var /home 2>/dev/null)"; then
+        {
+          printf '## Disk Usage\n'
+          printf '%s\n' '```'
+          printf '%s\n' "$disk"
+          printf '%s\n\n' '```'
+        } >> "$sections_file"
+      fi
+
+      system_lines=""
+      if [ -r /proc/loadavg ]; then
+        read -r load1 load5 load15 _ < /proc/loadavg || true
+        system_lines="''${system_lines}- Load: $load1 $load5 $load15\n"
+      fi
+      if uptime_text="$(uptime -p 2>/dev/null)"; then
+        system_lines="''${system_lines}- Uptime: $uptime_text\n"
+      fi
+      if mem_line="$(free -h --si 2>/dev/null | grep '^Mem:' || true)"; then
+        if [ -n "$mem_line" ]; then
+          total="$(printf '%s\n' "$mem_line" | awk '{print $2}')"
+          used="$(printf '%s\n' "$mem_line" | awk '{print $3}')"
+          system_lines="''${system_lines}- Memory: $used used / $total total\n"
+        fi
+      fi
+      if [ -n "$system_lines" ]; then
+        printf '## System\n%b\n' "$system_lines" >> "$sections_file"
+      fi
+
+      health_block="[HEALTH SNAPSHOT]
+    $(sed -e ':a' -e '/^$/N; /\n$/ba' -e 's/[[:space:]]*$//' "$sections_file")"
+      rm -f "$sections_file"
+    fi
 
     if [ "$format" = "json" ]; then
       jq -n \
@@ -178,13 +269,17 @@ writeShellApplication {
         --arg wikiContext "$wiki_context" \
         --arg memoryBlock "$memory_block" \
         --arg restoredBlock "$restored_block" \
-        '{host: $host, fleetHosts: $fleetHosts, fleetMembership: $fleetMembership, flakeDir: $flakeDir, wikiRoot: $wikiRoot, blocks: {fleet: $fleetBlock, plannerPolicy: $plannerPolicy, cliPolicy: $cliPolicy, plannerDigest: $plannerDigest, wiki: $wikiContext, memory: $memoryBlock, restored: $restoredBlock}}'
+        --arg healthBlock "$health_block" \
+        '{host: $host, fleetHosts: $fleetHosts, fleetMembership: $fleetMembership, flakeDir: $flakeDir, wikiRoot: $wikiRoot, blocks: {fleet: $fleetBlock, plannerPolicy: $plannerPolicy, cliPolicy: $cliPolicy, plannerDigest: $plannerDigest, wiki: $wikiContext, memory: $memoryBlock, restored: $restoredBlock, health: $healthBlock}}'
       exit 0
     fi
 
     printf '%s\n' "$fleet_block"
     printf '\n%s\n' "$planner_policy"
     printf '\n%s\n' "$cli_policy"
+    if [ -n "$health_block" ]; then
+      printf '\n%s\n' "$health_block"
+    fi
     if [ -n "$planner_digest" ]; then
       printf '\n%s\n' "$planner_digest"
     fi

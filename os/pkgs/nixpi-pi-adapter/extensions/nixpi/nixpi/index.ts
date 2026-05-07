@@ -141,11 +141,11 @@ export default function nixpiExtension(pi: ExtensionAPI) {
   registerPlannerTool(pi);
 
   pi.registerCommand("nixpi", {
-    description: "NixPI runtime status: /nixpi status",
+    description: "NixPI context check: /nixpi context",
     handler: async (_args, ctx) => {
       try {
-        const text = await runText("nixpi-status", []);
-        if (ctx.hasUI) ctx.ui.notify(text || "nixpi-status produced no output.", "info");
+        const text = await runText("nixpi-context", ["--format", "markdown"], 15_000);
+        if (ctx.hasUI) ctx.ui.notify(text || "nixpi-context produced no output.", "info");
       } catch (error: any) {
         const message = error?.stderr?.toString()?.trim() || error?.message || String(error);
         if (ctx.hasUI) ctx.ui.notify(message, "error");

@@ -408,8 +408,7 @@ in {
         pkgs.nodejs
         pkgs.nixos-rebuild
         pkgs.podman
-        pkgs.nixpi-health
-        pkgs.nixpi-status
+        pkgs.nixpi-context
       ];
       environment =
         {

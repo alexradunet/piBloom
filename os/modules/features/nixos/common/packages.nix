@@ -11,8 +11,6 @@
     git
     jq
     nixpi-context
-    nixpi-health
-    nixpi-status
     nixpi-wiki
     nodejs
     pi

@@ -2,11 +2,7 @@
   nixpiOverlay = final: _prev: {
     pi = final.callPackage ../../pkgs/pi {};
     nixpi-wiki = final.callPackage ../../pkgs/nixpi-wiki {};
-    nixpi-audit = final.callPackage ../../pkgs/nixpi-audit {};
     nixpi-context = final.callPackage ../../pkgs/nixpi-context {};
-    nixpi-status = final.callPackage ../../pkgs/nixpi-status {};
-    nixpi-health = final.callPackage ../../pkgs/nixpi-health {};
-
     nixpi-gateway = final.callPackage ../../pkgs/nixpi-gateway {};
     nixpi-planner = final.callPackage ../../pkgs/nixpi-planner {};
   };
@@ -55,7 +51,7 @@ in {
 
     packages = {
       inherit (pkgs) pi;
-      inherit (pkgs) nixpi-wiki nixpi-context nixpi-status nixpi-health nixpi-gateway nixpi-planner;
+      inherit (pkgs) nixpi-wiki nixpi-context nixpi-gateway nixpi-planner;
       default = pkgs.pi;
     };
 
@@ -69,17 +65,11 @@ in {
       piApp = mkApp pkgs.pi;
       nixpiWikiApp = mkApp pkgs.nixpi-wiki;
       nixpiContextApp = mkApp pkgs.nixpi-context;
-      nixpiStatusApp = mkApp pkgs.nixpi-status;
-      nixpiHealthApp = mkApp pkgs.nixpi-health;
-
       nixpiPlannerApp = mkApp pkgs.nixpi-planner;
     in {
       pi = piApp;
       nixpi-wiki = nixpiWikiApp;
       nixpi-context = nixpiContextApp;
-      nixpi-status = nixpiStatusApp;
-      nixpi-health = nixpiHealthApp;
-
       nixpi-planner = nixpiPlannerApp;
       default = piApp;
     };

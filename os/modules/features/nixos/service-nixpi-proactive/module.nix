@@ -88,8 +88,7 @@
       pkgs.fd
       pkgs.findutils
       pkgs.nixpi-context
-      pkgs.nixpi-health
-      pkgs.nixpi-status
+      pkgs.nixpi-context
       pkgs.nixpi-wiki
       pkgs.nixpi-planner
     ];
