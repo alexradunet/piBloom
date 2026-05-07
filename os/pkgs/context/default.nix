@@ -1,7 +1,6 @@
 {
   lib,
   writeShellApplication,
-  symlinkJoin,
   coreutils,
   findutils,
   gnugrep,
@@ -36,11 +35,4 @@
     };
   };
 in
-  symlinkJoin {
-    name = "ownloom-context";
-    paths = [app];
-    postBuild = ''
-      ln -s ownloom-context $out/bin/nixpi-context
-    '';
-    inherit (app) meta;
-  }
+  app

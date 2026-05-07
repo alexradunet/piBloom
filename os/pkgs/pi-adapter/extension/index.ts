@@ -27,13 +27,11 @@ async function buildownloomContext(): Promise<string> {
 }
 
 function registerPlannerTool(pi: ExtensionAPI) {
-  for (const toolName of ["ownloom_planner", "nixpi_planner"] as const) pi.registerTool({
-    name: toolName,
-    label: toolName === "ownloom_planner" ? "ownloom Planner" : "nixpi planner (compat)",
+  pi.registerTool({
+    name: "ownloom_planner",
+    label: "ownloom Planner",
     description: "Manage canonical live tasks, reminders, and calendar events through the local CalDAV/iCalendar planner backend.",
-    promptSnippet: toolName === "ownloom_planner"
-      ? "Use ownloom_planner for live task, reminder, and calendar operations instead of creating wiki Markdown task/reminder pages."
-      : "Compatibility alias: prefer ownloom_planner for new prompts; use this only for old nixpi prompts.",
+    promptSnippet: "Use ownloom_planner for live task, reminder, and calendar operations instead of creating wiki Markdown task/reminder pages.",
     promptGuidelines: [
       "Use for live operational tasks/reminders/events.",
       "Do not use wiki task/reminder pages as the live source of truth unless the user explicitly asks for an archive/context note.",

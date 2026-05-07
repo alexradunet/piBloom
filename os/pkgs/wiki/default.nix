@@ -51,7 +51,6 @@ buildNpmPackage {
 
     makeWrapper ${nodejs}/bin/node $out/bin/ownloom-wiki \
       --add-flags "$out/share/ownloom-wiki/dist/cli.cjs"
-    ln -s ownloom-wiki $out/bin/nixpi-wiki
 
     runHook postInstall
   '';

@@ -4,7 +4,6 @@
   "private": true,
   "type": "module",
   "bin": {
-    "nixpi-planner": "dist/cli.js",
     "ownloom-planner": "dist/cli.js"
   },
   "scripts": {

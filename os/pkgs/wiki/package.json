@@ -11,8 +11,7 @@
     "./cli": "./dist/cli.cjs"
   },
   "bin": {
-    "ownloom-wiki": "dist/cli.cjs",
-    "nixpi-wiki": "dist/cli.cjs"
+    "ownloom-wiki": "dist/cli.cjs"
   },
   "files": [
     "dist/",

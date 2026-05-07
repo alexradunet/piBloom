@@ -41,7 +41,6 @@ buildNpmPackage {
 
     makeWrapper ${nodejs}/bin/node $out/bin/ownloom-gateway \
       --add-flags "$out/share/ownloom-gateway/dist/main.js"
-    ln -s ownloom-gateway $out/bin/nixpi-gateway
 
     runHook postInstall
   '';

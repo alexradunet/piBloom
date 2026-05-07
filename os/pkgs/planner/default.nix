@@ -38,11 +38,9 @@ buildNpmPackage {
 
     makeWrapper ${nodejs}/bin/node $out/bin/ownloom-planner \
       --add-flags "$out/share/ownloom-planner/dist/cli.js"
-    ln -s ownloom-planner $out/bin/nixpi-planner
 
     makeWrapper ${nodejs}/bin/node $out/bin/ownloom-planner-server \
       --add-flags "$out/share/ownloom-planner/dist/server.js"
-    ln -s ownloom-planner-server $out/bin/nixpi-planner-server
 
     runHook postInstall
   '';

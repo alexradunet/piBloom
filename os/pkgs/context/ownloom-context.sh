@@ -22,7 +22,6 @@ Usage: ownloom-context [--format markdown|json] [--health]
 
 Print the current ownloom agent context for prompt injection.
 
-Compatibility: nixpi-context remains available as a temporary wrapper.
 --health includes a composite health snapshot (OS gen, containers, disk, load).
 EOF
       exit 0
@@ -39,7 +38,7 @@ if [ "$format" != "markdown" ] && [ "$format" != "json" ]; then
   exit 2
 fi
 
-current_host="${OWNLOOM_WIKI_HOST:-${NIXPI_WIKI_HOST:-}}"
+current_host="${OWNLOOM_WIKI_HOST:-}"
 if [ -z "$current_host" ] && [ -r /etc/hostname ]; then
   current_host="$(tr -d '\n' < /etc/hostname)"
 fi
@@ -47,12 +46,9 @@ if [ -z "$current_host" ]; then
   current_host="${HOSTNAME:-nixos}"
 fi
 
-ownloom_root="${OWNLOOM_ROOT:-${NIXPI_ROOT:-${HOME:-/tmp}/ownloom}}"
-if [ ! -d "$ownloom_root" ] && [ -d "${HOME:-/tmp}/NixPI" ]; then
-  ownloom_root="${HOME:-/tmp}/NixPI"
-fi
-flake_dir="${OWNLOOM_FLAKE_DIR:-${NIXPI_FLAKE_DIR:-$ownloom_root}}"
-wiki_root="${OWNLOOM_WIKI_ROOT:-${NIXPI_WIKI_ROOT:-${HOME:-/tmp}/wiki}}"
+ownloom_root="${OWNLOOM_ROOT:-${HOME:-/tmp}/ownloom}"
+flake_dir="${OWNLOOM_FLAKE_DIR:-$ownloom_root}"
+wiki_root="${OWNLOOM_WIKI_ROOT:-${HOME:-/tmp}/wiki}"
 today="$(date +%F)"
 
 fleet_hosts=""
@@ -78,7 +74,7 @@ case ", $fleet_hosts," in
 esac
 
 planner_policy='[OWNLOOM PLANNER INFRASTRUCTURE]
-The canonical live task/reminder/calendar system is the standards-based ownloom planner backend: CalDAV/iCalendar VTODO/VEVENT/VALARM served by Radicale on nixpi-vps. Current safe endpoint is loopback-only at http://127.0.0.1:5232/. Direct phone CalDAV access is intentionally deferred; canonical access should be through WhatsApp, Pi, and the upcoming small ownloom web view/API. Do not create new wiki Markdown task/reminder pages as the source of truth for live operational items unless the user explicitly asks for a wiki/archive note. Use the wiki for summaries, reviews, decisions, and project context. Use ownloom-planner for live task/reminder/event operations.'
+The canonical live task/reminder/calendar system is the standards-based ownloom planner backend: CalDAV/iCalendar VTODO/VEVENT/VALARM served by Radicale on ownloom-vps. Current safe endpoint is loopback-only at http://127.0.0.1:5232/. Direct phone CalDAV access is intentionally deferred; canonical access should be through WhatsApp, Pi, and the upcoming small ownloom web view/API. Do not create new wiki Markdown task/reminder pages as the source of truth for live operational items unless the user explicitly asks for a wiki/archive note. Use the wiki for summaries, reviews, decisions, and project context. Use ownloom-planner for live task/reminder/event operations.'
 
 cli_policy='[OWNLOOM CLI TOOLS]
 Prefer ownloom CLIs over harness-specific tools so the workflow stays agent-agnostic.
@@ -87,8 +83,7 @@ Prefer ownloom CLIs over harness-specific tools so the workflow stays agent-agno
 - Use standard git commit/push for publishing changes.
 - ownloom-audit (use skill ownloom-audit): current-state baseline/config audit.
 - ownloom-wiki ...: structured wiki operations.
-- ownloom-planner ...: live CalDAV/iCalendar tasks, reminders, and events.
-- Transitional nixpi-* command aliases may exist during the rebrand; prefer ownloom-* for new work.'
+- ownloom-planner ...: live CalDAV/iCalendar tasks, reminders, and events.'
 
 planner_digest=""
 if planner_json="$(ownloom-planner list upcoming --json 2>/dev/null)"; then
@@ -109,7 +104,7 @@ wiki_context="$(ownloom-wiki context --format markdown 2>/dev/null || true)"
 
 memory_path="$wiki_root/memory/MEMORY.md"
 user_path="$wiki_root/memory/USER.md"
-agent_dir="${OWNLOOM_AGENT_DIR:-${NIXPI_AGENT_DIR:-${PI_CODING_AGENT_DIR:-${HOME:-/tmp}/.pi/agent}}}"
+agent_dir="${OWNLOOM_AGENT_DIR:-${PI_CODING_AGENT_DIR:-${HOME:-/tmp}/.pi/agent}}"
 context_path="$agent_dir/context.json"
 memory_block=""
 if [ -s "$memory_path" ]; then
