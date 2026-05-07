@@ -3,7 +3,7 @@ import os from "node:os";
 import path from "node:path";
 
 export function getPersonalWikiRoot(): string {
-  return process.env.NIXPI_WIKI_ROOT ?? path.join(os.homedir(), "NixPI", "wiki");
+  return process.env.NIXPI_WIKI_ROOT ?? path.join(os.homedir(), "wiki");
 }
 
 // ── Gateway wiki search ────────────────────────────────────────────────────

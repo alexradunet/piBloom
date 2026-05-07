@@ -39,7 +39,7 @@ function firstEnv(...names: string[]): string | undefined {
 }
 
 export function getWikiRoot(): string {
-	return firstEnv("NIXPI_WIKI_ROOT", "NIXPI_WIKI_DIR") ?? path.join(os.homedir(), "NixPI", "wiki");
+	return firstEnv("NIXPI_WIKI_ROOT", "NIXPI_WIKI_DIR") ?? path.join(os.homedir(), "wiki");
 }
 
 export function getWikiRoots(): Record<string, string> {

@@ -29,7 +29,7 @@ NIXPI_WIKI_BODY_SEARCH_BIN=rga
 If `NIXPI_WIKI_ROOT` is not set, NixPI Wiki uses:
 
 ```text
-~/NixPI/wiki
+~/wiki
 ```
 
 ## Install standalone
@@ -41,7 +41,7 @@ cd os/pkgs/nixpi-wiki
 npm run build
 npm pack
 npm install -g ./nixpi-wiki-0.1.0.tgz
-nixpi-wiki init --root ~/NixPI/work-wiki --workspace work --domain work
+nixpi-wiki init --root ~/work-wiki --workspace work --domain work
 ```
 
 Local project usage:

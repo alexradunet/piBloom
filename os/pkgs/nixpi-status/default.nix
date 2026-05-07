@@ -58,7 +58,7 @@ writeShellApplication {
 
         nixpi_root="''${NIXPI_ROOT:-''${HOME:-/tmp}/NixPI}"
         flake_dir="''${NIXPI_FLAKE_DIR:-$nixpi_root}"
-        wiki_root="''${NIXPI_WIKI_ROOT:-$nixpi_root/wiki}"
+        wiki_root="''${NIXPI_WIKI_ROOT:-''${HOME:-/tmp}/wiki}"
         agent_dir="''${NIXPI_AGENT_DIR:-''${PI_CODING_AGENT_DIR:-''${HOME:-/tmp}/.pi/agent}}"
         evolution_dir="$wiki_root/pages/areas/infrastructure/nixpi/evolution"
 

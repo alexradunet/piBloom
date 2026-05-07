@@ -64,7 +64,7 @@ writeShellApplication {
 
     nixpi_root="''${NIXPI_ROOT:-''${HOME:-/tmp}/NixPI}"
     flake_dir="''${NIXPI_FLAKE_DIR:-$nixpi_root}"
-    wiki_root="''${NIXPI_WIKI_ROOT:-$nixpi_root/wiki}"
+    wiki_root="''${NIXPI_WIKI_ROOT:-''${HOME:-/tmp}/wiki}"
     today="$(date +%F)"
 
     fleet_hosts=""

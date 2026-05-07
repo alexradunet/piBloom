@@ -40,7 +40,7 @@ NIXPI_WIKI_HOST=workstation
 If no root is configured, the default root is:
 
 ```text
-~/NixPI/wiki
+~/wiki
 ```
 
 There is one wiki root per workspace. Domains are frontmatter labels inside that root, not separate vaults.

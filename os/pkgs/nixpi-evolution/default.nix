@@ -76,7 +76,7 @@ writeShellApplication {
         case "$status" in proposed|planning|implementing|validating|reviewing|applied|rejected) ;; *) echo "nixpi-evolution: invalid status: $status" >&2; exit 2 ;; esac
 
         nixpi_root="''${NIXPI_ROOT:-''${HOME:-/tmp}/NixPI}"
-        wiki_root="''${NIXPI_WIKI_ROOT:-$nixpi_root/wiki}"
+        wiki_root="''${NIXPI_WIKI_ROOT:-''${HOME:-/tmp}/wiki}"
         evolution_dir="$wiki_root/pages/areas/infrastructure/nixpi/evolution"
         slug="$(printf '%s' "$title" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9]+/-/g; s/^-+//; s/-+$//; s/-+/-/g')"
         if [ -z "$slug" ]; then

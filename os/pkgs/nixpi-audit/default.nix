@@ -74,7 +74,7 @@ writeShellApplication {
         fi
 
         repo_root="''${NIXPI_FLAKE_DIR:-''${NIXPI_ROOT:-''${HOME:-/tmp}/NixPI}}"
-        wiki_root="''${NIXPI_WIKI_ROOT:-$repo_root/wiki}"
+        wiki_root="''${NIXPI_WIKI_ROOT:-''${HOME:-/tmp}/wiki}"
         generated_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
         generated_day="''${generated_at%%T*}"
 

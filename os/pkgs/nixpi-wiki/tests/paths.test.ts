@@ -42,10 +42,10 @@ describe("getWikiRoot", () => {
     expect(getWikiRoot()).toBe("/tmp/nixpi-wiki");
   });
 
-  it("falls back to ~/NixPI/wiki", () => {
+  it("falls back to ~/wiki", () => {
     delete process.env.NIXPI_WIKI_ROOT;
     delete process.env.NIXPI_WIKI_DIR;
-    expect(getWikiRoot()).toBe(path.join(process.env.HOME ?? "/root", "NixPI", "wiki"));
+    expect(getWikiRoot()).toBe(path.join(process.env.HOME ?? "/root", "wiki"));
   });
 
   it("uses one root for every domain", () => {
