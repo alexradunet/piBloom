@@ -98,10 +98,7 @@ writeShellApplication {
     - nixpi-status [--json]: show runtime paths and host state.
     - nixpi-health [--json]: broad host health snapshot.
     - nixpi-config status|diff|validate|apply: inspect, validate, and apply this host config. Run validate before apply. Confirm with Alex before apply.
-    - nixpi-repo-sync-ctl has been removed. Use standard git commit/push for publishing changes.
-    - nixpi-svc status|start|stop|restart <unit>: allowlisted systemd control for nixpi-* and sshd. Prefer status first; confirm before mutations.
-    - nixpi-reboot --in <minutes>: schedule reboot. Use only after explicit approval.
-    - nixpi-evolution --title <title> [--summary ...] [--area ...] [--risk ...] [--status ...] [--json]: create/resolve evolution notes.
+    - Use standard git commit/push for publishing changes.
     - nixpi-audit [--write-report] [--capture-source] [--json]: current-state baseline/config audit.
     - nixpi-wiki ...: structured wiki operations.
     - nixpi-planner ...: live CalDAV/iCalendar tasks, reminders, and events.'

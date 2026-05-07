@@ -13,11 +13,8 @@
     nixpi-audit
     nixpi-config
     nixpi-context
-    nixpi-evolution
     nixpi-health
-    nixpi-reboot
     nixpi-status
-    nixpi-svc
     nixpi-wiki
     nodejs
     pi

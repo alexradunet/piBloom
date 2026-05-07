@@ -141,39 +141,15 @@ export default function nixpiExtension(pi: ExtensionAPI) {
   registerPlannerTool(pi);
 
   pi.registerCommand("nixpi", {
-    description: "NixPI runtime status: /nixpi status | evolution <title>",
-    handler: async (args, ctx) => {
-      const parts = args.trim().split(/\s+/).filter(Boolean);
-      const subcommand = parts[0] || "status";
-
-      if (subcommand === "status") {
-        try {
-          const text = await runText("nixpi-status", []);
-          if (ctx.hasUI) ctx.ui.notify(text || "nixpi-status produced no output.", "info");
-        } catch (error: any) {
-          const message = error?.stderr?.toString()?.trim() || error?.message || String(error);
-          if (ctx.hasUI) ctx.ui.notify(message, "error");
-        }
-        return;
+    description: "NixPI runtime status: /nixpi status",
+    handler: async (_args, ctx) => {
+      try {
+        const text = await runText("nixpi-status", []);
+        if (ctx.hasUI) ctx.ui.notify(text || "nixpi-status produced no output.", "info");
+      } catch (error: any) {
+        const message = error?.stderr?.toString()?.trim() || error?.message || String(error);
+        if (ctx.hasUI) ctx.ui.notify(message, "error");
       }
-
-      if (subcommand === "evolution") {
-        const title = args.trim().replace(/^evolution\s+/, "").trim();
-        if (!title) {
-          if (ctx.hasUI) ctx.ui.notify("Usage: /nixpi evolution <title>", "warning");
-          return;
-        }
-        try {
-          const text = await runText("nixpi-evolution", ["--title", title]);
-          if (ctx.hasUI) ctx.ui.notify(text, "info");
-        } catch (error: any) {
-          const message = error?.stderr?.toString()?.trim() || error?.message || String(error);
-          if (ctx.hasUI) ctx.ui.notify(message, "error");
-        }
-        return;
-      }
-
-      if (ctx.hasUI) ctx.ui.notify("Usage: /nixpi status | evolution <title>", "warning");
     },
   });
 

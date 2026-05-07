@@ -412,11 +412,8 @@ in {
         pkgs.nixpi-planner
         pkgs.nixpi-config
         pkgs.nixpi-context
-        pkgs.nixpi-evolution
         pkgs.nixpi-health
-        pkgs.nixpi-reboot
         pkgs.nixpi-status
-        pkgs.nixpi-svc
       ];
       environment =
         {

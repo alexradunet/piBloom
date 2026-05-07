@@ -12,7 +12,7 @@ PI remains the only shipped NixPI agent today, but this package should stay smal
 ## Design rules
 
 - Keep PI code as adapter glue only.
-- Prefer shared CLIs: `nixpi-context`, `nixpi-planner`, `nixpi-wiki`, `nixpi-config`, `nixpi-svc`, etc.
-- Critical safety/allowlist logic belongs in CLIs, not only in PI hooks.
+- Prefer shared CLIs: `nixpi-context`, `nixpi-planner`, `nixpi-wiki`, `nixpi-config`, etc. Removed CLIs have been replaced by skills in `os/skills/`.
+- Critical safety/allowlist logic belongs in config (sudoers, systemd units), not in wrapper CLIs or PI hooks.
 - Registered PI tools are UX affordances and should be thin wrappers over shared interfaces.
 - Do not add new PI-only operational behavior unless a CLI would be awkward or impossible.

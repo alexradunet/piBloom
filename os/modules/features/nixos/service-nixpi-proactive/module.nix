@@ -90,11 +90,8 @@
       pkgs.nixpi-audit
       pkgs.nixpi-config
       pkgs.nixpi-context
-      pkgs.nixpi-evolution
       pkgs.nixpi-health
-      pkgs.nixpi-reboot
       pkgs.nixpi-status
-      pkgs.nixpi-svc
       pkgs.nixpi-wiki
       pkgs.nixpi-planner
     ];
