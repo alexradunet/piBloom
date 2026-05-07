@@ -56,7 +56,7 @@
             modules = [module];
           };
       in {
-        nixpi-vps = mkHost ./hosts/nixpi-vps/default.nix;
+        ownloom-vps = mkHost ./hosts/ownloom-vps/default.nix;
       };
     };
 }

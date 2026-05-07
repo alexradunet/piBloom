@@ -3,7 +3,7 @@
   lib,
   pkgs,
 }: let
-  vps = inputs.self.nixosConfigurations.nixpi-vps;
+  vps = inputs.self.nixosConfigurations.ownloom-vps;
   expectedPiExtensions = [
     "ownloom"
   ];
@@ -44,7 +44,7 @@
     assert lib.asserts.assertMsg (lib.hasInfix "ownloom-pi-settings.json" activationText) "${name} PI activation must consume generated declarative settings";
     assert assertFleet name host; true;
 in
-  assert assertHost "nixpi-vps" vps;
+  assert assertHost "ownloom-vps" vps;
     pkgs.runCommand "ownloom-host-configurations-eval" {} ''
       touch $out
     ''

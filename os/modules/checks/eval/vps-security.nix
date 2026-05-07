@@ -3,7 +3,7 @@
   lib,
   pkgs,
 }: let
-  vps = inputs.self.nixosConfigurations.nixpi-vps;
+  vps = inputs.self.nixosConfigurations.ownloom-vps;
   ssh = vps.config.services.openssh;
   gateway = vps.config.services.ownloom-gateway;
   wikiHealth = vps.config.systemd.services.ownloom-wiki-health-snapshot;

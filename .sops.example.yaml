@@ -1,7 +1,7 @@
 keys:
-  - &nixpi_vps age1replace_with_nixpi_vps_recipient
+  - &ownloom_vps age1replace_with_ownloom_vps_recipient
 creation_rules:
-  - path_regex: hosts/nixpi-vps/secrets.yaml
+  - path_regex: hosts/ownloom-vps/secrets.yaml
     key_groups:
       - age:
-          - *nixpi_vps
+          - *ownloom_vps

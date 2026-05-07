@@ -63,7 +63,7 @@ in {
     ./networking.nix
     # Host-local private overlays — tracked with placeholder values.
     # Fill in real values locally, then:
-    #   git update-index --skip-worktree hosts/nixpi-vps/*.private.nix
+    #   git update-index --skip-worktree hosts/ownloom-vps/*.private.nix
     ./networking.private.nix
     ./secrets.private.nix
     ./ownloom-gateway.private.nix
@@ -81,7 +81,7 @@ in {
     inputs.codex-cli-nix.packages.${pkgs.stdenv.hostPlatform.system}.default
   ];
 
-  networking.hostName = "nixpi-vps";
+  networking.hostName = "ownloom-vps";
   system.stateVersion = "26.05";
 
   ownloom.secrets.synthetic.sopsFile = ./secrets.yaml;
@@ -175,7 +175,7 @@ in {
   services = {
     ownloom-code-server = {
       enable = true;
-      # hashedPassword is provided by hosts/nixpi-vps/secrets.private.nix
+      # hashedPassword is provided by hosts/ownloom-vps/secrets.private.nix
       # (gitignored). See secrets.private.nix.example for the format.
     };
 
@@ -186,7 +186,7 @@ in {
       declarative = true;
       whitelist = {
         # Whitelisted Minecraft players are kept in
-        # hosts/nixpi-vps/minecraft.private.nix (tracked with placeholders;
+        # hosts/ownloom-vps/minecraft.private.nix (tracked with placeholders;
         # use `git update-index --skip-worktree` for local additions).
       };
       package = papermc_26_1_2;
@@ -243,7 +243,7 @@ in {
         };
         transports = {
           websocket.enable = true;
-          # WhatsApp transport is provided by hosts/nixpi-vps/ownloom-gateway.private.nix
+          # WhatsApp transport is provided by hosts/ownloom-vps/ownloom-gateway.private.nix
           # (gitignored) — owner phone numbers stay out of the public repo.
           # See ownloom-gateway.private.nix.example for the format.
         };
@@ -259,7 +259,7 @@ in {
     ownloom-webdav = {
       enable = true;
       sopsFile = ./secrets.yaml;
-      # Loopback-only — access via: ssh -L 4918:127.0.0.1:4918 nixpi-vps
+      # Loopback-only — access via: ssh -L 4918:127.0.0.1:4918 ownloom-vps
       # then point Joplin WebDAV to http://localhost:4918
     };
 

@@ -31,12 +31,12 @@ in {
     };
   };
 
-  # The real WAN address and gateway are kept in hosts/nixpi-vps/networking.private.nix
+  # The real WAN address and gateway are kept in hosts/ownloom-vps/networking.private.nix
   # (gitignored). See networking.private.nix.example for the expected shape.
   assertions = [
     {
       assertion = primaryAddress != "";
-      message = "hosts/nixpi-vps/networking.nix: no WAN address found. Create hosts/nixpi-vps/networking.private.nix from the .example file before installing.";
+      message = "hosts/ownloom-vps/networking.nix: no WAN address found. Create hosts/ownloom-vps/networking.private.nix from the .example file before installing.";
     }
   ];
 }
