@@ -13,6 +13,8 @@
     # agent packages do not need to rebuild against the fleet nixpkgs input.
     llm-agents.url = "github:numtide/llm-agents.nix";
 
+    hermes-agent.url = "github:NousResearch/hermes-agent";
+
     disko = {
       url = "github:nix-community/disko";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -43,15 +45,6 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
-    ownloom = {
-      url = "git+ssh://git@git.nazar.studio:10022/nazar/ownloom.git";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-
-    "ownloom-data" = {
-      url = "git+ssh://git@git.nazar.studio:10022/nazar/ownloom-data.git";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
   };
 
   outputs =
@@ -88,14 +81,14 @@
         ./nix/modules/common/nazar-context.nix
       ];
 
-      piVmModules = [ ./nix/modules/common/pi-agent.nix ];
+      agentVmModules = [ ./nix/modules/common/hermes-agent.nix ];
 
       mkExternalVm =
         {
           name,
           module,
           includeProxmox ? false,
-          includePi ? true,
+          includeAgent ? true,
         }:
         mkNixosHost {
           inherit name;
@@ -106,7 +99,7 @@
           ]
           ++ commonVmModules
           ++ nixpkgs.lib.optionals includeProxmox [ ./nix/modules/common/proxmox-guest.nix ]
-          ++ nixpkgs.lib.optionals includePi piVmModules
+          ++ nixpkgs.lib.optionals includeAgent agentVmModules
           ++ [ module ];
         };
 
@@ -114,7 +107,7 @@
         {
           name,
           module,
-          includePi ? true,
+          includeAgent ? true,
         }:
         mkNixosHost {
           inherit name;
@@ -124,7 +117,7 @@
             sops-nix.nixosModules.sops
           ]
           ++ commonVmModules
-          ++ nixpkgs.lib.optionals includePi piVmModules
+          ++ nixpkgs.lib.optionals includeAgent agentVmModules
           ++ [ module ];
         };
     in
@@ -163,37 +156,23 @@
           module = inputs.minecraft.nixosModules.minecraft-image;
         };
 
-        ownloom = mkExternalVm {
-          name = "ownloom";
-          module = inputs.ownloom.nixosModules.ownloom;
-          includeProxmox = true;
-          includePi = false;
-        };
-
-        ownloomImage = mkExternalImage {
-          name = "ownloom";
-          module = inputs.ownloom.nixosModules.ownloom-image;
-          includePi = false;
-        };
-
-        ownloom-data = mkExternalVm {
-          name = "ownloom-data";
-          module = inputs."ownloom-data".nixosModules.ownloom-data;
+        dav = mkExternalVm {
+          name = "dav";
+          module = ./nix/modules/services/dav.nix;
           includeProxmox = true;
         };
 
-        ownloomDataImage = mkExternalImage {
-          name = "ownloom-data";
-          module = inputs."ownloom-data".nixosModules.ownloom-data-image;
+        davImage = mkExternalImage {
+          name = "dav";
+          module = ./nix/modules/services/dav.nix;
         };
+
       };
 
       packages.${system} = {
         git-qcow2 = self.nixosConfigurations.gitImage.config.system.build.image;
         minecraft-qcow2 = self.nixosConfigurations.minecraftImage.config.system.build.image;
-        ownloom-qcow2 = self.nixosConfigurations.ownloomImage.config.system.build.image;
-        ownloom-data-qcow2 = self.nixosConfigurations.ownloomDataImage.config.system.build.image;
-        ownloom-web = inputs.ownloom.packages.${system}.ownloom-web;
+        dav-qcow2 = self.nixosConfigurations.davImage.config.system.build.image;
       };
 
       deploy.nodes = nixpkgs.lib.mapAttrs (name: vm: {
@@ -233,8 +212,7 @@
           };
           deploy-git = mkDeployApp "git";
           deploy-minecraft = mkDeployApp "minecraft";
-          deploy-ownloom = mkDeployApp "ownloom";
-          deploy-ownloom-data = mkDeployApp "ownloom-data";
+          deploy-dav = mkDeployApp "dav";
           deploy-all = {
             type = "app";
             program = toString (

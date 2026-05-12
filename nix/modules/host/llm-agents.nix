@@ -4,7 +4,6 @@ let
 in
 {
   environment.systemPackages = [
-    llmAgents.pi
     llmAgents.codex
     llmAgents.agent-browser
     llmAgents.context-hub

@@ -30,13 +30,13 @@ DEFAULT_TOKEN_FILE = "/root/.nazar-secrets/netbird-api-token"
 GROUP_ADMINS = "admins"
 GROUP_HOSTS = "proxmox-hosts"
 GROUP_VMS = "vms"
-GROUP_OWNLOOM = "ownloom-core"
-GROUP_OWNLOOM_DATA = "ownloom-data-services"
+GROUP_DAV = "dav-services"
 
 POLICY_NAZAR_SSH = "admins-to-nazar-netbird-ssh"
 POLICY_HOST_SERVICES = "admins-to-proxmox-services"
 POLICY_MC_TCP = "admins-to-minecraft-private"
 POLICY_MC_UDP = "admins-to-minecraft-voice-private"
+POLICY_DAV = "admins-to-dav-private"
 
 ZONE_DOMAIN = "nazar.studio"
 
@@ -342,9 +342,8 @@ def main() -> None:
         match_peers(peers, {"laptop", "yoga", "evo-x1", "nixos"}),
     )
     hosts = ensure_group(groups_by_name, GROUP_HOSTS, match_peers(peers, {"nazar"}))
-    ensure_group(groups_by_name, GROUP_VMS, match_peers(peers, {"git", "minecraft", "ownloom", "ownloom-data"}))
-    ensure_group(groups_by_name, GROUP_OWNLOOM, match_peers(peers, {"ownloom"}))
-    ensure_group(groups_by_name, GROUP_OWNLOOM_DATA, match_peers(peers, {"ownloom-data"}))
+    ensure_group(groups_by_name, GROUP_VMS, match_peers(peers, {"git", "minecraft", "dav"}))
+    dav_group = ensure_group(groups_by_name, GROUP_DAV, match_peers(peers, {"dav"}))
     ensure_admin_user_auto_groups(admins["id"])
 
     policies = {p.get("name"): p for p in as_list(request("GET", "/policies"), "policies") if isinstance(p, dict) and p.get("name")}
@@ -427,6 +426,26 @@ def main() -> None:
         ),
     )
 
+    ensure_policy(
+        policies,
+        policy_body(
+            POLICY_DAV,
+            "Allow admins private DAV access over NetBird.",
+            [
+                {
+                    "name": "dav-http",
+                    "enabled": True,
+                    "action": "accept",
+                    "bidirectional": False,
+                    "protocol": "tcp",
+                    "ports": ["80"],
+                    "sources": [admins["id"]],
+                    "destinations": [dav_group["id"]],
+                }
+            ],
+        ),
+    )
+
     if nazar_ip:
         records = {
             "nazar.studio": nazar_ip,
@@ -434,10 +453,9 @@ def main() -> None:
             "git.nazar.studio": nazar_ip,
             "mc.nazar.studio": nazar_ip,
         }
-        for peer_name, fqdn in (("ownloom", "ownloom.nazar.studio"), ("ownloom-data", "data.nazar.studio")):
-            peer = by_label.get(peer_name)
-            if peer and peer_ip(peer):
-                records[fqdn] = peer_ip(peer)  # direct VM NetBird peer if present
+        peer = by_label.get("dav")
+        if peer and peer_ip(peer):
+            records["dav.nazar.studio"] = peer_ip(peer)  # direct VM NetBird peer if present
         ensure_zone(groups_by_name, records)
 
     if args.write_setup_key:

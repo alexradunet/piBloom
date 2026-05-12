@@ -21,7 +21,7 @@
       vmids = "110-119";
       ips = "10.10.10.30-10.10.10.39";
     };
-    ownloom = {
+    personal = {
       vmids = "120-139";
       ips = "10.10.10.40-10.10.10.59";
     };
@@ -169,78 +169,11 @@
       };
     };
 
-    ownloom = {
-      vmid = 120;
-      hostname = "ownloom";
-      proxmoxName = "ownloom";
-      service = "ownloom";
-      ip = "10.10.10.40";
-      mac = "BC:24:11:0A:4B:20";
-      microvm = {
-        tap = "vm120";
-        mac = "02:00:00:00:00:40";
-        shares = [
-          {
-            tag = "ownloom-home";
-            source = "/persist/microvms/ownloom/home-alex";
-            mountPoint = "/home/alex";
-            proto = "virtiofs";
-          }
-          {
-            tag = "ownloom-state";
-            source = "/persist/microvms/ownloom/ownloom";
-            mountPoint = "/var/lib/ownloom";
-            proto = "virtiofs";
-          }
-          {
-            tag = "ownloom-web";
-            source = "/persist/microvms/ownloom/ownloom-web";
-            mountPoint = "/var/lib/ownloom-web";
-            proto = "virtiofs";
-          }
-        ];
-      };
-      dns = "ownloom.nazar.studio";
-      netbirdName = "ownloom.netbird.cloud";
-      cores = 5;
-      memoryMiB = 32768;
-      balloonMiB = 8192;
-      diskGiB = 200;
-      onboot = false;
-      startupOrder = 40;
-      role = "internal-only OwnLoom Pi agent and technical wiki VM";
-
-      ownloom = {
-        domain = "ownloom.nazar.studio";
-        root = "/home/alex/ownloom";
-        personalWikiRoot = "/var/cache/ownloom/wiki-personal";
-        technicalWikiRoot = "/var/lib/ownloom/wiki";
-        personalWikiBackend = "webdav";
-        personalWikiWebdavUrl = "http://data.nazar.studio/files/wiki/";
-        personalWikiWebdavUsername = "alex";
-        personalWikiWebdavPasswordFile = "/var/lib/ownloom/secrets/alex-webdav-password";
-        wikiDefaultDomain = "technical";
-        wikiWorkspace = "ownloom";
-        piExtensions = [ "ownloom" ];
-        web = {
-          enable = true;
-          domain = "ownloom.nazar.studio";
-          httpPort = 80;
-          appPort = 7331;
-          zellijPort = 8082;
-          defaultDomain = "personal";
-          evolutionDomain = "technical";
-          auth.enable = false;
-          auditLog = "/var/lib/ownloom-web/audit.jsonl";
-        };
-      };
-    };
-
-    ownloom-data = {
+    dav = {
       vmid = 121;
-      hostname = "ownloom-data";
-      proxmoxName = "ownloom-data";
-      service = "ownloom-data";
+      hostname = "dav";
+      proxmoxName = "dav";
+      service = "dav";
       ip = "10.10.10.41";
       mac = "BC:24:11:0A:4B:21";
       microvm = {
@@ -248,51 +181,52 @@
         mac = "02:00:00:00:00:41";
         shares = [
           {
-            tag = "ownloom-data";
-            source = "/persist/microvms/ownloom-data/data";
-            mountPoint = "/var/lib/ownloom-data";
+            tag = "dav-data";
+            source = "/persist/microvms/dav/data";
+            mountPoint = "/var/lib/dav";
             proto = "virtiofs";
           }
           {
-            tag = "ownloom-data-radicale";
-            source = "/persist/microvms/ownloom-data/radicale";
+            tag = "dav-radicale";
+            source = "/persist/microvms/dav/radicale";
             mountPoint = "/var/lib/radicale/collections";
             proto = "virtiofs";
           }
         ];
       };
-      dns = "data.nazar.studio";
+      dns = "dav.nazar.studio";
       aliases = [ ];
-      netbirdName = "ownloom-data.netbird.cloud";
+      netbirdName = "dav.netbird.cloud";
       cores = 2;
       memoryMiB = 4096;
       balloonMiB = 1024;
       diskGiB = 100;
       onboot = false;
       startupOrder = 41;
-      role = "private personal DAV/user data VM for OwnLoom";
+      role = "private personal DAV, CalDAV, CardDAV, WebDAV, and markdown wiki data VM";
 
-      ownloomData = {
+      dav = {
+        domain = "dav.nazar.studio";
         radicalePort = 5232;
         httpPort = 80;
         auth = {
           enable = true;
-          realm = "OwnLoom Data";
-          htpasswdFile = "/var/lib/ownloom-data/secrets/ownloom-data-htpasswd";
+          realm = "Nazar DAV";
+          htpasswdFile = "/var/lib/dav/secrets/dav-htpasswd";
         };
-        stateDir = "/var/lib/ownloom-data";
-        webdavRoot = "/var/lib/ownloom-data/webdav";
+        stateDir = "/var/lib/dav";
+        webdavRoot = "/var/lib/dav/webdav";
         radicaleStateDir = "/var/lib/radicale/collections";
         gitBackup = {
           enable = true;
-          sourceDir = "/var/lib/ownloom-data/webdav/wiki";
-          workTree = "/var/lib/ownloom-data/wiki-git-backup";
+          sourceDir = "/var/lib/dav/webdav/wiki";
+          workTree = "/var/lib/dav/wiki-git-backup";
           # Use the private NAT bridge for VM-to-VM backup pushes. Public and
           # admin clients continue to use git.nazar.studio through nazar.
           repo = "ssh://git@10.10.10.21:10022/nazar/personal-wiki-backup.git";
           branch = "main";
-          sshKeyFile = "/var/lib/ownloom-data/secrets/wiki-backup-ed25519";
-          knownHostsFile = "/var/lib/ownloom-data/secrets/wiki-backup-known_hosts";
+          sshKeyFile = "/var/lib/dav/secrets/wiki-backup-ed25519";
+          knownHostsFile = "/var/lib/dav/secrets/wiki-backup-known_hosts";
           onCalendar = "hourly";
         };
       };
@@ -300,15 +234,15 @@
   };
 
   reserved = {
-    ownloom-vault = {
+    dav-vault = {
       vmid = 122;
-      hostname = "ownloom-vault";
-      proxmoxName = "ownloom-vault";
-      service = "ownloom-vault";
+      hostname = "dav-vault";
+      proxmoxName = "dav-vault";
+      service = "dav-vault";
       ip = "10.10.10.42";
       mac = "BC:24:11:0A:4B:22";
       dns = "vault.nazar.studio";
-      netbirdName = "ownloom-vault.netbird.cloud";
+      netbirdName = "dav-vault.netbird.cloud";
       role = "reserved future secrets/vault VM; Bitwarden/Vaultwarden not enabled";
       enabled = false;
     };

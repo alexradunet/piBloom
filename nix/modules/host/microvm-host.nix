@@ -27,11 +27,7 @@ let
       inputs.minecraft.nixosModules.minecraft-service
       inputs.minecraft.nixosModules.minecraft-web
     ];
-    ownloom = [
-      inputs.ownloom.nixosModules.ownloom-core
-      inputs.ownloom.nixosModules.ownloom-web
-    ];
-    ownloom-data = [ inputs."ownloom-data".nixosModules.ownloom-data-service ];
+    dav = [ ../services/dav.nix ];
   };
 
   mkMicrovm = name: vm: {

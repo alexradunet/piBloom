@@ -9,24 +9,21 @@ let
     {
       git = "forgejo";
       minecraft = "minecraft";
-      ownloom = "ownloom";
-      ownloom-data = "ownloom-data";
+      dav = "dav";
     }
     .${vm.hostname} or vm.hostname;
   repoName =
     {
       git = "forgejo";
       minecraft = "minecraft";
-      ownloom = "ownloom";
-      ownloom-data = "ownloom-data";
+      dav = "dav";
     }
     .${vm.hostname} or vm.hostname;
   serviceModuleName =
     {
       git = "forgejo";
       minecraft = "minecraft";
-      ownloom = "ownloom";
-      ownloom-data = "ownloom-data";
+      dav = "dav";
     }
     .${vm.hostname} or vm.hostname;
   repoRoot = "/home/alex/${repoName}";
@@ -35,11 +32,10 @@ let
   serviceName = vm.service or vm.hostname;
   netbirdName = vm.netbirdName or "";
   dnsName = vm.dns or "";
-  includeCommonPi = vm.hostname != "ownloom";
+  includeCommonAgent = true;
   includeProxmox = lib.elem vm.hostname [
     "git"
-    "ownloom"
-    "ownloom-data"
+    "dav"
   ];
   selfFlakeRoot = "/etc/nazar/self";
   selfSwitchFlake = "${selfFlakeRoot}#${vm.hostname}";
@@ -304,12 +300,7 @@ let
           inputs.nixpkgs.follows = "nixpkgs";
         };
 
-        ${lib.optionalString (repoInputName != "ownloom") ''
-          ownloom = {
-            url = "git+ssh://git@10.10.10.21:10022/nazar/ownloom.git";
-            inputs.nixpkgs.follows = "nixpkgs";
-          };
-        ''}
+        llm-agents.url = "github:numtide/llm-agents.nix";
 
         "${repoInputName}" = {
           url = "path:${repoRoot}";
@@ -338,8 +329,13 @@ let
             ./nix/modules/common/sops.nix
             ./nix/modules/common/nazar-context.nix
           ];
-          piVmModules = [ ./nix/modules/common/pi-agent.nix ];
+          agentVmModules = [ ./nix/modules/common/hermes-agent.nix ];
           proxmoxVmModules = [ ./nix/modules/common/proxmox-guest.nix ];
+          serviceModule =
+            if "${serviceModuleName}" == "dav" then
+              ./nix/modules/services/dav.nix
+            else
+              inputs."${repoInputName}".nixosModules."${serviceModuleName}";
         in
         {
           nixosConfigurations."${vm.hostname}" = nixpkgs.lib.nixosSystem {
@@ -354,15 +350,15 @@ let
               ]
               ++ commonVmModules
               ++ nixpkgs.lib.optionals ${if includeProxmox then "true" else "false"} proxmoxVmModules
-              ++ nixpkgs.lib.optionals ${if includeCommonPi then "true" else "false"} piVmModules
-              ++ [ inputs."${repoInputName}".nixosModules."${serviceModuleName}" ];
+              ++ nixpkgs.lib.optionals ${if includeCommonAgent then "true" else "false"} agentVmModules
+              ++ [ serviceModule ];
           };
         };
     }
   '';
   selfFlakeSource = pkgs.runCommand "nazar-vm-self-flake-source-${vm.hostname}" { } ''
     set -eu
-    mkdir -p "$out/nix/modules/common" "$out/nix/fleet" "$out/nix/users"
+    mkdir -p "$out/nix/modules/common" "$out/nix/modules/services" "$out/nix/fleet" "$out/nix/users"
     cp ${selfFlake} "$out/flake.nix"
     cp ${../../../flake.lock} "$out/flake.lock"
     cp ${../../fleet/vms.nix} "$out/nix/fleet/vms.nix"
@@ -374,8 +370,9 @@ let
     cp ${./netbird.nix} "$out/nix/modules/common/netbird.nix"
     cp ${./sops.nix} "$out/nix/modules/common/sops.nix"
     cp ${./nazar-context.nix} "$out/nix/modules/common/nazar-context.nix"
-    cp ${./pi-agent.nix} "$out/nix/modules/common/pi-agent.nix"
+    cp ${./hermes-agent.nix} "$out/nix/modules/common/hermes-agent.nix"
     cp ${./proxmox-guest.nix} "$out/nix/modules/common/proxmox-guest.nix"
+    cp ${../services/dav.nix} "$out/nix/modules/services/dav.nix"
   '';
 in
 {
