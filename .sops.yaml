@@ -1,4 +1,8 @@
-# SOPS configuration placeholder.
-# Add real age recipients before creating encrypted secrets under nix/sops/.
-# Do not commit plaintext secrets.
-creation_rules: []
+keys:
+  - &nazar_host age1ef55c2cl53j0u2rgg7h65ylxda4gdx6pjnprwlyj206v0ahlqssqpad0dn
+
+creation_rules:
+  - path_regex: nix/sops/.*\.ya?ml$
+    key_groups:
+      - age:
+          - *nazar_host

@@ -15,9 +15,14 @@ in
     addToSystemPackages = true;
     stateDir = "/var/lib/hermes";
     workingDirectory = "/srv/nazar/hermes-workspace";
-    environmentFiles = [ "/var/lib/hermes/env" ];
+    environmentFiles = [ config.sops.secrets."hermes-env".path ];
     settings = {
-      model.default = "anthropic/claude-sonnet-4";
+      model = {
+        provider = "custom";
+        default = "hf:MiniMaxAI/MiniMax-M2.5";
+        base_url = "https://api.synthetic.new/openai/v1";
+        api_key = "\${SYNTHETIC_API_KEY}";
+      };
       toolsets = [ "all" ];
       terminal = {
         backend = "local";
@@ -39,18 +44,18 @@ in
 
   users.users.alex.extraGroups = [ "hermes" ];
 
-  systemd.services.hermes-agent.unitConfig.ConditionFileNotEmpty = "/var/lib/hermes/env";
+  sops.secrets."hermes-env" = {
+    sopsFile = ../../sops/nazar.yaml;
+    owner = "hermes";
+    group = "hermes";
+    mode = "0400";
+  };
+
+  systemd.services.hermes-agent.unitConfig.ConditionFileNotEmpty =
+    config.sops.secrets."hermes-env".path;
 
   systemd.tmpfiles.rules = [
     "d /var/lib/hermes 0750 hermes hermes - -"
-    "f /var/lib/hermes/env 0600 hermes hermes - -"
     "d /srv/nazar/hermes-workspace 0770 hermes hermes - -"
   ];
-
-  system.activationScripts.hermes-env-placeholder = lib.stringAfter [ "users" ] ''
-    install -d -m 0750 -o hermes -g hermes /var/lib/hermes
-    if [ ! -e /var/lib/hermes/env ]; then
-      install -m 0600 -o hermes -g hermes /dev/null /var/lib/hermes/env
-    fi
-  '';
 }
