@@ -82,6 +82,7 @@
         ./nix/modules/common/users.nix
         ./nix/modules/common/security.nix
         ./nix/modules/common/networking.nix
+        ./nix/modules/common/development.nix
         ./nix/modules/common/netbird.nix
         ./nix/modules/common/sops.nix
         ./nix/modules/common/nazar-context.nix

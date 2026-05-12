@@ -7,6 +7,7 @@
     ../../modules/host/users.nix
     ../../modules/host/ssh.nix
     ../../modules/host/networking.nix
+    ../../modules/common/development.nix
     ../../modules/host/firewall.nix
     ../../modules/host/netbird.nix
     ../../modules/host/llm-agents.nix
