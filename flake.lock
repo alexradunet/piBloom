@@ -145,10 +145,13 @@
         ]
       },
       "locked": {
-        "lastModified": 1778584582,
+        "lastModified": 1778613883,
         "narHash": "sha256-JUmMBjcWUUtdNmvcbIVPIvGUBKzyHrJicepwYD41cT8=",
-        "path": "/home/alex/src/nazar-stack/forgejo",
-        "type": "path"
+        "ref": "refs/heads/main",
+        "rev": "aaee75c479d461880353d61271a9b0c65b5b67e2",
+        "revCount": 1,
+        "type": "git",
+        "url": "ssh://git@git.nazar.studio:10022/nazar/forgejo.git"
       },
       "original": {
         "type": "git",
@@ -206,10 +209,13 @@
         ]
       },
       "locked": {
-        "lastModified": 1778595354,
+        "lastModified": 1778613884,
         "narHash": "sha256-Nmmn03N/x5XoXB5ELDFAKPBxxSMHRw3DkgtWNVc4ysY=",
-        "path": "/home/alex/src/nazar-stack/minecraft",
-        "type": "path"
+        "ref": "refs/heads/main",
+        "rev": "70f8ef5faaa7d91196aae7e5374c7ab65b47e178",
+        "revCount": 1,
+        "type": "git",
+        "url": "ssh://git@git.nazar.studio:10022/nazar/minecraft.git"
       },
       "original": {
         "type": "git",
@@ -255,10 +261,13 @@
         ]
       },
       "locked": {
-        "lastModified": 1778593658,
+        "lastModified": 1778613886,
         "narHash": "sha256-J4WxCdWTHgJuKTrrac2UIMMIzlSilRoZT1nCIO1a4Ek=",
-        "path": "/home/alex/src/nazar-stack/ownloom",
-        "type": "path"
+        "ref": "refs/heads/main",
+        "rev": "67d199c828739f21172d17bebf8a70cd2f1576dc",
+        "revCount": 1,
+        "type": "git",
+        "url": "ssh://git@git.nazar.studio:10022/nazar/ownloom.git"
       },
       "original": {
         "type": "git",
@@ -272,10 +281,13 @@
         ]
       },
       "locked": {
-        "lastModified": 1778584584,
+        "lastModified": 1778613889,
         "narHash": "sha256-DNdHorc+6KVzSbjcJiyf/bVHHq3TOqDogaBxdMqI91M=",
-        "path": "/home/alex/src/nazar-stack/ownloom-data",
-        "type": "path"
+        "ref": "refs/heads/main",
+        "rev": "b67301b01225933636cdb0f27ecb2c12b0701573",
+        "revCount": 1,
+        "type": "git",
+        "url": "ssh://git@git.nazar.studio:10022/nazar/ownloom-data.git"
       },
       "original": {
         "type": "git",

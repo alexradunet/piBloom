@@ -12,6 +12,7 @@ let
     ../common/base.nix
     ../common/users.nix
     ../common/security.nix
+    ../common/development.nix
     ../common/netbird.nix
     ../common/sops.nix
     ./microvm-guest.nix
