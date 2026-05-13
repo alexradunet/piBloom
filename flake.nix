@@ -13,7 +13,6 @@
     # agent packages do not need to rebuild against the fleet nixpkgs input.
     llm-agents.url = "github:numtide/llm-agents.nix";
 
-    hermes-agent.url = "github:NousResearch/hermes-agent";
 
     disko = {
       url = "github:nix-community/disko";
@@ -58,6 +57,7 @@
     let
       system = "x86_64-linux";
       pkgs = nixpkgs.legacyPackages.${system};
+      pi = pkgs.callPackage ./nix/packages/pi { };
       fleet = import ./nix/fleet/vms.nix;
       mkNixosHost = import ./nix/lib/mk-nixos-host.nix {
         inherit
@@ -78,7 +78,7 @@
         ./nix/modules/common/nazar-context.nix
       ];
 
-      agentVmModules = [ ./nix/modules/common/hermes-agent.nix ];
+      agentVmModules = [ ./nix/modules/common/pi-agent.nix ];
 
       mkExternalVm =
         {
@@ -166,6 +166,7 @@
       };
 
       packages.${system} = {
+        inherit pi;
         git-qcow2 = self.nixosConfigurations.gitImage.config.system.build.image;
         minecraft-qcow2 = self.nixosConfigurations.minecraftImage.config.system.build.image;
         dav-qcow2 = self.nixosConfigurations.davImage.config.system.build.image;

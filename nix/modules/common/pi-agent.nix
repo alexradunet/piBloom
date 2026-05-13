@@ -1,5 +1,4 @@
 {
-  inputs,
   lib,
   pkgs,
   vm,
@@ -15,7 +14,7 @@ let
     .${vm.hostname} or vm.hostname;
   repoRoot = "/home/alex/${repoName}";
   repoUrl = "ssh://git@10.10.10.21:10022/nazar/${repoName}.git";
-  hermesPackage = inputs.llm-agents.packages.${pkgs.stdenv.hostPlatform.system}.hermes-agent;
+  pi = pkgs.callPackage ../../packages/pi { };
   bootstrap = pkgs.writeShellScriptBin "nazar-vm-repo-bootstrap" ''
     set -euo pipefail
 
@@ -42,25 +41,25 @@ let
     git checkout -B main --track origin/main || git checkout -B main
 
     echo "VM repo ready: $repo_root ($repo_url)"
-    echo "Hermes is available as: hermes-agent"
+    echo "Pi is available as: pi"
     echo "You may edit, test, commit, and push here; production deploys are handed off with: nazar-deploy-request"
-    echo "Next: cd $repo_root && hermes-agent"
+    echo "Next: cd $repo_root && pi"
   '';
 in
 {
   environment.systemPackages = [
-    hermesPackage
+    pi
     pkgs.nodejs
     bootstrap
   ];
 
   environment.sessionVariables = {
-    HERMES_HOME = "/home/alex/.hermes";
+    PI_TELEMETRY = "0";
+    PI_SKIP_VERSION_CHECK = "1";
     NAZAR_VM_REPO = repoRoot;
   };
 
   systemd.tmpfiles.rules = [
-    "d /home/alex/.hermes 0750 alex users - -"
     "d ${repoRoot} 0755 alex users - -"
   ];
 }

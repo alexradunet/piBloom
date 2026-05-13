@@ -326,7 +326,7 @@ let
             ./nix/modules/common/sops.nix
             ./nix/modules/common/nazar-context.nix
           ];
-          agentVmModules = [ ./nix/modules/common/hermes-agent.nix ];
+          agentVmModules = [ ./nix/modules/common/pi-agent.nix ];
           qemuGuestModules = [ ./nix/modules/common/qemu-guest.nix ];
           serviceModule =
             if "${serviceModuleName}" == "dav" then
@@ -355,7 +355,7 @@ let
   '';
   selfFlakeSource = pkgs.runCommand "nazar-vm-self-flake-source-${vm.hostname}" { } ''
     set -eu
-    mkdir -p "$out/nix/modules/common" "$out/nix/modules/services" "$out/nix/fleet" "$out/nix/users"
+    mkdir -p "$out/nix/modules/common" "$out/nix/modules/services" "$out/nix/fleet" "$out/nix/users" "$out/nix/packages/pi"
     cp ${selfFlake} "$out/flake.nix"
     cp ${../../../flake.lock} "$out/flake.lock"
     cp ${../../fleet/vms.nix} "$out/nix/fleet/vms.nix"
@@ -367,7 +367,10 @@ let
     cp ${./development.nix} "$out/nix/modules/common/development.nix"
     cp ${./sops.nix} "$out/nix/modules/common/sops.nix"
     cp ${./nazar-context.nix} "$out/nix/modules/common/nazar-context.nix"
-    cp ${./hermes-agent.nix} "$out/nix/modules/common/hermes-agent.nix"
+    cp ${./pi-agent.nix} "$out/nix/modules/common/pi-agent.nix"
+    cp ${../../packages/pi/default.nix} "$out/nix/packages/pi/default.nix"
+    cp ${../../packages/pi/hashes.json} "$out/nix/packages/pi/hashes.json"
+    cp ${../../packages/pi/package-lock.json} "$out/nix/packages/pi/package-lock.json"
     cp ${./qemu-guest.nix} "$out/nix/modules/common/qemu-guest.nix"
     cp ${../services/dav.nix} "$out/nix/modules/services/dav.nix"
   '';

@@ -15,8 +15,7 @@
     ../../modules/common/development.nix
     ../../modules/host/firewall.nix
     ../../modules/host/llm-agents.nix
-    inputs.hermes-agent.nixosModules.default
-    ../../modules/host/hermes-agent.nix
+    ../../modules/host/pi-agent.nix
     ../../modules/host/microvm-host.nix
     ../../modules/host/forgejo-proxy.nix
     ../../modules/host/backup.nix
