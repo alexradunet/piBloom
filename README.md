@@ -1,105 +1,88 @@
-# wgnr-pi
+# nixpi
 
-**The most feature-rich web UI for [Pi Coding Agent](https://github.com/badlogic/pi-mono).**
+Nazar's private web interface for [Pi Coding Agent](https://github.com/badlogic/pi-mono).
 
-A polished, zero-framework web interface for interacting with Pi — the open-source AI coding agent. Built with vanilla JavaScript, Express, and WebSocket for real-time streaming responses.
+`nixpi` is a lightweight Express/WebSocket application that spawns `pi --mode rpc` and exposes the existing Pi RPC functionality in a browser: streaming chat, session management, model switching, thinking levels, image input, command palette, session export, and optional Whisper speech-to-text.
 
-> Open-source web UI for [Pi Coding Agent](https://github.com/badlogic/pi-mono) · [wgnr.ai](https://wgnr.ai)
+## Why this exists
 
----
+NixPi is the base web surface around Pi for Nazar and OwnLoom. It is intended to run:
 
-## Features
+- on the `nazar` host for host-side development/operator work;
+- inside each Nazar MicroVM for VM-local Pi sessions;
+- behind WireGuard/private DNS only when deployed as infrastructure.
 
-- **Real-time streaming** — Watch AI responses stream in token by token via WebSocket
-- **Session management** — List, rename, archive, and restore sessions with date grouping
-- **Model picker** — Full modal with search, provider groups, and keyboard navigation
-- **Thinking levels** — Cycle through off → minimal → low → medium → high with a UI badge
-- **Image support** — Paste or attach images for vision-capable models
-- **Speech-to-text** — Whisper-powered dictation with configurable silence detection
-- **Command palette** — Slash commands with autocomplete (type `/`)
-- **Session persistence** — History reloads automatically on reconnect
-- **Smart auto-scroll** — Pauses when you scroll up, resumes when you send
-- **Pi health monitoring** — Connection status with auto-reconnect
-- **Export sessions** — Download any session as markdown
-- **Keyboard shortcuts** — Ctrl+N (new chat), Ctrl+L (clear), Escape (stop)
-- **macOS launchd** — Auto-start on boot via included service template
-- **Lightweight** — 4 runtime dependencies. No React, no Vite, no build step
+It deliberately reuses Pi RPC instead of replacing Pi internals.
 
-## Quick Start
+## Quick start
 
 ```bash
-# Install globally
-npm install -g wgnr-pi
-
-# Run (starts on port 4815)
-wgnr-pi
-
-# Or run directly
-npx wgnr-pi
+npm install
+NIXPI_CWD="$PWD" npm start
+# open http://localhost:4815
 ```
 
-Open [http://localhost:4815](http://localhost:4815) in your browser.
+Or via the CLI entry point:
+
+```bash
+npm install -g .
+nixpi
+```
 
 ## Configuration
 
-All settings are configurable via environment variables:
-
 | Variable | Default | Description |
 |---|---|---|
-| `WGPI_PORT` | `4815` | Server port |
-| `WGPI_HOST` | `0.0.0.0` | Server bind address |
-| `WGPI_CWD` | `~` | Working directory for Pi |
-| `WGPI_PI_BIN` | `pi` | Path to Pi binary |
-| `OPENAI_API_KEY` | — | OpenAI API key for Whisper speech-to-text |
+| `NIXPI_PORT` | `4815` | Server port |
+| `NIXPI_HOST` | `0.0.0.0` | Server bind address |
+| `NIXPI_CWD` | `$HOME` | Working directory for Pi |
+| `NIXPI_PI_BIN` | `pi` | Path to Pi binary |
+| `OPENAI_API_KEY` | unset | Optional Whisper speech-to-text key |
 
-Example:
+## Nix/NixOS
+
+This flake exports:
+
+- `packages.x86_64-linux.nixpi`
+- `overlays.default`
+- `nixosModules.nixpi`
+
+Example NixOS module usage:
+
+```nix
+{
+  imports = [ inputs.nixpi.nixosModules.nixpi ];
+
+  services.nixpi = {
+    enable = true;
+    user = "alex";
+    group = "users";
+    home = "/home/alex";
+    workingDirectory = "/home/alex";
+    host = "127.0.0.1";
+    port = 4815;
+    piBinary = "/run/current-system/sw/bin/pi";
+  };
+}
+```
+
+## Architecture
+
+```text
+Browser ←→ WebSocket ←→ nixpi (Express) ←→ Pi (`pi --mode rpc`)
+```
+
+NixPi keeps state in the normal Pi session directory for the configured `HOME` and `NIXPI_CWD`. It does not require browser-held provider secrets; Pi uses its local configuration.
+
+## Development checks
 
 ```bash
-WGPI_PORT=8080 WGPI_CWD=/projects/my-app wgnr-pi
-```
-
-## Requirements
-
-- [Node.js](https://nodejs.org/) 18+
-- [Pi Coding Agent](https://github.com/badlogic/pi-mono) (`npm install -g @mariozechner/pi-coding-agent`)
-
-## How It Works
-
-```
-Browser ←→ WebSocket ←→ wgnr-pi (Express) ←→ Pi (RPC mode)
-```
-
-wgnr-pi spawns Pi as a subprocess in RPC mode and communicates via stdin/stdout JSON. The browser connects via WebSocket for real-time bidirectional messaging. No API keys needed — Pi uses your local configuration.
-
-## Comparison
-
-| Feature | ravshansbox/pi-web | **wgnr-pi** |
-|---|---|---|
-| Stack | React, Vite, Tailwind | **Vanilla JS, Express** |
-| Dependencies | React + 40+ deps | **Zero frameworks** |
-| Session management | List, delete | **List, rename, archive, restore** |
-| Model picker | Status bar switch | **Full modal with search** |
-| Thinking levels | No | **Yes — 5 levels with badge** |
-| Image support | Unknown | **Paste, attach, vision** |
-| Speech-to-text | No | **Whisper with silence detection** |
-| Command palette | No | **Slash commands + autocomplete** |
-| Session history | Browse past | **Browse + load full history** |
-| Export sessions | No | **Markdown export** |
-| Health monitoring | No | **Connection status + auto-reconnect** |
-| macOS service | No | **launchd template included** |
-| Install size | ~15MB | **~200KB** |
-
-## Development
-
-```bash
-git clone https://github.com/wgnr-ai/wgnr-pi.git
-cd wgnr-pi
 npm install
-node server.js
+node --check server.js
+node --check bin/nixpi.js
+nix flake check --no-build
 ```
 
 ## License
 
-[MIT](LICENSE)
-
-Built by [WGNR](https://wgnr.co). For our AI Agent Squad subscription service that powers more than 200K small businesses, check out [kelle.ai](https://kelle.ai).
+[MIT](LICENSE). NixPi is derived from the original `wgnr-pi` MIT project; original copyright notices are preserved in the license.

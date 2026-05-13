@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-// wgnr-pi CLI entry point
-// Allows running via: npx wgnr-pi  or  wgnr-pi
+// nixpi CLI entry point
+// Allows running via: npx nixpi  or  nixpi
 
 import { spawn } from "node:child_process";
 import { dirname, join } from "node:path";
@@ -16,7 +16,7 @@ const child = spawn("node", [serverPath, ...process.argv.slice(2)], {
 
 child.on("exit", (code) => process.exit(code ?? 0));
 child.on("error", (err) => {
-  console.error("Failed to start wgnr-pi:", err.message);
+  console.error("Failed to start nixpi:", err.message);
   process.exit(1);
 });
 

@@ -1,10 +1,10 @@
 {
-  "name": "wgnr-pi",
-  "version": "1.6.1",
-  "description": "A feature-rich web UI for Pi Coding Agent \u2014 by wgnr.ai",
+  "name": "nixpi",
+  "version": "1.6.2",
+  "description": "Nazar's private web interface for Pi Coding Agent",
   "type": "module",
   "bin": {
-    "wgnr-pi": "./bin/wgnr-pi.js"
+    "nixpi": "./bin/nixpi.js"
   },
   "scripts": {
     "start": "node server.js",
@@ -19,20 +19,22 @@
     "ws": "^8.18.0"
   },
   "keywords": [
+    "nix",
+    "nixos",
     "pi",
     "pi-coding-agent",
     "coding-agent",
     "web-ui",
     "chat",
     "ai",
-    "kelle-ai",
-    "wgnr-ai"
+    "nazar",
+    "ownloom"
   ],
-  "author": "wgnr.ai",
+  "author": "Nazar",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/wgnr-ai/wgnr-pi.git"
+    "url": "ssh://git@git.nazar.studio:10022/nazar/nixpi.git"
   },
-  "homepage": "https://github.com/wgnr-ai/wgnr-pi#readme"
+  "homepage": "https://git.nazar.studio/nazar/nixpi"
 }

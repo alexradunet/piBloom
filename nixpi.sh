@@ -1,12 +1,12 @@
 #!/bin/bash
-# wgnr-pi control script
-# Usage: wgnr-pi.sh [start|stop|restart|status|log|install|dev]
+# nixpi control script
+# Usage: nixpi.sh [start|stop|restart|status|log|install|dev]
 
-PLIST="com.wgnr.wgnr-pi"
+PLIST="studio.nazar.nixpi"
 PLIST_PATH="$HOME/Library/LaunchAgents/${PLIST}.plist"
-LOG="$HOME/Library/Logs/wgnr-pi.log"
-ERR="$HOME/Library/Logs/wgnr-pi.err"
-PORT="${WGPI_PORT:-4815}"
+LOG="$HOME/Library/Logs/nixpi.log"
+ERR="$HOME/Library/Logs/nixpi.err"
+PORT="${NIXPI_PORT:-4815}"
 
 # Resolve the directory where this script lives
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -39,7 +39,7 @@ case "${1:-start}" in
   <string>${ERR}</string>
   <key>EnvironmentVariables</key>
   <dict>
-    <key>WGPI_PORT</key>
+    <key>NIXPI_PORT</key>
     <string>${PORT}</string>
   </dict>
 </dict>
@@ -47,7 +47,7 @@ case "${1:-start}" in
 PLISTEOF
     launchctl bootout gui/$(id -u) "$PLIST_PATH" 2>/dev/null
     launchctl bootstrap gui/$(id -u) "$PLIST_PATH"
-    echo "✓ wgnr-pi will auto-start on login"
+    echo "✓ nixpi will auto-start on login"
     echo "  URL: http://localhost:$PORT"
     echo "  Log: $LOG"
     ;;
@@ -66,11 +66,11 @@ PLISTEOF
 
   status)
     if launchctl print "gui/$(id -u)/$PLIST" &>/dev/null; then
-      echo "✓ wgnr-pi is running"
+      echo "✓ nixpi is running"
       echo "  URL: http://localhost:$PORT"
       curl -s -o /dev/null -w "  HTTP: %{http_code}\n" "http://localhost:$PORT" 2>/dev/null || echo "  (not responding yet)"
     else
-      echo "✗ wgnr-pi is not running"
+      echo "✗ nixpi is not running"
     fi
     ;;
 
@@ -81,7 +81,7 @@ PLISTEOF
   dev)
     # Run in foreground for development
     cd "$SCRIPT_DIR"
-    WGPI_PORT=$PORT node server.js
+    NIXPI_PORT=$PORT node server.js
     ;;
 
   *)

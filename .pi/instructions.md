@@ -1,22 +1,22 @@
-# wgnr-pi — Public Repository Rules
+# nixpi Repository Rules
 
-## ⚠️ THIS IS THE PUBLIC OPEN-SOURCE REPO
+NixPi is Nazar's private web interface for Pi Coding Agent.
 
-**Do NOT push anything from `pi-web/` without careful review.**
+## Goals
 
-- Internal instance: `~/Documents/codebase/pi-web/`
-- Public repo: `~/Documents/codebase/wgnr-pi/` (THIS DIRECTORY)
-- GitHub: `wgnr-ai/wgnr-pi`
+- Keep the core behavior as a thin Pi RPC bridge: browser ⇄ WebSocket ⇄ nixpi ⇄ `pi --mode rpc`.
+- Keep the project lightweight: vanilla browser UI, Express, no build step for the app runtime.
+- Prefer Nix/NixOS integration for infrastructure deployments.
+- Preserve WireGuard/private-network assumptions in deployment docs; do not add public exposure by default.
 
-## Before Committing
+## Before committing
 
-- [ ] No internal APIs or endpoints (10.0.0.27, localhost-specific)
-- [ ] No wgnr.ai tab or A0 integration code
-- [ ] No personal API keys or tokens
-- [ ] No internal working files (PRD.md, a0-context-names.json, etc.)
-- [ ] Feature works standalone without internal infrastructure
-- [ ] Tested: `node server.js` runs clean from this directory
+- [ ] No secrets, API keys, WireGuard private keys, or private DAV credentials.
+- [ ] UI, package metadata, CLI, and docs use NixPi/Nazar names.
+- [ ] `node --check server.js` passes.
+- [ ] `node --check bin/nixpi.js` passes.
+- [ ] If Nix packaging changed, `nix build .#nixpi` or `nix flake check --no-build` has been run.
 
-## See Also
+## Nazar integration boundary
 
-Full publishing workflow documented in: `~/Documents/codebase/pi-web/.pi/instructions.md`
+NixPi may be installed on `nazar` and in MicroVMs, but host networking, public exposure, WireGuard peers, VMID/IP/MAC/resource allocation, and fleet deploy policy remain owned by the `nazar` infrastructure repository.

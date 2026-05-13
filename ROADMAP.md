@@ -1,49 +1,26 @@
-# wgnr-pi Roadmap
+# nixpi Roadmap
 
-## v1.0 — Initial Release ✅
+## v1 — Rebrand and package
 
-- [x] Pi Coding Agent web UI (vanilla JS, Express, zero frameworks)
-- [x] Real-time streaming responses via WebSocket
-- [x] Session management (list, rename, archive, restore, date grouping)
-- [x] Model picker with search and provider grouping
-- [x] Thinking level cycling (off → minimal → low → medium → high)
-- [x] Image support (paste, attach, vision detection)
-- [x] Command palette with slash commands
-- [x] Session history persistence and reload on reconnect
-- [x] Pi health monitoring with reconnect
-- [x] Export session to markdown
-- [x] Links open in new tabs
-- [x] macOS launchd service for auto-start
-- [x] Configurable via environment variables
+- [x] Rename package, CLI, docs, UI, and environment variables to `nixpi` / `NIXPI_*`.
+- [x] Add a Nix flake package and reusable NixOS service module.
+- [ ] Publish the rebranded repo to Forgejo as `nazar/nixpi`.
 
-## v1.1 — Polish
+## v2 — Nazar fleet integration
 
-- [ ] Light/dark mode toggle
-- [ ] Mobile responsive polish (sidebar overlay, touch-friendly)
-- [ ] Keyboard shortcut reference in Help modal
-- [ ] Auto-resize textarea
-- [ ] Markdown code syntax highlighting
-- [ ] Copy code block button
+- [ ] Install and run NixPi on the `nazar` host.
+- [ ] Install and run NixPi in each MicroVM as the VM-local Pi web interface.
+- [ ] Expose all NixPi endpoints only over WireGuard/private DNS through host nginx.
+- [ ] Document validation, rollback, and authority boundaries in Nazar runbooks.
 
-## v2.0 — kelle.ai Integration
+## v3 — OwnLoom/base-agent integration
 
-- [ ] kelle.ai tab with native chat UI
-- [ ] Server proxy to agents.kelle.ai API
-- [ ] Free tier with daily message limit
-- [ ] CTA banner when limit reached ("Subscribe at kelle.ai")
-- [ ] Squad toggle buttons for specialist routing
-- [ ] Auto-routing from router to specialist on handoff
-- [ ] SSE streaming for token-by-token response display
+- [ ] Use NixPi as the shared Pi operator surface for OwnLoom development and personal workflows.
+- [ ] Add optional OwnLoom-aware context shortcuts without changing the underlying Pi RPC contract.
+- [ ] Keep autonomous host/fleet changes behind explicit human review.
 
-## v2.1 — Collaboration
+## v4 — Future agent core
 
-- [ ] Multi-user support (basic auth or token)
-- [ ] Shared sessions
-- [ ] Session comments/notes
-
-## v3.0 — Extensibility
-
-- [ ] Plugin system for custom tools
-- [ ] Custom themes via CSS injection
-- [ ] Webhook support for external integrations
-- [ ] REST API for programmatic access
+- [ ] Evaluate OpenClaw/Hermes-like orchestration patterns on top of the existing Pi RPC bridge.
+- [ ] Add authenticated multi-user/private-team mode if WireGuard-only trust becomes insufficient.
+- [ ] Add a plugin/extension boundary for future tools without bloating the core RPC bridge.

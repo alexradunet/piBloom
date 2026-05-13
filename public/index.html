@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>π · wgnr.ai</title>
+<title>nixpi</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='24' font-size='24' fill='%236EA8DB'>π</text></svg>">
 <meta name="theme-color" content="#1a1a2e">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -51,7 +51,9 @@
   }
   #status-dot.connected { background: #4caf50; box-shadow: 0 0 6px #4caf50; }
   #status-dot.busy { background: var(--accent2); animation: pulse 1.2s infinite; box-shadow: 0 0 6px var(--accent2); }
-  .logo { height: 20px; margin-left: 8px; }
+  .brand { margin-left: 8px; font-size: 17px; font-weight: 700; letter-spacing: .2px; color: var(--text); }
+  .brand .nix { color: var(--accent); }
+  .brand .pi-word { color: var(--accent2); }
   @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
 
   /* ── Model / Thinking badges in header ── */
@@ -418,10 +420,7 @@
     <button id="btn-sidebar-toggle" title="Toggle history">☰</button>
     <h1>
       <span class="pi">π</span><span id="status-dot"></span>
-      <svg class="logo" viewBox="0 0 111 35" xmlns="http://www.w3.org/2000/svg">
-        <text x="0" y="26" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif" font-size="20" font-weight="600" fill="#6EA8DB">wgnr</text>
-        <text x="48" y="26" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif" font-size="20" font-weight="600" fill="#D4AF37">.ai</text>
-      </svg>
+      <span class="brand"><span class="nix">nix</span><span class="pi-word">pi</span></span>
     </h1>
   </div>
 
@@ -514,7 +513,7 @@
       <div id="image-previews"></div>
       <div id="input-wrap">
         <div id="cmd-palette"></div>
-        <textarea id="input" placeholder="Ask pi anything… (type / for commands)" rows="1"></textarea>
+        <textarea id="input" placeholder="Ask NixPi anything… (type / for commands)" rows="1"></textarea>
         <div id="input-buttons">
           <button id="attach-btn" title="Attach image (or paste)">📎</button>
           <input id="attach-input" type="file" accept="image/*" multiple>
@@ -573,7 +572,7 @@ let thinkingHidden = false;
 let allCommands = [], filteredCmds = [], activeCmdIndex = -1;
 let currentSessionFile = null;
 let sidebarOpen = window.innerWidth > 768;
-let mode = localStorage.getItem("pi_web_mode") || "pi"; if (mode === "a0") mode = "pi";
+let mode = localStorage.getItem("nixpi_mode") || "pi";
 
 let currentModel = null, currentThinkingLevel = null;
 let currentModelSupportsImages = true;
@@ -987,7 +986,7 @@ function connect() {
     dot.className = "connected";
     applyMode();
     // Restore last known session from localStorage
-    const savedSession = localStorage.getItem("pi_web_session");
+    const savedSession = localStorage.getItem("nixpi_session");
     if (savedSession && !currentSessionFile) {
       currentSessionFile = savedSession;
     }
@@ -1071,7 +1070,7 @@ function handleEvent(data) {
     case "session_state":
       if (data.sessionFile) {
         currentSessionFile = data.sessionFile;
-        localStorage.setItem("pi_web_session", currentSessionFile);
+        localStorage.setItem("nixpi_session", currentSessionFile);
       }
       if (data.model) {
         currentModel = data.model;
@@ -1225,7 +1224,7 @@ function handleEvent(data) {
         const ts = new Date().toISOString().replace(/[:.]/g,"-").slice(0,19);
         const blob = new Blob([JSON.stringify(data.session,null,2)],{type:"application/json"});
         const url = URL.createObjectURL(blob);
-        const a = document.createElement("a"); a.href=url; a.download=`pi-session-${ts}.json`; a.click();
+        const a = document.createElement("a"); a.href=url; a.download=`nixpi-session-${ts}.json`; a.click();
         URL.revokeObjectURL(url);
         addMsg("system", "Session exported.", true);
       }
@@ -1265,12 +1264,12 @@ function sendPrompt() {
 
 // ── Mode management ───────────────────────────────────────────────────────
 function applyMode() {
-  document.getElementById("mode-pi").classList.add("active");
+  document.getElementById("mode-pi")?.classList.add("active");
   document.getElementById("session-list").style.display = "";
   const archToggle = document.getElementById("archived-toggle");
   if (archToggle) archToggle.style.display = archToggle.dataset.visible || "none";
   document.getElementById("new-chat-label").textContent = "New chat";
-  input.placeholder = "Ask pi anything… (type / for commands)";
+  input.placeholder = "Ask NixPi anything… (type / for commands)";
   sendBtn.disabled = streaming;
   sendBtn.innerHTML = streaming ? '<span class="spinner"></span>' : "Send";
   abortBtn.disabled = !streaming;
@@ -1285,7 +1284,7 @@ function applyMode() {
 }
 function switchMode(newMode) {
   if (mode === newMode) return;
-  mode = newMode; localStorage.setItem("pi_web_mode", mode);
+  mode = newMode; localStorage.setItem("nixpi_mode", mode);
   msgs.innerHTML = ""; currentAssistantEl = null; currentThinkingEl = null; currentToolCalls = {};
   applyMode();
 }

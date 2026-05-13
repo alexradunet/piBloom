@@ -1,12 +1,12 @@
 /**
- * pi-web — Web UI for Pi Coding Agent
+ * nixpi — Web UI for Pi Coding Agent
  *
  * Spawns `pi --mode rpc` as a subprocess and bridges JSON-RPC
  * to browser clients over WebSocket.
  *
  * Usage:
  *   node server.js                          # defaults
- *   PI_WEB_PORT=8080 PI_WEB_CWD=/path node server.js
+ *   NIXPI_PORT=8080 NIXPI_CWD=/path node server.js
  */
 
 import { spawn } from "node:child_process";
@@ -18,10 +18,10 @@ import express from "express";
 import { WebSocketServer } from "ws";
 
 // ── Config ──────────────────────────────────────────────────────────────
-const PORT = parseInt(process.env.WGPI_PORT || "4815", 10);
-const HOST = process.env.WGPI_HOST || "0.0.0.0";
-const CWD = process.env.WGPI_CWD || process.env.HOME;
-const PI_BIN = process.env.WGPI_PI_BIN || "pi";
+const PORT = parseInt(process.env.NIXPI_PORT || "4815", 10);
+const HOST = process.env.NIXPI_HOST || "0.0.0.0";
+const CWD = process.env.NIXPI_CWD || process.env.HOME;
+const PI_BIN = process.env.NIXPI_PI_BIN || "pi";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 // ── Module path resolution (handles hoisted node_modules via npx) ──────────
@@ -67,7 +67,7 @@ let currentThinkingLevel = "medium";
 function parseSessions() {
   const homeDir = process.env.HOME || "";
   const sessionBaseDir = join(homeDir, ".pi", "agent", "sessions");
-  // /Users/wgnr → --Users-wgnr--
+  // /home/alex/repos/nixpi → --home-alex-repos-nixpi--
   const cwdKey = "--" + CWD.replace(/^\//, "").replace(/\//g, "-") + "--";
   const sessionDir = join(sessionBaseDir, cwdKey);
 
@@ -156,8 +156,8 @@ app.get("/favicon.ico", (_req, res) => {
 app.get("/manifest.json", (_req, res) => {
   res.setHeader("Content-Type", "application/json");
   res.json({
-    name: "pi · wgnr.ai",
-    short_name: "pi",
+    name: "nixpi",
+    short_name: "nixpi",
     start_url: "/",
     display: "standalone",
     background_color: "#1a1a2e",
@@ -308,14 +308,14 @@ app.post("/api/transcribe", express.raw({ type: "audio/webm", limit: "25mb" }), 
 });
 
 const server = app.listen(PORT, HOST, () => {
-  console.log(`✓ pi-web http://${HOST}:${PORT}`);
+  console.log(`✓ nixpi http://${HOST}:${PORT}`);
 });
 
 server.on('error', (err) => {
   if (err.code === 'EADDRINUSE') {
     console.error(`❌ Port ${PORT} is already in use.`);
-    console.error('   Make sure no other instance of pi-web is running.');
-    console.error('   Run: ./pi-web.sh stop');
+    console.error('   Make sure no other instance of nixpi is running.');
+    console.error('   Run: ./nixpi.sh stop');
     process.exit(1);
   } else {
     console.error('Server error:', err);
