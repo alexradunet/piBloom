@@ -46,6 +46,8 @@ buildNpmPackage {
           ripgrep
         ]
       } \
+      --run 'export NPM_CONFIG_PREFIX="''${NPM_CONFIG_PREFIX:-$HOME/.pi/npm-global}"' \
+      --run 'mkdir -p "$NPM_CONFIG_PREFIX" 2>/dev/null || true' \
       --set PI_SKIP_VERSION_CHECK 1 \
       --set PI_TELEMETRY 0
   '';

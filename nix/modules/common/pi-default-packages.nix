@@ -1,4 +1,4 @@
-{ lib, pkgs, ... }:
+{ config, lib, pkgs, ... }:
 
 let
   defaultPiPackages = [
@@ -11,10 +11,18 @@ let
   defaultPiPackagesJson = builtins.toJSON defaultPiPackages;
 in
 {
-  # Keep global Pi package installs writable on NixOS. Pi's package manager uses
-  # `npm install -g` for user-scoped npm packages, so point npm's global prefix
-  # at alex's mutable Pi state instead of the immutable Nix profile/store.
+  # --- Layer 2: Session variable ---
+  # Keeps global Pi package installs writable on NixOS. Pi's package manager
+  # uses `npm install -g` for user-scoped npm packages, so point npm's global
+  # prefix at alex's mutable Pi state instead of the immutable Nix profile/store.
+  # See EXTENSIONS-RULE.md for the full three-layer NPM_CONFIG_PREFIX strategy.
   environment.sessionVariables.NPM_CONFIG_PREFIX = "/home/alex/.pi/npm-global";
+
+  # Put extension CLI binaries (e.g. context-mode, pi-subagents) on PATH
+  # so they can be invoked directly. Also ensures node can resolve globally-
+  # installed modules via NODE_PATH.
+  environment.sessionVariables.PATH = [ "/home/alex/.pi/npm-global/bin" ];
+  environment.sessionVariables.NODE_PATH = "/home/alex/.pi/npm-global/lib/node_modules";
 
   system.activationScripts.nazar-pi-default-packages = lib.stringAfter [ "users" ] ''
     set -euo pipefail
@@ -23,7 +31,24 @@ in
     settings_file="$agent_dir/settings.json"
     npm_prefix=/home/alex/.pi/npm-global
 
-    install -d -m 0755 -o alex -g users "$agent_dir" "$npm_prefix"
+    install -d -m 0755 -o alex -g users "$agent_dir" "$npm_prefix" "$npm_prefix/bin" "$npm_prefix/lib"
+
+    # --- Layer 3: ~/.npmrc ---
+    # Write the npm prefix into the user npmrc so `npm install -g` works even
+    # when NPM_CONFIG_PREFIX isn't in the environment (e.g. env -i, sudo -E).
+    # This is the last-resort fallback in the three-layer strategy.
+    npmrc_file=/home/alex/.npmrc
+    desired_prefix_line="prefix=/home/alex/.pi/npm-global"
+    if [ -f "$npmrc_file" ]; then
+      if ! grep -qFx "$desired_prefix_line" "$npmrc_file"; then
+        # Remove any existing prefix line and append the correct one
+        sed -i '/^prefix=/d' "$npmrc_file"
+        echo "$desired_prefix_line" >> "$npmrc_file"
+      fi
+    else
+      printf '%s\n' "$desired_prefix_line" > "$npmrc_file"
+      chown alex:users "$npmrc_file"
+    fi
 
     ${pkgs.python3}/bin/python3 - "$settings_file" '${defaultPiPackagesJson}' <<'PY'
 import json
