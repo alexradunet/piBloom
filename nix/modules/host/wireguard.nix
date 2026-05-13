@@ -57,12 +57,6 @@ in
 
     peers = [
       {
-        # Alex laptop
-        publicKey = "uIxa1lOPgLXK9uCx5laM+Nu8bZKpcEDSbINpOHmBlHs=";
-        allowedIPs = [ "10.44.0.2/32" ];
-      }
-
-      {
         # Alex mobile
         publicKey = "z0tbLoUVfdLvn1omEzE5KoY8qgMsnYfHGBYN3gr1o1c=";
         allowedIPs = [ "10.44.0.3/32" ];

@@ -2,7 +2,6 @@
 {
   imports = [
     ./hardware-configuration.nix
-    ../../modules/laptop/wireguard-client.nix
     ../../modules/laptop/nazar-socks.nix
   ];
 
@@ -90,8 +89,6 @@
     vim
     vscodium
     wget
-    wireguard-go
-    wireguard-tools
     inputs.self.packages.${pkgs.system}.pi
   ];
 
