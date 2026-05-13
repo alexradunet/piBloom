@@ -36,10 +36,9 @@ let
   dnsNames = lib.filter (name: name != "") ([ dnsName ] ++ dnsAliases);
   dnsAliasesText = if dnsAliases == [ ] then "" else lib.concatStringsSep ", " dnsAliases;
   dnsNamesText = if dnsNames == [ ] then "" else lib.concatStringsSep ", " dnsNames;
-  includeCommonAgent = vm.hostname != "ownloom";
+  includeCommonAgent = true;
   includeQemuGuest = lib.elem vm.hostname [
     "git"
-    "ownloom"
     "dav-server"
   ];
   selfFlakeRoot = "/etc/nazar/self";
@@ -366,8 +365,6 @@ let
                 ./nix/modules/services/forgejo.nix
                 ./nix/modules/services/forgejo-bootstrap.nix
               ]
-            else if "${serviceModuleName}" == "ownloom" then
-              [ ./nix/modules/services/ownloom.nix ]
             else if "${serviceModuleName}" == "dav-server" then
               [ ./nix/modules/services/dav-server.nix ]
             else
@@ -419,7 +416,6 @@ let
     cp ${../host/microvm-guest.nix} "$out/nix/modules/host/microvm-guest.nix"
     cp ${../services/forgejo.nix} "$out/nix/modules/services/forgejo.nix"
     cp ${../services/forgejo-bootstrap.nix} "$out/nix/modules/services/forgejo-bootstrap.nix"
-    cp ${../services/ownloom.nix} "$out/nix/modules/services/ownloom.nix"
     cp ${../services/dav-server.nix} "$out/nix/modules/services/dav-server.nix"
   '';
 in

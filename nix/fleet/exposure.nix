@@ -48,24 +48,6 @@
       };
     };
 
-    ownloom = {
-      service = {
-        enable = true;
-        access = "wireguard";
-      };
-      nixpi = {
-        enable = true;
-        path = "/nixpi/";
-        access = "wireguard";
-      };
-      subagent = {
-        enable = false;
-        path = "/subagent/";
-        port = 4815;
-        access = "wireguard";
-      };
-    };
-
     dav-server = {
       service = {
         enable = true;

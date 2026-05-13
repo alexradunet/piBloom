@@ -38,11 +38,6 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
-    ownloom = {
-      url = "git+ssh://git@git.nazar.studio:10022/nazar/ownloom.git";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-
     nixpi = {
       url = "git+ssh://git@git.nazar.studio:10022/nazar/nixpi.git";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -235,75 +230,6 @@
           system.stateVersion = "26.05";
         };
 
-      ownloomServiceModule = ./nix/modules/services/ownloom.nix;
-
-      ownloomStandaloneModule =
-        { lib, ... }:
-        {
-          imports = [ ownloomServiceModule ];
-
-          boot.loader.systemd-boot.enable = lib.mkForce false;
-          boot.loader.efi.canTouchEfiVariables = lib.mkForce false;
-          boot.loader.grub = {
-            enable = true;
-            device = "/dev/vda";
-          };
-          boot.growPartition = true;
-          boot.kernelParams = [ "console=ttyS0" ];
-          boot.initrd.availableKernelModules = [
-            "virtio_pci"
-            "virtio_blk"
-            "virtio_scsi"
-            "sd_mod"
-            "sr_mod"
-          ];
-
-          fileSystems."/" = {
-            device = lib.mkForce "/dev/disk/by-label/nixos";
-            fsType = lib.mkForce "ext4";
-            options = lib.mkForce [
-              "x-systemd.growfs"
-              "x-initrd.mount"
-            ];
-          };
-
-          swapDevices = [ ];
-
-          services.qemuGuest.enable = true;
-          services.fstrim.enable = true;
-
-          system.stateVersion = "26.05";
-        };
-
-      ownloomImageModule =
-        { vm, ... }:
-        {
-          imports = [ ownloomServiceModule ];
-
-          image = {
-            baseName = "nixos-${vm.hostname}";
-            format = "qcow2";
-            efiSupport = false;
-          };
-
-          virtualisation.diskSize = 8192;
-
-          services.qemuGuest.enable = true;
-          services.fstrim.enable = true;
-
-          boot.growPartition = true;
-          boot.kernelParams = [ "console=ttyS0" ];
-          boot.initrd.availableKernelModules = [
-            "virtio_pci"
-            "virtio_blk"
-            "virtio_scsi"
-            "sd_mod"
-            "sr_mod"
-          ];
-
-          system.stateVersion = "26.05";
-        };
-
       davServerImageModule =
         { vm, ... }:
         {
@@ -377,9 +303,6 @@
         forgejo-bootstrap = ./nix/modules/services/forgejo-bootstrap.nix;
         forgejo = forgejoStandaloneModule;
         forgejo-image = forgejoImageModule;
-        ownloom-service = ownloomServiceModule;
-        ownloom = ownloomStandaloneModule;
-        ownloom-image = ownloomImageModule;
         dav-server-service = ./nix/modules/services/dav-server.nix;
         dav-server-image = davServerImageModule;
       };
@@ -441,30 +364,6 @@
           module = minecraftImageModule;
         };
 
-        ownloom = mkNixosHost {
-          name = "ownloom";
-          vm = fleet.vms.ownloom;
-          modules = [
-            inputs.microvm.nixosModules.microvm
-            sops-nix.nixosModules.sops
-            ./nix/modules/common/base.nix
-            ./nix/modules/common/users.nix
-            ./nix/modules/common/security.nix
-            ./nix/modules/common/development.nix
-            ./nix/modules/common/sops.nix
-            ./nix/modules/common/nazar-context.nix
-            ./nix/modules/common/nixpi.nix
-            ./nix/modules/host/microvm-guest.nix
-            ownloomServiceModule
-          ];
-        };
-
-        ownloomImage = mkExternalImage {
-          name = "ownloom";
-          module = ownloomImageModule;
-          includeAgent = false;
-        };
-
         "dav-server" = mkExternalVm {
           name = "dav-server";
           module = ./nix/modules/services/dav-server.nix;
@@ -481,7 +380,6 @@
         inherit pi;
         git-qcow2 = self.nixosConfigurations.gitImage.config.system.build.image;
         minecraft-qcow2 = self.nixosConfigurations.minecraftImage.config.system.build.image;
-        ownloom-qcow2 = self.nixosConfigurations.ownloomImage.config.system.build.image;
         dav-server-qcow2 = self.nixosConfigurations."dav-server-image".config.system.build.image;
       };
 
@@ -522,7 +420,6 @@
           };
           deploy-git = mkDeployApp "git";
           deploy-minecraft = mkDeployApp "minecraft";
-          deploy-ownloom = mkDeployApp "ownloom";
           deploy-dav-server = mkDeployApp "dav-server";
           deploy-all = {
             type = "app";

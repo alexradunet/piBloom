@@ -67,8 +67,6 @@ let
   serviceBackendFor = vm:
     if vm.service == "forgejo" then
       "http://${vm.ip}:${toString vm.webPort}"
-    else if vm.service == "ownloom" then
-      "http://${vm.ip}:${toString (vm.ownloom.web.httpPort or 80)}"
     else if vm.service == "dav-server" then
       "http://${vm.ip}:${toString vm.davServer.httpPort}"
     else

@@ -254,26 +254,6 @@
         "type": "github"
       }
     },
-    "ownloom": {
-      "inputs": {
-        "nixpkgs": [
-          "nixpkgs"
-        ]
-      },
-      "locked": {
-        "lastModified": 1778613886,
-        "narHash": "sha256-J4WxCdWTHgJuKTrrac2UIMMIzlSilRoZT1nCIO1a4Ek=",
-        "ref": "refs/heads/main",
-        "rev": "67d199c828739f21172d17bebf8a70cd2f1576dc",
-        "revCount": 1,
-        "type": "git",
-        "url": "ssh://git@git.nazar.studio:10022/nazar/ownloom.git"
-      },
-      "original": {
-        "type": "git",
-        "url": "ssh://git@git.nazar.studio:10022/nazar/ownloom.git"
-      }
-    },
     "root": {
       "inputs": {
         "deploy-rs": "deploy-rs",
@@ -283,7 +263,6 @@
         "minecraft": "minecraft",
         "nixpi": "nixpi",
         "nixpkgs": "nixpkgs_2",
-        "ownloom": "ownloom",
         "sops-nix": "sops-nix"
       }
     },

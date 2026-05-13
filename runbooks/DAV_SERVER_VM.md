@@ -13,8 +13,6 @@
 
 DAV Server uses the configured htpasswd file for nginx basic auth on `/files/` and `/radicale/`. WireGuard peers are still network-trusted; do not onboard broad/untrusted peers until DAV secrets, backups, and restore paths are validated.
 
-OwnLoom should use a dedicated DAV user named `ownloom` and the wiki namespace `/files/wiki/ownloom/`. Keep the matching password in the OwnLoom VM at `/var/lib/ownloom/secrets/ownloom-dav-password`; do not reuse a human DAV password.
-
 ## Fresh-server policy
 
 Start this as a fresh `dav-server` state tree. Do not copy or bind-mount old `/persist/microvms/dav` or guest `/var/lib/dav` data into this VM unless a separate migration plan is explicitly approved. Provision new secrets under `/persist/microvms/dav-server` / `/var/lib/dav-server` and validate auth, backups, and restore before storing real personal data.

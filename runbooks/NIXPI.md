@@ -10,7 +10,6 @@ Primary per-service paths:
 
 - Git VM UI: `http://git.nazar.studio/nixpi/` -> `10.10.10.21:4815`
 - Minecraft VM UI: `http://balaur.eu/nixpi/` and `http://balaur.nazar.studio/nixpi/` -> `10.10.10.30:4815` over WireGuard DNS
-- OwnLoom VM UI: `http://ownloom.nazar.studio/nixpi/` -> `10.10.10.40:4815`
 - DAV Server VM UI: `http://dav.nazar.studio/nixpi/` -> `10.10.10.41:4815`
 
 Dedicated private names are also available:
@@ -18,7 +17,6 @@ Dedicated private names are also available:
 - Host UI: `http://nixpi.nazar.studio/` -> host `127.0.0.1:4815`
 - Git VM UI: `http://nixpi-git.nazar.studio/` -> `10.10.10.21:4815`
 - Minecraft VM UI: `http://nixpi-minecraft.nazar.studio/` -> `10.10.10.30:4815`
-- OwnLoom VM UI: `http://nixpi-ownloom.nazar.studio/` -> `10.10.10.40:4815`
 - DAV Server VM UI: `http://nixpi-dav-server.nazar.studio/` -> `10.10.10.41:4815`
 
 All private service domains and dedicated NixPi names resolve to `10.44.0.1` through WireGuard dnsmasq and are proxied by host nginx. Do not add public DNS for `nixpi*.nazar.studio` names.
@@ -35,7 +33,7 @@ Each route has an `access` value:
 Current routes are WireGuard-only. To intentionally publish a future route such as `/subagent/`, enable it and set its access explicitly, for example:
 
 ```nix
-vms.ownloom.subagent = {
+vms.git.subagent = {
   enable = true;
   path = "/subagent/";
   port = 4815;
@@ -51,7 +49,6 @@ Each MicroVM has a persistent virtiofs share mounted at `/home/alex/.pi`, backed
 
 - `/persist/microvms/git/pi`
 - `/persist/microvms/minecraft/pi`
-- `/persist/microvms/ownloom/pi`
 - `/persist/microvms/dav-server/pi`
 
 This keeps Pi config and NixPi session history across VM recreation. The host service uses `/home/alex/.pi` on the host.
@@ -85,7 +82,6 @@ Then deploy MicroVMs as usual if needed:
 ```bash
 nix run .#deploy-git
 nix run .#deploy-minecraft
-nix run .#deploy-ownloom
 nix run .#deploy-dav-server
 ```
 
@@ -102,12 +98,9 @@ From a WireGuard client:
 
 ```bash
 dig @10.44.0.1 nixpi.nazar.studio +short
-dig @10.44.0.1 nixpi-ownloom.nazar.studio +short
 curl -I http://git.nazar.studio/nixpi/
 curl -I http://balaur.nazar.studio/nixpi/
-curl -I http://ownloom.nazar.studio/nixpi/
 curl -I http://nixpi.nazar.studio/
-curl -I http://nixpi-ownloom.nazar.studio/
 ```
 
 Inside each VM:
@@ -132,7 +125,7 @@ systemctl status nixpi
 curl -I http://127.0.0.1:4815/
 ```
 
-If the host was rebuilt but the VM was not redeployed, run the relevant deploy app (`nix run .#deploy-git`, `.#deploy-minecraft`, `.#deploy-ownloom`, or `.#deploy-dav-server`) so the VM-local `nixpi` systemd service exists and is running.
+If the host was rebuilt but the VM was not redeployed, run the relevant deploy app (`nix run .#deploy-git`, `.#deploy-minecraft`, or `.#deploy-dav-server`) so the VM-local `nixpi` systemd service exists and is running.
 
 ## Rollback
 

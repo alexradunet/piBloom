@@ -19,8 +19,6 @@ let
     ./microvm-guest.nix
   ];
 
-  # OwnLoom provides its own Pi integration through its service module; every
-  # other MicroVM gets the Nazar common Pi agent module here.
   commonPiAgentModules = [ ../common/pi-agent.nix ];
 
   serviceModules = {
@@ -32,7 +30,6 @@ let
       ../services/minecraft-identity.nix
       inputs.minecraft.nixosModules.minecraft-service
     ];
-    ownloom = [ ../services/ownloom.nix ];
     dav-server = [ ../services/dav-server.nix ];
   };
 
@@ -44,10 +41,7 @@ let
       inherit inputs fleet vm;
     };
     config = {
-      imports =
-        commonGuestModules
-        ++ lib.optionals (name != "ownloom") commonPiAgentModules
-        ++ serviceModules.${name};
+      imports = commonGuestModules ++ commonPiAgentModules ++ serviceModules.${name};
     };
   };
 
@@ -72,7 +66,6 @@ in
       "git"
       "minecraft"
       "dav-server"
-      "ownloom"
     ];
     vms = lib.mapAttrs mkMicrovm fleet.vms;
   };
