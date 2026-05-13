@@ -31,7 +31,7 @@ Publicly reachable services are limited to:
 
 - SSH `22/tcp` on `nazar` for break-glass host administration as `alex` only.
 - WireGuard `51820/udp` on `nazar`.
-- Minecraft game traffic: `25565/tcp` and Simple Voice Chat `24454/udp` DNAT to the Minecraft MicroVM.
+- Minecraft game traffic for `balaur.eu` and `balaur.nazar.studio`: `25565/tcp` and Simple Voice Chat `24454/udp` DNAT to the Minecraft MicroVM.
 
 Private WireGuard services:
 
@@ -58,12 +58,12 @@ runbooks/                 # operational runbooks
 | Service | VM | Private/Public endpoint | Notes |
 |---|---|---|---|
 | Forgejo | `git` / `10.10.10.21` | `git.nazar.studio` on WireGuard (`10.44.0.1`) | HTTP `80`, Git SSH `10022` via host proxy; autostarted |
-| Minecraft | `minecraft` / `10.10.10.30` | public game `25565/tcp`, voice `24454/udp` | no public webapp |
+| Minecraft | `minecraft` / `10.10.10.30` | `balaur.eu`, `balaur.nazar.studio`; public game `25565/tcp`, voice `24454/udp` | no public webapp |
 | DAV | `dav` / `10.10.10.41` | `dav.nazar.studio` on WireGuard (`10.44.0.1`) | WebDAV `/files/`, CalDAV/CardDAV `/radicale/`; start/deploy deliberately |
 
 ## DNS intent
 
-Public Gandi DNS should publish only names that are intentionally public, currently the Minecraft game name(s) pointing at `167.235.12.22`. Private service names such as `git.nazar.studio` and `dav.nazar.studio` should not have public A/AAAA records; WireGuard clients resolve them through dnsmasq on `10.44.0.1`.
+Public DNS should publish only names that are intentionally public, currently the Minecraft game names `balaur.eu` and `balaur.nazar.studio` pointing at `167.235.12.22`. Private service names such as `git.nazar.studio` and `dav.nazar.studio` should not have public A/AAAA records; WireGuard clients resolve them through dnsmasq on `10.44.0.1`.
 
 ## Fleet orchestration
 

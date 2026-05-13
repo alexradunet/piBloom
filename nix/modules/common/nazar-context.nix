@@ -31,6 +31,10 @@ let
   deployApp = "deploy-${vm.hostname}";
   serviceName = vm.service or vm.hostname;
   dnsName = vm.dns or "";
+  dnsAliases = vm.aliases or [ ];
+  dnsNames = lib.filter (name: name != "") ([ dnsName ] ++ dnsAliases);
+  dnsAliasesText = if dnsAliases == [ ] then "" else lib.concatStringsSep ", " dnsAliases;
+  dnsNamesText = if dnsNames == [ ] then "" else lib.concatStringsSep ", " dnsNames;
   includeCommonAgent = true;
   includeQemuGuest = lib.elem vm.hostname [
     "git"
@@ -47,6 +51,8 @@ let
       service = serviceName;
       ip = vm.ip;
       dns = dnsName;
+      dnsAliases = dnsAliases;
+      dnsNames = dnsNames;
     };
     serviceRepo = {
       name = repoName;
@@ -87,6 +93,8 @@ let
     | Service | `${serviceName}` |
     | NAT IP | `${vm.ip}` |
     | Service DNS | `${dnsName}` |
+    | Service DNS aliases | `${dnsAliasesText}` |
+    | All service DNS names | `${dnsNamesText}` |
     | VM-owned repo | `${repoRoot}` |
     | Forgejo remote | `${repoUrl}` |
     | Nazar flake input | `${repoInputName}` |

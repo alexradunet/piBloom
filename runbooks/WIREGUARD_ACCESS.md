@@ -59,7 +59,7 @@ Other DNS queries are forwarded upstream by dnsmasq.
 
 ## Public exposure model
 
-Keep public Gandi DNS limited to intentionally public services such as Minecraft game names pointing at `167.235.12.22`. Do not publish public A/AAAA/CNAME records for `git.nazar.studio` or `dav.nazar.studio`; those names are private WireGuard DNS records.
+Keep public DNS limited to intentionally public services such as Minecraft game names `balaur.eu` and `balaur.nazar.studio` pointing at `167.235.12.22`. Do not publish public A/AAAA/CNAME records for `git.nazar.studio` or `dav.nazar.studio`; those names are private WireGuard DNS records.
 
 Public firewall intent:
 

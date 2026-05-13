@@ -49,9 +49,12 @@ in
 
   microvm = {
     stateDir = "/persist/microvms-runtime";
-    # Bring the private Git service back automatically. Other services are
-    # started deliberately as their data/secrets are restored.
-    autostart = [ "git" ];
+    # Bring persistent services back automatically. DAV remains deliberately
+    # started only when its data/secrets are restored and validated.
+    autostart = [
+      "git"
+      "minecraft"
+    ];
     vms = lib.mapAttrs mkMicrovm fleet.vms;
   };
 

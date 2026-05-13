@@ -80,7 +80,8 @@
           }
         ];
       };
-      dns = "balaur.org";
+      dns = "balaur.eu";
+      aliases = [ "balaur.nazar.studio" ];
       cores = 2;
       memoryMiB = 4096;
       balloonMiB = 1024;
