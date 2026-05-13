@@ -150,8 +150,9 @@
         gamemode = "survival";
         viewDistance = 10;
         simulationDistance = 6;
-        # Add non-operator players here. Operators are whitelisted automatically
-        # by the Minecraft VM module when whitelistOperators is left enabled.
+        # Keep the server open to all authenticated Minecraft accounts.
+        enableWhitelist = false;
+        # Add entries here only if the server should be closed again.
         whitelist = { };
         gameRules = {
           keep_inventory = true;
