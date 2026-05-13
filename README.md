@@ -25,6 +25,7 @@ Canonical paths:
 - Private Git: `git.nazar.studio` over WireGuard DNS.
 - Private OwnLoom agent web app: `ownloom.nazar.studio` over WireGuard DNS.
 - Private DAV Server: `dav.nazar.studio` over WireGuard DNS.
+- Private NixPi Pi web interfaces: `nixpi.nazar.studio` plus per-VM `nixpi-*.nazar.studio` over WireGuard DNS.
 - Public SSH: break-glass only, not the normal path.
 - Hetzner Rescue: final recovery path if both WireGuard and public SSH are unusable.
 
@@ -39,6 +40,8 @@ Private WireGuard services:
 - `git.nazar.studio` -> `10.44.0.1`, HTTP via host nginx to Forgejo and Git SSH via host socat on `10022/tcp`.
 - `ownloom.nazar.studio` -> `10.44.0.1`, HTTP via host nginx to the OwnLoom MicroVM.
 - `dav.nazar.studio` -> `10.44.0.1`, HTTP via host nginx to the DAV Server MicroVM when it is running.
+- `nixpi.nazar.studio` -> `10.44.0.1`, HTTP via host nginx to the host-local NixPi service.
+- `nixpi-git.nazar.studio`, `nixpi-minecraft.nazar.studio`, `nixpi-ownloom.nazar.studio`, `nixpi-dav-server.nazar.studio` -> `10.44.0.1`, HTTP via host nginx to each VM-local NixPi service.
 - DNS for WireGuard clients is dnsmasq on `10.44.0.1`, bound to `wg0` only, forwarding other queries upstream.
 
 There is intentionally no public HTTP/TCP/80 DNAT to Minecraft and no public Forgejo or DAV exposure. WireGuard peers are network-trusted; sensitive services such as DAV still need service-level auth before broad client onboarding.
@@ -63,10 +66,11 @@ runbooks/                 # operational runbooks
 | Minecraft | `minecraft` / `10.10.10.30` | `balaur.eu`, `balaur.nazar.studio`; public game `25565/tcp`, voice `24454/udp` | no public webapp |
 | OwnLoom | `ownloom` / `10.10.10.40` | `ownloom.nazar.studio` on WireGuard (`10.44.0.1`) | private self-evolving agent web app; connected to DAV wiki scope `/files/wiki/ownloom/` |
 | DAV Server | `dav-server` / `10.10.10.41` | `dav.nazar.studio` on WireGuard (`10.44.0.1`) | WebDAV `/files/`, CalDAV/CardDAV `/radicale/`; autostarted for OwnLoom |
+| NixPi | host + every MicroVM | `nixpi.nazar.studio`, `nixpi-git.nazar.studio`, `nixpi-minecraft.nazar.studio`, `nixpi-ownloom.nazar.studio`, `nixpi-dav-server.nazar.studio` on WireGuard | private web interface for Pi RPC sessions; no public exposure |
 
 ## DNS intent
 
-Public DNS should publish only names that are intentionally public, currently the Minecraft game names `balaur.eu` and `balaur.nazar.studio` pointing at `167.235.12.22`. Private service names such as `git.nazar.studio`, `ownloom.nazar.studio`, and `dav.nazar.studio` should not have public A/AAAA records; WireGuard clients resolve them through dnsmasq on `10.44.0.1`.
+Public DNS should publish only names that are intentionally public, currently the Minecraft game names `balaur.eu` and `balaur.nazar.studio` pointing at `167.235.12.22`. Private service names such as `git.nazar.studio`, `ownloom.nazar.studio`, `dav.nazar.studio`, and all `nixpi*.nazar.studio` names should not have public A/AAAA records; WireGuard clients resolve them through dnsmasq on `10.44.0.1`.
 
 ## Fleet orchestration
 
@@ -93,7 +97,7 @@ git status --short --branch
 nix fmt
 nix flake check --no-build
 sudo nix --accept-flake-config build .#nixosConfigurations.nazar.config.system.build.toplevel --print-build-logs
-systemctl is-active sshd wireguard-wg0 dnsmasq nginx git-ssh-proxy microvm@git
+systemctl is-active sshd wireguard-wg0 dnsmasq nginx git-ssh-proxy nixpi microvm@git
 sudo wg show wg0
 ```
 
@@ -103,6 +107,8 @@ From a configured WireGuard client:
 dig @10.44.0.1 git.nazar.studio +short
 dig @10.44.0.1 ownloom.nazar.studio +short
 dig @10.44.0.1 dav.nazar.studio +short
+dig @10.44.0.1 nixpi.nazar.studio +short
+dig @10.44.0.1 nixpi-ownloom.nazar.studio +short
 curl -I http://git.nazar.studio/
 git ls-remote ssh://git@git.nazar.studio:10022/nazar/nazar.git
 ```
@@ -111,7 +117,7 @@ git ls-remote ssh://git@git.nazar.studio:10022/nazar/nazar.git
 
 - Do not commit secrets or WireGuard private keys.
 - Add only client public keys and assigned `/32` WireGuard addresses to Nix.
-- Do not expose private services publicly without an explicit hardening decision.
+- Do not expose private services, including NixPi, publicly without an explicit hardening decision.
 - Treat WireGuard as the canonical daily access path.
 - Keep public SSH key-only and alex-only as break-glass until a separate migration decision and rescue drill.
 - Do not enable root SSH.

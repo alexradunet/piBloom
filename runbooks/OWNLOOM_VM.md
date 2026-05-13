@@ -6,6 +6,7 @@
 - Private DNS: `ownloom.nazar.studio` -> `10.44.0.1` from WireGuard dnsmasq
 - VM IP: `10.10.10.40`
 - Host proxy: nginx on WireGuard `10.44.0.1:80` -> `10.10.10.40:80`
+- NixPi: `nixpi-ownloom.nazar.studio` -> `10.10.10.40:4815` through host nginx/WireGuard
 - State: `/persist/microvms/ownloom`
 - Repo checkout: `/home/alex/ownloom`
 - DAV wiki scope: `http://10.10.10.41/files/wiki/ownloom/`
@@ -42,6 +43,7 @@ From a WireGuard client:
 ```bash
 dig @10.44.0.1 ownloom.nazar.studio +short
 curl -I http://ownloom.nazar.studio/
+curl -I http://nixpi-ownloom.nazar.studio/
 ```
 
 From the host:
@@ -82,5 +84,4 @@ autonomously change host firewall, WireGuard peers, public exposure, VMID/IP/MAC
 shared networking, or other VMs. Host/fleet changes should be proposed as a
 branch or patch for human review in `/root/nazar`.
 
-The phase-1 web UI is WireGuard-private and can drive Pi/self-evolution workflows
-as `alex`; keep the WireGuard peer set trusted and small.
+The phase-1 web UI and NixPi are WireGuard-private and can drive Pi/self-evolution workflows as `alex`; keep the WireGuard peer set trusted and small.

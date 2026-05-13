@@ -42,6 +42,11 @@
       url = "git+ssh://git@git.nazar.studio:10022/nazar/ownloom.git";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+
+    nixpi = {
+      url = "git+ssh://git@git.nazar.studio:10022/nazar/nixpi.git";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   outputs =
@@ -77,6 +82,7 @@
         ./nix/modules/common/development.nix
         ./nix/modules/common/sops.nix
         ./nix/modules/common/nazar-context.nix
+        ./nix/modules/common/nixpi.nix
       ];
 
       agentVmModules = [ ./nix/modules/common/pi-agent.nix ];
@@ -404,9 +410,23 @@
           module = forgejoImageModule;
         };
 
-        minecraft = mkExternalVm {
+        minecraft = mkNixosHost {
           name = "minecraft";
-          module = minecraftStandaloneModule;
+          vm = fleet.vms.minecraft;
+          modules = [
+            inputs.microvm.nixosModules.microvm
+            sops-nix.nixosModules.sops
+            ./nix/modules/common/base.nix
+            ./nix/modules/common/users.nix
+            ./nix/modules/common/security.nix
+            ./nix/modules/common/development.nix
+            ./nix/modules/common/sops.nix
+            ./nix/modules/common/nazar-context.nix
+            ./nix/modules/common/nixpi.nix
+            ./nix/modules/common/pi-agent.nix
+            ./nix/modules/host/microvm-guest.nix
+            minecraftServiceModule
+          ];
         };
 
         minecraftImage = mkExternalImage {
@@ -414,11 +434,22 @@
           module = minecraftImageModule;
         };
 
-        ownloom = mkExternalVm {
+        ownloom = mkNixosHost {
           name = "ownloom";
-          module = ownloomStandaloneModule;
-          includeQemuGuest = true;
-          includeAgent = false;
+          vm = fleet.vms.ownloom;
+          modules = [
+            inputs.microvm.nixosModules.microvm
+            sops-nix.nixosModules.sops
+            ./nix/modules/common/base.nix
+            ./nix/modules/common/users.nix
+            ./nix/modules/common/security.nix
+            ./nix/modules/common/development.nix
+            ./nix/modules/common/sops.nix
+            ./nix/modules/common/nazar-context.nix
+            ./nix/modules/common/nixpi.nix
+            ./nix/modules/host/microvm-guest.nix
+            ownloomServiceModule
+          ];
         };
 
         ownloomImage = mkExternalImage {
