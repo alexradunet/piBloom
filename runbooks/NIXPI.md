@@ -6,13 +6,21 @@ NixPi is the private browser interface for Pi Coding Agent in Nazar. It reuses P
 
 NixPi is an operator surface: it can drive Pi as `alex` in the configured working directory. Keep it WireGuard-private only.
 
+Primary per-service paths:
+
+- Git VM UI: `http://git.nazar.studio/nixpi/` -> `10.10.10.21:4815`
+- OwnLoom VM UI: `http://ownloom.nazar.studio/nixpi/` -> `10.10.10.40:4815`
+- DAV Server VM UI: `http://dav.nazar.studio/nixpi/` -> `10.10.10.41:4815`
+
+Dedicated private names are also available:
+
 - Host UI: `http://nixpi.nazar.studio/` -> host `127.0.0.1:4815`
 - Git VM UI: `http://nixpi-git.nazar.studio/` -> `10.10.10.21:4815`
 - Minecraft VM UI: `http://nixpi-minecraft.nazar.studio/` -> `10.10.10.30:4815`
 - OwnLoom VM UI: `http://nixpi-ownloom.nazar.studio/` -> `10.10.10.40:4815`
 - DAV Server VM UI: `http://nixpi-dav-server.nazar.studio/` -> `10.10.10.41:4815`
 
-All names resolve to `10.44.0.1` through WireGuard dnsmasq and are proxied by host nginx. Do not add public DNS for these names.
+All dedicated names resolve to `10.44.0.1` through WireGuard dnsmasq and are proxied by host nginx. Do not add public DNS for these names.
 
 ## State
 
@@ -72,6 +80,8 @@ From a WireGuard client:
 ```bash
 dig @10.44.0.1 nixpi.nazar.studio +short
 dig @10.44.0.1 nixpi-ownloom.nazar.studio +short
+curl -I http://git.nazar.studio/nixpi/
+curl -I http://ownloom.nazar.studio/nixpi/
 curl -I http://nixpi.nazar.studio/
 curl -I http://nixpi-ownloom.nazar.studio/
 ```

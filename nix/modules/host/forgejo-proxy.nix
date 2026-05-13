@@ -12,6 +12,27 @@ let
   hostNixpiDns = "nixpi.nazar.studio";
   hostNixpiPort = 4815;
   microvmUnits = map (name: "microvm@${name}.service") (lib.attrNames fleet.vms);
+
+  mkNixpiProxySettings = {
+    proxyWebsockets = true;
+    extraConfig = ''
+      client_max_body_size 25m;
+      proxy_read_timeout 3600s;
+      proxy_send_timeout 3600s;
+    '';
+  };
+
+  mkNixpiPathLocations = backend: {
+    "= /nixpi".return = "301 /nixpi/";
+    "/nixpi/" = mkNixpiProxySettings // {
+      # Trailing slash strips /nixpi/ before proxying to the NixPi service.
+      proxyPass = "${backend}/";
+      extraConfig = mkNixpiProxySettings.extraConfig + ''
+        proxy_redirect / /nixpi/;
+      '';
+    };
+  };
+
   mkNixpiVhost = proxyPass: {
     listen = [
       {
@@ -19,16 +40,9 @@ let
         port = 80;
       }
     ];
-    locations."/" = {
-      inherit proxyPass;
-      proxyWebsockets = true;
-      extraConfig = ''
-        client_max_body_size 25m;
-        proxy_read_timeout 3600s;
-        proxy_send_timeout 3600s;
-      '';
-    };
+    locations."/" = mkNixpiProxySettings // { inherit proxyPass; };
   };
+
   nixpiVirtualHosts = lib.mapAttrs' (
     _name: vm:
     lib.nameValuePair vm.nixpi.dns (mkNixpiVhost "http://${vm.ip}:${toString (vm.nixpi.port or 4815)}")
@@ -49,10 +63,12 @@ in
             port = 80;
           }
         ];
-        locations."/" = {
-          proxyPass = "http://${git.ip}:${toString git.webPort}";
-          proxyWebsockets = true;
-        };
+        locations = {
+          "/" = {
+            proxyPass = "http://${git.ip}:${toString git.webPort}";
+            proxyWebsockets = true;
+          };
+        } // mkNixpiPathLocations "http://${git.ip}:${toString (git.nixpi.port or 4815)}";
       };
 
       ${ownloom.dns} = {
@@ -62,10 +78,12 @@ in
             port = 80;
           }
         ];
-        locations."/" = {
-          proxyPass = "http://${ownloom.ip}:${toString (ownloom.ownloom.web.httpPort or 80)}";
-          proxyWebsockets = true;
-        };
+        locations = {
+          "/" = {
+            proxyPass = "http://${ownloom.ip}:${toString (ownloom.ownloom.web.httpPort or 80)}";
+            proxyWebsockets = true;
+          };
+        } // mkNixpiPathLocations "http://${ownloom.ip}:${toString (ownloom.nixpi.port or 4815)}";
       };
 
       ${davServer.dns} = {
@@ -75,10 +93,12 @@ in
             port = 80;
           }
         ];
-        locations."/" = {
-          proxyPass = "http://${davServer.ip}:${toString davServer.davServer.httpPort}";
-          proxyWebsockets = true;
-        };
+        locations = {
+          "/" = {
+            proxyPass = "http://${davServer.ip}:${toString davServer.davServer.httpPort}";
+            proxyWebsockets = true;
+          };
+        } // mkNixpiPathLocations "http://${davServer.ip}:${toString (davServer.nixpi.port or 4815)}";
       };
 
       ${hostNixpiDns} = mkNixpiVhost "http://127.0.0.1:${toString hostNixpiPort}";

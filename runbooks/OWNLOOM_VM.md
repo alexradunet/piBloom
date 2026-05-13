@@ -6,7 +6,7 @@
 - Private DNS: `ownloom.nazar.studio` -> `10.44.0.1` from WireGuard dnsmasq
 - VM IP: `10.10.10.40`
 - Host proxy: nginx on WireGuard `10.44.0.1:80` -> `10.10.10.40:80`
-- NixPi: `nixpi-ownloom.nazar.studio` -> `10.10.10.40:4815` through host nginx/WireGuard
+- NixPi: `ownloom.nazar.studio/nixpi/` and `nixpi-ownloom.nazar.studio` -> `10.10.10.40:4815` through host nginx/WireGuard
 - State: `/persist/microvms/ownloom`
 - Repo checkout: `/home/alex/ownloom`
 - DAV wiki scope: `http://10.10.10.41/files/wiki/ownloom/`
@@ -43,6 +43,7 @@ From a WireGuard client:
 ```bash
 dig @10.44.0.1 ownloom.nazar.studio +short
 curl -I http://ownloom.nazar.studio/
+curl -I http://ownloom.nazar.studio/nixpi/
 curl -I http://nixpi-ownloom.nazar.studio/
 ```
 

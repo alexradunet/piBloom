@@ -100,9 +100,11 @@ dig @10.44.0.1 dav.nazar.studio +short
 dig @10.44.0.1 nixpi.nazar.studio +short
 dig @10.44.0.1 nixpi-ownloom.nazar.studio +short
 curl -I http://git.nazar.studio/
+curl -I http://git.nazar.studio/nixpi/
 curl -I http://ownloom.nazar.studio/
 curl -I http://dav.nazar.studio/
 curl -I http://nixpi.nazar.studio/
 curl -I http://nixpi-ownloom.nazar.studio/
+curl -I http://ownloom.nazar.studio/nixpi/
 git ls-remote ssh://git@git.nazar.studio:10022/nazar/nazar.git
 ```

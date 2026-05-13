@@ -8,7 +8,7 @@
 - State: `/persist/microvms/dav-server`
 - Guest data: `/var/lib/dav-server`, `/var/lib/radicale/collections`
 - Services: nginx WebDAV at `/files/`, Radicale CalDAV/CardDAV at `/radicale/`
-- NixPi: `nixpi-dav-server.nazar.studio` -> `10.10.10.41:4815` through host nginx/WireGuard
+- NixPi: `dav.nazar.studio/nixpi/` and `nixpi-dav-server.nazar.studio` -> `10.10.10.41:4815` through host nginx/WireGuard
 - Exposure: WireGuard-private through the host nginx proxy; no public DNS or public port forward
 
 DAV Server uses the configured htpasswd file for nginx basic auth on `/files/` and `/radicale/`. WireGuard peers are still network-trusted; do not onboard broad/untrusted peers until DAV secrets, backups, and restore paths are validated.
@@ -31,6 +31,7 @@ Validation from a WireGuard client:
 ```bash
 dig @10.44.0.1 dav.nazar.studio +short
 curl -I http://dav.nazar.studio/
+curl -I http://dav.nazar.studio/nixpi/
 curl -I http://nixpi-dav-server.nazar.studio/
 ```
 
