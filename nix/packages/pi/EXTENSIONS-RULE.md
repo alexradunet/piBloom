@@ -200,8 +200,8 @@ defaultPiPackages = [
   "npm:pi-subagents"
   "npm:context-mode"
   "npm:pi-web-access"
-  "npm:@plannotator/pi-extension"
   "npm:pi-lens"
+  "npm:@aliou/pi-synthetic"
 ];
 ```
 
@@ -235,8 +235,8 @@ To remove a default extension:
 │           ├── context-mode/
 │           ├── pi-subagents/
 │           ├── pi-web-access/
-│           ├── @plannotator/
-│           │   └── pi-extension/
+│           ├── @aliou/
+│           │   └── pi-synthetic/
 │           └── pi-lens/
 └── npm/                       ← project-local extensions (if any)
 ```

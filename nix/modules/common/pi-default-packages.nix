@@ -5,8 +5,8 @@ let
     "npm:pi-subagents"
     "npm:context-mode"
     "npm:pi-web-access"
-    "npm:@plannotator/pi-extension"
     "npm:pi-lens"
+    "npm:@aliou/pi-synthetic"
   ];
   defaultPiPackagesJson = builtins.toJSON defaultPiPackages;
 in

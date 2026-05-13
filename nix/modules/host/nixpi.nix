@@ -7,7 +7,10 @@ let
   pi = pkgs.callPackage ../../packages/pi { };
 in
 {
-  imports = [ inputs.nixpi.nixosModules.nixpi ];
+  imports = [
+    inputs.nixpi.nixosModules.nixpi
+    ../common/pi-default-packages.nix
+  ];
 
   services.nixpi = {
     enable = true;
