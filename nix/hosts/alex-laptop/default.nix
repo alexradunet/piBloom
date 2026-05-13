@@ -3,10 +3,13 @@
   imports = [
     ./hardware-configuration.nix
     ../../modules/laptop/wireguard-client.nix
+    ../../modules/laptop/nazar-socks.nix
   ];
 
   networking.hostName = "alex-laptop";
   networking.networkmanager.enable = true;
+
+  nazar.access.sshSocks.enable = true;
 
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
