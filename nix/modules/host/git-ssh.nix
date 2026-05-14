@@ -46,8 +46,9 @@ let
         exit 1
       fi
 
-      install -d -m 2770 "$(dirname "$target")"
+      install -d -m 2770 -o git -g git "$(dirname "$target")"
       git init --bare --initial-branch=main "$target"
+      chown -R git:git "$target"
       chmod -R ug+rwX,o-rwx "$target"
       find "$target" -type d -exec chmod g+s {} +
       echo "created $target"
@@ -87,7 +88,7 @@ in
 
   # --- Repository directories ---
   systemd.tmpfiles.rules = [
-    "d ${stateDir} 0750 root root - -"
+        "d ${stateDir} 0755 root root - -"
     "d ${repositoriesDir} 2770 root root - -"
     "d ${namespaceDir} 2770 root root - -"
     "L+ /${namespace} - - - - ${namespaceDir}"
