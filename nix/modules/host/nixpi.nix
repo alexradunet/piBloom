@@ -46,6 +46,8 @@ in
     workspaces = {
       nazar = hostWorkspace;
     } // vmWorkspaces;
+    # Build from local git checkout so server.js changes are picked up immediately
+    package = pkgs.callPackage "/home/alex/repos/nixpi/nix/packages/nixpi" { };
   };
 
   # NixPi spawns `node` for its RPC/web worker path; keep that executable in
