@@ -67,6 +67,33 @@ Example NixOS module usage:
 }
 ```
 
+### Live-source mode (no rebuild per edit)
+
+Set `sourceDir` to point at your local `nixpi` checkout. The service will run `node server.js` directly from that directory instead of the Nix store package. This lets you edit `public/index.html` (or any file) and restart the systemd unit (`systemctl restart nixpi`) without rebuilding the consumer VM.
+
+```nix
+{
+  imports = [ inputs.nixpi.nixosModules.nixpi ];
+
+  services.nixpi = {
+    enable = true;
+    user = "alex";
+    group = "users";
+    home = "/home/alex";
+    workingDirectory = "/home/alex";
+    sourceDir = "/home/alex/repos/nixpi";      # live checkout
+    host = "0.0.0.0";
+    port = 4815;
+    piBinary = "/run/current-system/sw/bin/pi";
+    openFirewall = true;
+  };
+}
+```
+
+**Requirements** for the live-source checkout:
+- `node_modules/` must exist and be populated (`npm install` in the checkout).
+- The `public/` directory must contain the built assets (e.g. `public/index.html`).
+
 ## Architecture
 
 ```text

@@ -95,6 +95,18 @@ in
       '';
     };
 
+    sourceDir = mkOption {
+      type = types.nullOr types.path;
+      default = null;
+      example = literalExpression ''"''${config.users.users.alex.home}/repos/nixpi"'';
+      description = ''
+        Absolute path to a live-source checkout. When set, the service runs
+        directly from this directory instead of the nix store package, so you
+        can edit files and restart the service (or let systemd watch the dir)
+        without rebuilding the VM. The directory must contain node_modules.
+      '';
+    };
+
     environment = mkOption {
       type = types.attrsOf types.str;
       default = { };
@@ -134,8 +146,10 @@ in
         Type = "simple";
         User = cfg.user;
         Group = cfg.group;
-        WorkingDirectory = toString cfg.workingDirectory;
-        ExecStart = "${cfg.package}/bin/nixpi";
+        WorkingDirectory = if cfg.sourceDir != null then cfg.sourceDir else toString cfg.workingDirectory;
+        ExecStart = if cfg.sourceDir != null
+          then "${pkgs.nodejs_22}/bin/node ${cfg.sourceDir}/server.js"
+          else "${cfg.package}/bin/nixpi";
         Restart = "on-failure";
         RestartSec = 3;
         UMask = "0027";
