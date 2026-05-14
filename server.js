@@ -958,11 +958,16 @@ function ensurePi(ws) {
 		spawnBin = SSH_BIN;
 		spawnArgs = [
 			"-T", // no PTY
-			"-o", "StrictHostKeyChecking=accept-new",
-			"-o", "ServerAliveInterval=30",
-			"-o", "ServerAliveCountMax=3",
+			"-o",
+			"StrictHostKeyChecking=accept-new",
+			"-o",
+			"ServerAliveInterval=30",
+			"-o",
+			"ServerAliveCountMax=3",
 			`${ws.sshUser}@${ws.sshHost}`,
-			"pi", "--mode", "rpc",
+			"pi",
+			"--mode",
+			"rpc",
 		];
 		// CWD doesn't apply locally for SSH — pi runs in the VM's $HOME.
 		// But we set a reasonable local cwd for the ssh process itself.
