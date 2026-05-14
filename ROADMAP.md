@@ -4,7 +4,7 @@
 
 - [x] Rename package, CLI, docs, UI, and environment variables to `nixpi` / `NIXPI_*`.
 - [x] Add a Nix flake package and reusable NixOS service module.
-- [x] Publish the rebranded repo to Forgejo as `nazar/nixpi`.
+- [x] Publish the rebranded repo to the Git server as `nazar/nixpi`.
 
 ## v2 — Nazar fleet integration
 
