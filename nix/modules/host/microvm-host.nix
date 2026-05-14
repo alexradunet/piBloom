@@ -15,6 +15,7 @@ let
     ../common/development.nix
     ../common/sops.nix
     ../common/nazar-context.nix
+    ../common/git-ssh.nix
     ./microvm-guest.nix
   ];
 
@@ -34,6 +35,27 @@ let
     dav-server = [ ../services/dav-server.nix ];
   };
 
+  fleetGitKeyShares =
+    map (vm: {
+      tag = "fleet-git-key-${vm.hostname}";
+      source = "/persist/microvms/${vm.hostname}/git-ssh";
+      mountPoint = "/var/lib/nazar/fleet-git-keys/${vm.hostname}";
+      proto = "virtiofs";
+      readOnly = true;
+    }) (lib.attrValues fleet.vms);
+
+  hostMicrovmSshConfig = lib.concatStringsSep "\n" (
+    lib.mapAttrsToList (_name: vm: ''
+      Host ${vm.hostname} ${vm.hostname}.${fleet.defaults.domain} ${vm.ip}
+        HostName ${vm.ip}
+        User alex
+        IdentityFile /home/alex/.ssh/id_ed25519
+        IdentitiesOnly yes
+        UserKnownHostsFile /home/alex/.ssh/nazar_microvm_known_hosts
+        StrictHostKeyChecking accept-new
+    '') fleet.vms
+  );
+
   mkMicrovm = name: vm: {
     inherit pkgs;
     autostart = false;
@@ -45,6 +67,9 @@ let
       imports = commonGuestModules
         ++ lib.optional (vm.piAgent.enable or false) commonPiAgentModule
         ++ serviceModules.${name};
+    }
+    // lib.optionalAttrs (name == "git") {
+      microvm.shares = fleetGitKeyShares;
     };
   };
 
@@ -55,6 +80,9 @@ let
     lib.attrValues fleet.vms
   );
   sshHostKeyShareTmpfiles = map (vm: "d /persist/microvms/${vm.hostname}/ssh 0700 root root - -") (
+    lib.attrValues fleet.vms
+  );
+  gitSshKeyShareTmpfiles = map (vm: "d /persist/microvms/${vm.hostname}/git-ssh 0700 alex users - -") (
     lib.attrValues fleet.vms
   );
 in
@@ -76,9 +104,14 @@ in
   systemd.tmpfiles.rules = [
     "d /persist/microvms 0755 root root - -"
     "d /persist/microvms-runtime 0775 microvm kvm - -"
+    "d /home/alex/.ssh 0700 alex users - -"
+    "f /home/alex/.ssh/nazar_microvm_known_hosts 0600 alex users - -"
   ]
   ++ guestShareTmpfiles
-  ++ sshHostKeyShareTmpfiles;
+  ++ sshHostKeyShareTmpfiles
+  ++ gitSshKeyShareTmpfiles;
+
+  programs.ssh.extraConfig = hostMicrovmSshConfig;
 
   environment.systemPackages = [
     pkgs.cloud-hypervisor

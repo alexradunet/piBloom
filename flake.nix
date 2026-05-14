@@ -76,6 +76,7 @@
         ./nix/modules/common/development.nix
         ./nix/modules/common/sops.nix
         ./nix/modules/common/nazar-context.nix
+        ./nix/modules/common/git-ssh.nix
         ./nix/modules/host/microvm-guest.nix
       ];
 
@@ -107,6 +108,7 @@
         forgejo-service = ./nix/modules/services/forgejo.nix;
         forgejo-bootstrap = ./nix/modules/services/forgejo-bootstrap.nix;
         dav-server-service = ./nix/modules/services/dav-server.nix;
+        git-ssh = ./nix/modules/common/git-ssh.nix;
         microvm-guest = ./nix/modules/host/microvm-guest.nix;
         microvm-host = ./nix/modules/host/microvm-host.nix;
       };

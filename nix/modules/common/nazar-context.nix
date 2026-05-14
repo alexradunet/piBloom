@@ -343,6 +343,7 @@ let
             ./nix/modules/common/development.nix
             ./nix/modules/common/sops.nix
             ./nix/modules/common/nazar-context.nix
+            ./nix/modules/common/git-ssh.nix
           ];
           agentVmModules = [ ./nix/modules/common/pi-agent.nix ];
           microvmGuestModules = [
@@ -392,6 +393,7 @@ let
     cp ${./development.nix} "$out/nix/modules/common/development.nix"
     cp ${./sops.nix} "$out/nix/modules/common/sops.nix"
     cp ${./nazar-context.nix} "$out/nix/modules/common/nazar-context.nix"
+    cp ${./git-ssh.nix} "$out/nix/modules/common/git-ssh.nix"
     cp ${./pi-agent.nix} "$out/nix/modules/common/pi-agent.nix"
     cp ${./pi-default-packages.nix} "$out/nix/modules/common/pi-default-packages.nix"
     cp ${../../packages/pi/default.nix} "$out/nix/packages/pi/default.nix"

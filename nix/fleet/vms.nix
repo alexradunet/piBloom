@@ -47,6 +47,15 @@
             mountPoint = "/var/lib/forgejo";
             proto = "virtiofs";
           }
+          {
+            tag = "git-repo";
+            source = "/persist/microvms/git/repo";
+            mountPoint = "/home/alex/nazar";
+            proto = "virtiofs";
+            owner = "alex";
+            group = "users";
+            mode = "0755";
+          }
         ];
       };
       dns = "git.nazar.studio";
@@ -211,6 +220,15 @@
             source = "/persist/microvms/dav-server/radicale";
             mountPoint = "/var/lib/radicale/collections";
             proto = "virtiofs";
+          }
+          {
+            tag = "dav-server-repo";
+            source = "/persist/microvms/dav-server/repo";
+            mountPoint = "/home/alex/dav-server";
+            proto = "virtiofs";
+            owner = "alex";
+            group = "users";
+            mode = "0755";
           }
         ];
       };

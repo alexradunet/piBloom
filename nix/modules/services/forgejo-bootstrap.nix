@@ -65,4 +65,110 @@ in
         --password "$(tr -d '\n' < "$password_file")"
     '';
   };
+
+  systemd.services.forgejo-vm-git-key-sync = {
+    description = "Synchronize Nazar MicroVM Git SSH keys into Forgejo";
+    after = [
+      "forgejo.service"
+      "forgejo-bootstrap.service"
+      "nazar-vm-git-ssh-key.service"
+    ];
+    wants = [ "forgejo.service" ];
+    wantedBy = [ "multi-user.target" ];
+
+    path = [
+      pkgs.coreutils
+      pkgs.curl
+      pkgs.findutils
+      pkgs.gawk
+      pkgs.gnugrep
+      pkgs.python3
+      cfg.package
+    ];
+
+    environment = {
+      USER = cfg.user;
+      HOME = cfg.stateDir;
+      FORGEJO_WORK_DIR = cfg.stateDir;
+      FORGEJO_CUSTOM = "${cfg.stateDir}/custom";
+    };
+
+    serviceConfig = {
+      Type = "oneshot";
+      User = cfg.user;
+      Group = cfg.group;
+      WorkingDirectory = cfg.stateDir;
+      ProtectProc = "invisible";
+      ProcSubset = "pid";
+    };
+
+    script = ''
+      set -euo pipefail
+
+      token_file=${cfg.stateDir}/.nazar-vm-git-key-sync-token
+      key_root=/var/lib/nazar/fleet-git-keys
+      api=http://127.0.0.1:${toString cfg.settings.server.HTTP_PORT}/api/v1
+
+      if ! ${forgejo} admin user list | awk '{ print $2 }' | grep -qx nazar; then
+        echo "Forgejo user nazar does not exist yet; skipping VM Git key sync."
+        exit 0
+      fi
+
+      if [ ! -s "$token_file" ]; then
+        umask 077
+        ${forgejo} admin user generate-access-token \
+          --username nazar \
+          --token-name nazar-vm-git-key-sync \
+          --scopes all > "$token_file.raw"
+        awk '/Access token was successfully created/{ print $NF } /^[A-Za-z0-9_-]{20,}$/ { token=$0 } END { if (token) print token }' "$token_file.raw" > "$token_file"
+        rm -f "$token_file.raw"
+      fi
+
+      token=$(tr -d '\n' < "$token_file")
+      if [ -z "$token" ]; then
+        echo "Forgejo VM key sync token is empty." >&2
+        exit 1
+      fi
+
+      if [ ! -d "$key_root" ]; then
+        echo "No fleet Git key share at $key_root; skipping."
+        exit 0
+      fi
+
+      find "$key_root" -mindepth 2 -maxdepth 2 -name id_ed25519.pub -type f | sort | while read -r pub; do
+        vm_name=$(basename "$(dirname "$pub")")
+        title="nazar-microvm-$vm_name"
+        key=$(tr -d '\n' < "$pub")
+        [ -n "$key" ] || continue
+
+        payload=$(python3 -c 'import json,sys; print(json.dumps({"title": sys.argv[1], "key": sys.argv[2], "read_only": False}))' "$title" "$key")
+        status=$(curl -fsS -o /tmp/forgejo-key-sync-response -w '%{http_code}' \
+          -H "Authorization: token $token" \
+          -H 'Content-Type: application/json' \
+          -X POST \
+          --data "$payload" \
+          "$api/user/keys" || true)
+
+        case "$status" in
+          201) echo "Added Forgejo SSH key $title." ;;
+          422) echo "Forgejo SSH key $title already exists." ;;
+          *)
+            echo "Failed to sync Forgejo SSH key $title (HTTP $status):" >&2
+            cat /tmp/forgejo-key-sync-response >&2 || true
+            exit 1
+            ;;
+        esac
+      done
+    '';
+  };
+
+  systemd.timers.forgejo-vm-git-key-sync = {
+    description = "Retry Nazar MicroVM Git SSH key synchronization";
+    wantedBy = [ "timers.target" ];
+    timerConfig = {
+      OnBootSec = "2min";
+      OnUnitActiveSec = "15min";
+      Unit = "forgejo-vm-git-key-sync.service";
+    };
+  };
 }
