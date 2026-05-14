@@ -20,7 +20,7 @@ let
 
   # Pi agent is now opt-in per VM via vm.piAgent.enable.
   # Removed ../common/nixpi.nix — NixPi runs centrally on the host.
-  commonPiAgentModules = [ ../common/pi-agent.nix ];
+  commonPiAgentModule = ../common/pi-agent.nix;
 
   serviceModules = {
     git = [
@@ -43,7 +43,7 @@ let
     };
     config = {
       imports = commonGuestModules
-        ++ lib.optional (vm.piAgent.enable or false) commonPiAgentModules
+        ++ lib.optional (vm.piAgent.enable or false) commonPiAgentModule
         ++ serviceModules.${name};
     };
   };

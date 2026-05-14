@@ -60,6 +60,7 @@
       onboot = true;
       startupOrder = 20;
       role = "private Git forge for the nazar infrastructure repository";
+      piAgent.enable = true;
       nixpi = {
         port = 4815;
         workingDirectory = "/home/alex/nazar";
@@ -107,6 +108,7 @@
       onboot = true;
       startupOrder = 30;
       role = "small PaperMC Minecraft server";
+      piAgent.enable = true;
       nixpi = {
         port = 4815;
         workingDirectory = "/home/alex/minecraft";
@@ -222,6 +224,7 @@
       onboot = false;
       startupOrder = 41;
       role = "private personal DAV, CalDAV, CardDAV, WebDAV, and markdown wiki data VM";
+      piAgent.enable = true;
       nixpi = {
         port = 4815;
         workingDirectory = "/home/alex/dav-server";
