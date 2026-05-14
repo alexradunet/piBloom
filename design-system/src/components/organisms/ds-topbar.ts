@@ -3,12 +3,12 @@
  * @summary Top application bar — logo, center, actions.
  */
 
-import { LitElement, html, css, type CSSResultGroup } from 'lit';
-import { customElement } from 'lit/decorators.js';
+import { LitElement, html, css, type CSSResultGroup } from "lit";
+import { customElement } from "lit/decorators.js";
 
-@customElement('ds-topbar')
+@customElement("ds-topbar")
 export class DsTopbar extends LitElement {
-  static styles: CSSResultGroup = css`
+	static styles: CSSResultGroup = css`
     :host { display: block; }
 
     header {
@@ -66,8 +66,8 @@ export class DsTopbar extends LitElement {
     }
   `;
 
-  render() {
-    return html`
+	render() {
+		return html`
       <header part="base">
         <div class="logo">
           <slot name="logo">
@@ -83,11 +83,11 @@ export class DsTopbar extends LitElement {
         </div>
       </header>
     `;
-  }
+	}
 }
 
 declare global {
-  interface HTMLElementTagNameMap {
-    'ds-topbar': DsTopbar;
-  }
+	interface HTMLElementTagNameMap {
+		"ds-topbar": DsTopbar;
+	}
 }

@@ -3,12 +3,12 @@
  * @summary Syntax-highlighted code block with copy button.
  */
 
-import { LitElement, html, css, type CSSResultGroup } from 'lit';
-import { customElement, property } from 'lit/decorators.js';
+import { LitElement, html, css, type CSSResultGroup } from "lit";
+import { customElement, property } from "lit/decorators.js";
 
-@customElement('ds-code-block')
+@customElement("ds-code-block")
 export class DsCodeBlock extends LitElement {
-  static styles: CSSResultGroup = css`
+	static styles: CSSResultGroup = css`
     :host { display: block; margin: 8px 0; }
 
     .code-block {
@@ -71,42 +71,45 @@ export class DsCodeBlock extends LitElement {
     }
   `;
 
-  @property({ type: String }) language = '';
-  @property({ type: String }) code = '';
+	@property({ type: String }) language = "";
+	@property({ type: String }) code = "";
 
-  private _copied = false;
+	private _copied = false;
 
-  private _copy() {
-    navigator.clipboard.writeText(this.code).then(() => {
-      this._copied = true;
-      this.requestUpdate();
-      setTimeout(() => { this._copied = false; this.requestUpdate(); }, 2000);
-    });
-  }
+	private _copy() {
+		navigator.clipboard.writeText(this.code).then(() => {
+			this._copied = true;
+			this.requestUpdate();
+			setTimeout(() => {
+				this._copied = false;
+				this.requestUpdate();
+			}, 2000);
+		});
+	}
 
-  render() {
-    return html`
+	render() {
+		return html`
       <div class="code-block">
         <div class="code-header">
-          <span class="code-lang">${this.language || 'code'}</span>
+          <span class="code-lang">${this.language || "code"}</span>
           <button
-            class="copy-btn ${this._copied ? 'copied' : ''}"
+            class="copy-btn ${this._copied ? "copied" : ""}"
             @click="${this._copy}"
             title="Copy"
           >
             <span class="material-symbols-outlined" style="font-size:16px">
-              ${this._copied ? 'check' : 'content_copy'}
+              ${this._copied ? "check" : "content_copy"}
             </span>
           </button>
         </div>
         <pre><code>${this.code}</code></pre>
       </div>
     `;
-  }
+	}
 }
 
 declare global {
-  interface HTMLElementTagNameMap {
-    'ds-code-block': DsCodeBlock;
-  }
+	interface HTMLElementTagNameMap {
+		"ds-code-block": DsCodeBlock;
+	}
 }

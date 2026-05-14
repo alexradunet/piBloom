@@ -4,12 +4,12 @@
  * Responsive: sidebar overlays on mobile, telemetry hides.
  */
 
-import { LitElement, html, css, type CSSResultGroup } from 'lit';
-import { customElement, property } from 'lit/decorators.js';
+import { LitElement, html, css, type CSSResultGroup } from "lit";
+import { customElement, property } from "lit/decorators.js";
 
-@customElement('ds-app-shell')
+@customElement("ds-app-shell")
 export class DsAppShell extends LitElement {
-  static styles: CSSResultGroup = css`
+	static styles: CSSResultGroup = css`
     :host { display: block; height: 100vh; overflow: hidden; }
 
     .shell {
@@ -71,20 +71,20 @@ export class DsAppShell extends LitElement {
     }
   `;
 
-  @property({ type: Boolean, reflect: true }) sidebarOpen = false;
+	@property({ type: Boolean, reflect: true }) sidebarOpen = false;
 
-  private _closeSidebar() {
-    this.sidebarOpen = false;
-  }
+	private _closeSidebar() {
+		this.sidebarOpen = false;
+	}
 
-  render() {
-    return html`
+	render() {
+		return html`
       <div class="shell">
         <div class="topbar">
           <slot name="topbar"></slot>
         </div>
-        <div class="overlay ${this.sidebarOpen ? 'open' : ''}" @click="${this._closeSidebar}"></div>
-        <div class="sidebar ${this.sidebarOpen ? 'open' : ''}">
+        <div class="overlay ${this.sidebarOpen ? "open" : ""}" @click="${this._closeSidebar}"></div>
+        <div class="sidebar ${this.sidebarOpen ? "open" : ""}">
           <slot name="sidebar"></slot>
         </div>
         <div class="main">
@@ -99,11 +99,11 @@ export class DsAppShell extends LitElement {
         </div>
       </div>
     `;
-  }
+	}
 }
 
 declare global {
-  interface HTMLElementTagNameMap {
-    'ds-app-shell': DsAppShell;
-  }
+	interface HTMLElementTagNameMap {
+		"ds-app-shell": DsAppShell;
+	}
 }

@@ -3,24 +3,24 @@
  * @summary Left sidebar organism — session navigation with header/footer slots.
  */
 
-import { LitElement, html, css, type CSSResultGroup } from 'lit';
-import { customElement, property } from 'lit/decorators.js';
+import { LitElement, html, css, type CSSResultGroup } from "lit";
+import { customElement, property } from "lit/decorators.js";
 
 interface SidebarSection {
-  label: string;
-  items: SidebarItem[];
+	label: string;
+	items: SidebarItem[];
 }
 
 interface SidebarItem {
-  icon: string;
-  label: string;
-  href: string;
-  active?: boolean;
+	icon: string;
+	label: string;
+	href: string;
+	active?: boolean;
 }
 
-@customElement('ds-sidebar')
+@customElement("ds-sidebar")
 export class DsSidebar extends LitElement {
-  static styles: CSSResultGroup = css`
+	static styles: CSSResultGroup = css`
     :host { display: block; }
 
     nav {
@@ -79,10 +79,10 @@ export class DsSidebar extends LitElement {
     .content::-webkit-scrollbar-thumb { background: var(--color-outline-variant, #56423c); border-radius: 2px; }
   `;
 
-  @property({ type: Array }) sections: SidebarSection[] = [];
+	@property({ type: Array }) sections: SidebarSection[] = [];
 
-  render() {
-    return html`
+	render() {
+		return html`
       <nav part="base">
         <div class="header">
           <slot name="header">
@@ -91,30 +91,34 @@ export class DsSidebar extends LitElement {
         </div>
         <div class="content">
           <slot></slot>
-          ${this.sections.map(section => html`
+          ${this.sections.map(
+						(section) => html`
             <div class="section">
               <div class="section-label">${section.label}</div>
-              ${section.items.map(item => html`
+              ${section.items.map(
+								(item) => html`
                 <ds-nav-item
                   icon="${item.icon}"
                   label="${item.label}"
                   href="${item.href}"
                   ?active="${item.active}"
                 ></ds-nav-item>
-              `)}
+              `,
+							)}
             </div>
-          `)}
+          `,
+					)}
         </div>
         <div class="footer">
           <slot name="footer"></slot>
         </div>
       </nav>
     `;
-  }
+	}
 }
 
 declare global {
-  interface HTMLElementTagNameMap {
-    'ds-sidebar': DsSidebar;
-  }
+	interface HTMLElementTagNameMap {
+		"ds-sidebar": DsSidebar;
+	}
 }

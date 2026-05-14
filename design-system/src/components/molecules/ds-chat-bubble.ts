@@ -3,28 +3,34 @@
  * @summary Chat message bubble — AI, user, system, or error.
  */
 
-import { LitElement, html, css, type CSSResultGroup } from 'lit';
-import { customElement, property } from 'lit/decorators.js';
+import { LitElement, html, css, type CSSResultGroup } from "lit";
+import { customElement, property } from "lit/decorators.js";
 
 function simpleMd(text: string): string {
-  if (!text) return '';
-  let r = String(text);
-  r = r.replace(/```(\w*)\n([\s\S]*?)```/g, '<pre><code>$2</code></pre>');
-  r = r.replace(/`([^`]+)`/g, '<code>$1</code>');
-  r = r.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
-  r = r.replace(/\*([^*]+)\*/g, '<em>$1</em>');
-  r = r.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>');
-  const paragraphs = r.split(/\n\n+/);
-  return paragraphs.map(p => {
-    p = p.trim(); if (!p) return '';
-    if (p.startsWith('<')) return p;
-    return '<p>' + p.replace(/\n/g, '<br>') + '</p>';
-  }).join('');
+	if (!text) return "";
+	let r = String(text);
+	r = r.replace(/```(\w*)\n([\s\S]*?)```/g, "<pre><code>$2</code></pre>");
+	r = r.replace(/`([^`]+)`/g, "<code>$1</code>");
+	r = r.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+	r = r.replace(/\*([^*]+)\*/g, "<em>$1</em>");
+	r = r.replace(
+		/\[([^\]]+)\]\(([^)]+)\)/g,
+		'<a href="$2" target="_blank">$1</a>',
+	);
+	const paragraphs = r.split(/\n\n+/);
+	return paragraphs
+		.map((p) => {
+			p = p.trim();
+			if (!p) return "";
+			if (p.startsWith("<")) return p;
+			return "<p>" + p.replace(/\n/g, "<br>") + "</p>";
+		})
+		.join("");
 }
 
-@customElement('ds-chat-bubble')
+@customElement("ds-chat-bubble")
 export class DsChatBubble extends LitElement {
-  static styles: CSSResultGroup = css`
+	static styles: CSSResultGroup = css`
     :host { display: block; }
 
     .bubble-row {
@@ -134,39 +140,48 @@ export class DsChatBubble extends LitElement {
     }
   `;
 
-  @property({ type: String }) sender: 'user' | 'assistant' | 'system' | 'error' = 'assistant';
-  @property({ type: String }) content = '';
+	@property({ type: String }) sender:
+		| "user"
+		| "assistant"
+		| "system"
+		| "error" = "assistant";
+	@property({ type: String }) content = "";
 
-  __getAvatar(): string {
-    switch (this.sender) {
-      case 'user': return 'OP';
-      case 'assistant': return '<span class="material-symbols-outlined" style="font-size:16px">auto_awesome</span>';
-      case 'system': return '<span class="material-symbols-outlined" style="font-size:16px">info</span>';
-      case 'error': return '<span class="material-symbols-outlined" style="font-size:16px;color:#ffb4ab">error</span>';
-    }
-    return '';
-  }
+	__getAvatar(): string {
+		switch (this.sender) {
+			case "user":
+				return "OP";
+			case "assistant":
+				return '<span class="material-symbols-outlined" style="font-size:16px">auto_awesome</span>';
+			case "system":
+				return '<span class="material-symbols-outlined" style="font-size:16px">info</span>';
+			case "error":
+				return '<span class="material-symbols-outlined" style="font-size:16px;color:#ffb4ab">error</span>';
+		}
+		return "";
+	}
 
-  render() {
-    const isUser = this.sender === 'user';
-    const isSys = this.sender === 'system' || this.sender === 'error';
+	render() {
+		const isUser = this.sender === "user";
+		const isSys = this.sender === "system" || this.sender === "error";
 
-    if (isSys) {
-      return html`
+		if (isSys) {
+			return html`
         <div class="bubble-row ${this.sender}">
           <div class="bubble ${this.sender}">${this.content}</div>
         </div>
       `;
-    }
+		}
 
-    return html`
+		return html`
       <div class="bubble-row ${this.sender}">
         <div class="avatar-wrap">
           <div class="avatar ${this.sender}">
-            ${this.sender === 'assistant'
-              ? html`<span class="material-symbols-outlined" style="font-size:16px">auto_awesome</span>`
-              : html`<span>OP</span>`
-            }
+            ${
+							this.sender === "assistant"
+								? html`<span class="material-symbols-outlined" style="font-size:16px">auto_awesome</span>`
+								: html`<span>OP</span>`
+						}
           </div>
         </div>
         <div class="bubble ${this.sender}">
@@ -177,13 +192,13 @@ export class DsChatBubble extends LitElement {
         </div>
       </div>
     `;
-  }
+	}
 }
 
-import { unsafeHTML } from 'lit/directives/unsafe-html.js';
+import { unsafeHTML } from "lit/directives/unsafe-html.js";
 
 declare global {
-  interface HTMLElementTagNameMap {
-    'ds-chat-bubble': DsChatBubble;
-  }
+	interface HTMLElementTagNameMap {
+		"ds-chat-bubble": DsChatBubble;
+	}
 }

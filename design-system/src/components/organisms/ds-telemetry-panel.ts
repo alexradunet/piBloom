@@ -3,30 +3,30 @@
  * @summary Right telemetry panel with tabs, stats, nodes, event log, diagnostics.
  */
 
-import { LitElement, html, css, type CSSResultGroup } from 'lit';
-import { customElement, property } from 'lit/decorators.js';
+import { LitElement, html, css, type CSSResultGroup } from "lit";
+import { customElement, property } from "lit/decorators.js";
 
 interface LogEntry {
-  time: string;
-  text: string;
-  type?: 'info' | 'warn' | 'error';
+	time: string;
+	text: string;
+	type?: "info" | "warn" | "error";
 }
 
 interface Metric {
-  label: string;
-  value: number;
-  max: number;
+	label: string;
+	value: number;
+	max: number;
 }
 
 interface NodeStatus {
-  name: string;
-  status: string;
-  color: 'tertiary' | 'secondary' | 'error';
+	name: string;
+	status: string;
+	color: "tertiary" | "secondary" | "error";
 }
 
-@customElement('ds-telemetry-panel')
+@customElement("ds-telemetry-panel")
 export class DsTelemetryPanel extends LitElement {
-  static styles: CSSResultGroup = css`
+	static styles: CSSResultGroup = css`
     :host { display: block; height: 100%; }
 
     aside {
@@ -199,14 +199,18 @@ export class DsTelemetryPanel extends LitElement {
     .panel-body::-webkit-scrollbar-thumb { background: var(--color-outline-variant, #56423c); border-radius: 2px; }
   `;
 
-  @property({ type: String }) activeTab = 'Context';
-  @property({ type: Array }) tabs: string[] = ['Context', 'Telemetry', 'Status'];
-  @property({ type: Array }) nodes: NodeStatus[] = [];
-  @property({ type: Array }) metrics: Metric[] = [];
-  @property({ type: Array }) logs: LogEntry[] = [];
+	@property({ type: String }) activeTab = "Context";
+	@property({ type: Array }) tabs: string[] = [
+		"Context",
+		"Telemetry",
+		"Status",
+	];
+	@property({ type: Array }) nodes: NodeStatus[] = [];
+	@property({ type: Array }) metrics: Metric[] = [];
+	@property({ type: Array }) logs: LogEntry[] = [];
 
-  render() {
-    return html`
+	render() {
+		return html`
       <aside part="base">
         <div class="header">
           <div>
@@ -219,12 +223,16 @@ export class DsTelemetryPanel extends LitElement {
         </div>
 
         <div class="tabs">
-          ${this.tabs.map(tab => html`
+          ${this.tabs.map(
+						(tab) => html`
             <button
-              class="tab ${tab === this.activeTab ? 'active' : ''}"
-              @click="${() => { this.activeTab = tab; }}"
+              class="tab ${tab === this.activeTab ? "active" : ""}"
+              @click="${() => {
+								this.activeTab = tab;
+							}}"
             >${tab}</button>
-          `)}
+          `,
+					)}
         </div>
 
         <div class="panel-body">
@@ -232,64 +240,82 @@ export class DsTelemetryPanel extends LitElement {
         </div>
       </aside>
     `;
-  }
+	}
 
-  private _renderTabContent() {
-    return html`
+	private _renderTabContent() {
+		return html`
       <slot></slot>
 
-      ${this.nodes.length ? html`
+      ${
+				this.nodes.length
+					? html`
         <div class="section">
           <div class="section-title">
             <span class="material-symbols-outlined">account_tree</span>
             Active Nodes
           </div>
           <div class="node-list">
-            ${this.nodes.map(n => html`
+            ${this.nodes.map(
+							(n) => html`
               <div class="node-row">
                 <span class="node-name">${n.name}</span>
                 <span class="node-status ${n.color}">${n.status}</span>
               </div>
-            `)}
+            `,
+						)}
           </div>
         </div>
-      ` : ''}
+      `
+					: ""
+			}
 
-      ${this.logs.length ? html`
+      ${
+				this.logs.length
+					? html`
         <div class="section">
           <div class="section-title">
             <span class="material-symbols-outlined">terminal</span>
             Event Log
           </div>
           <div class="event-log">
-            ${this.logs.map(l => html`
-              <div class="entry ${l.type || 'dim'}">[${l.time}] ${l.text}</div>
-            `)}
+            ${this.logs.map(
+							(l) => html`
+              <div class="entry ${l.type || "dim"}">[${l.time}] ${l.text}</div>
+            `,
+						)}
           </div>
         </div>
-      ` : ''}
+      `
+					: ""
+			}
 
-      ${this.metrics.length ? html`
+      ${
+				this.metrics.length
+					? html`
         <div class="section">
           <div class="section-title">
             <span class="material-symbols-outlined">speed</span>
             Diagnostics
           </div>
-          ${this.metrics.map(m => html`
+          ${this.metrics.map(
+						(m) => html`
             <ds-progress
               .value="${m.value}"
               .max="${m.max}"
               .label="${m.label}"
             ></ds-progress>
-          `)}
+          `,
+					)}
         </div>
-      ` : ''}
+      `
+					: ""
+			}
     `;
-  }
+	}
 }
 
 declare global {
-  interface HTMLElementTagNameMap {
-    'ds-telemetry-panel': DsTelemetryPanel;
-  }
+	interface HTMLElementTagNameMap {
+		"ds-telemetry-panel": DsTelemetryPanel;
+	}
 }

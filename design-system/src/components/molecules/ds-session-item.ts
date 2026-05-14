@@ -3,12 +3,12 @@
  * @summary Session list item for sidebar.
  */
 
-import { LitElement, html, css, type CSSResultGroup } from 'lit';
-import { customElement, property } from 'lit/decorators.js';
+import { LitElement, html, css, type CSSResultGroup } from "lit";
+import { customElement, property } from "lit/decorators.js";
 
-@customElement('ds-session-item')
+@customElement("ds-session-item")
 export class DsSessionItem extends LitElement {
-  static styles: CSSResultGroup = css`
+	static styles: CSSResultGroup = css`
     :host { display: block; }
 
     .item {
@@ -53,13 +53,13 @@ export class DsSessionItem extends LitElement {
     .item:hover .menu, .item.active .menu { opacity: 1; }
   `;
 
-  @property({ type: String }) title = '';
-  @property({ type: String }) subtitle = '';
-  @property({ type: Boolean, reflect: true }) active = false;
+	@property({ type: String }) title = "";
+	@property({ type: String }) subtitle = "";
+	@property({ type: Boolean, reflect: true }) active = false;
 
-  render() {
-    return html`
-      <div class="item ${this.active ? 'active' : ''}" @click="${this._onClick}">
+	render() {
+		return html`
+      <div class="item ${this.active ? "active" : ""}" @click="${this._onClick}">
         <div style="overflow:hidden">
           <div class="title">${this.title}</div>
           <div class="subtitle">${this.subtitle}</div>
@@ -67,19 +67,21 @@ export class DsSessionItem extends LitElement {
         <span class="menu material-symbols-outlined" style="font-size:18px;color:var(--color-on-surface-variant)">more_vert</span>
       </div>
     `;
-  }
+	}
 
-  private _onClick(_e: Event) {
-    this.dispatchEvent(new CustomEvent('select', {
-      detail: { title: this.title },
-      bubbles: true,
-      composed: true,
-    }));
-  }
+	private _onClick(_e: Event) {
+		this.dispatchEvent(
+			new CustomEvent("select", {
+				detail: { title: this.title },
+				bubbles: true,
+				composed: true,
+			}),
+		);
+	}
 }
 
 declare global {
-  interface HTMLElementTagNameMap {
-    'ds-session-item': DsSessionItem;
-  }
+	interface HTMLElementTagNameMap {
+		"ds-session-item": DsSessionItem;
+	}
 }
