@@ -10,12 +10,12 @@ Canonical runtime: Nazar MicroVM only. The DAV Server is managed as part of the 
 - DNS: `dav.nazar.studio`
 - Private access: sshuttle to `10.44.0.1`, then host nginx proxies to the MicroVM
 
-## Deploy
+## Switch
 
 ```bash
 cd /root/nazar
 nix flake check --no-build
-nix run .#deploy-dav-server
+nix run .#switch-dav-server
 ```
 
 For service-repo updates:
@@ -23,7 +23,7 @@ For service-repo updates:
 ```bash
 nix flake lock --update-input dav-server
 nix flake check --no-build
-nix run .#deploy-dav-server
+nix run .#switch-dav-server
 ```
 
 ## Lifecycle

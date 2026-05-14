@@ -35,9 +35,12 @@ let
     ++ (hostNixpi.pathDomains or [ ])
   );
 
+  # Host-owned service domains (Git SSH is on the host, not a VM).
+  hostGitDomains = [ "git.nazar.studio" ];
+
   privateDomainExclusions = exposure.privateDomainExclusions or [ ];
   privateDomains = lib.subtractLists privateDomainExclusions (
-    lib.unique (privateServiceDomains ++ hostSiteDomains ++ hostNixpiDomains)
+    lib.unique (hostGitDomains ++ privateServiceDomains ++ hostSiteDomains ++ hostNixpiDomains)
   );
 in
 {

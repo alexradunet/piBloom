@@ -8,7 +8,6 @@ let
   exposure = import ../../fleet/exposure.nix;
   privateIp = "10.44.0.1";
   publicIp = "167.235.12.22";
-  git = fleet.vms.git;
   hostSite = exposure.host.site or { };
   hostNixpi = exposure.host.nixpi or { };
   microvmUnits = map (name: "microvm@${name}.service") (lib.attrNames fleet.vms);
@@ -82,9 +81,7 @@ let
 
   serviceBackendFor =
     vm:
-    if vm.service == "forgejo" then
-      "http://${vm.ip}:${toString vm.webPort}"
-    else if vm.service == "dav-server" then
+    if vm.service == "dav-server" then
       "http://${vm.ip}:${toString vm.davServer.httpPort}"
     else
       null;
@@ -247,25 +244,6 @@ in
     ]
     ++ microvmUnits;
     wants = [ "network-online.target" ];
-  };
-
-  systemd.services.git-ssh-proxy = {
-    description = "Private Forgejo Git SSH proxy to the git MicroVM";
-    after = [
-      "network-online.target"
-      "microvm@git.service"
-    ];
-    wants = [
-      "network-online.target"
-      "microvm@git.service"
-    ];
-    wantedBy = [ "multi-user.target" ];
-    path = [ pkgs.socat ];
-    serviceConfig = {
-      ExecStart = "${pkgs.socat}/bin/socat TCP-LISTEN:${toString git.sshPort},bind=${privateIp},reuseaddr,fork TCP:${git.ip}:${toString git.sshPort}";
-      Restart = "always";
-      RestartSec = "5s";
-    };
   };
 
   networking.firewall.allowedTCPPorts = lib.mkIf publicHttpEnabled [ 80 ];

@@ -19,7 +19,8 @@
     ../../modules/host/pi-agent.nix
     ../../modules/host/nixpi.nix
     ../../modules/host/microvm-host.nix
-    ../../modules/host/forgejo-proxy.nix
+    ../../modules/host/git-ssh.nix
+    ../../modules/host/service-proxy.nix
     ../../modules/host/backup.nix
     ../../modules/host/monitoring.nix
   ];

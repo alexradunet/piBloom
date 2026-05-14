@@ -27,13 +27,6 @@
   };
 
   vms = {
-    git = {
-      service = {
-        enable = true;
-        access = "private";
-      };
-    };
-
     minecraft = {
       service.enable = false;
     };

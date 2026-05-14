@@ -39,17 +39,17 @@ Publicly reachable services are limited to:
 Private sshuttle services:
 
 - `nazar.studio/nixpi/` -> `10.44.0.1`, HTTP via host nginx to the host-local NixPi service.
-- `git.nazar.studio` -> `10.44.0.1`, HTTP via host nginx to Forgejo and Git SSH via host socat on `10022/tcp`.
+- `git.nazar.studio` -> `10.44.0.1`, SSH-only Git via host sshd on `10022/tcp`.
 - `mc.nazar.studio/nixpi/` -> `10.44.0.1`, HTTP via host nginx to the Minecraft VM-local NixPi service.
 - `dav.nazar.studio` -> `10.44.0.1`, HTTP via host nginx to the DAV Server MicroVM when it is running.
 - `dav.nazar.studio/nixpi/` -> `10.44.0.1`, HTTP via host nginx to the DAV Server VM-local NixPi service.
 
-There is intentionally no public HTTP/TCP/80 DNAT to Minecraft and no public Forgejo, DAV, or NixPi exposure.
+There is intentionally no public HTTP/TCP/80 DNAT to Minecraft and no public Git, DAV, or NixPi exposure.
 
 ## Repository layout
 
 ```text
-flake.nix                 # fleet orchestrator, deploy-rs apps, MicroVM composition
+flake.nix                 # fleet orchestrator, simple switch apps, MicroVM composition
 flake.lock                # pinned inputs
 nix/fleet/vms.nix         # VM inventory: IDs, IPs, DNS, sizing, service contracts
 nix/fleet/exposure.nix    # private/public HTTP exposure policy
@@ -61,12 +61,12 @@ runbooks/                 # operational runbooks
 
 ## Active/declarative services
 
-| Service    | VM                           | Private/Public endpoint                                                          | Notes                                                                                            |
-| ---------- | ---------------------------- | -------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
-| Forgejo    | `git` / `10.10.10.21`        | `git.nazar.studio` on sshuttle-routed `10.44.0.1`                                | HTTP `80`, Git SSH `10022` via host proxy; autostarted                                           |
-| Minecraft  | `minecraft` / `10.10.10.30`  | `mc.nazar.studio`; public game `25565/tcp`, voice `24454/udp`; private `/nixpi/` | no public webapp                                                                                 |
-| DAV Server | `dav-server` / `10.10.10.41` | `dav.nazar.studio` on sshuttle-routed `10.44.0.1`                                | WebDAV `/files/`, CalDAV/CardDAV `/radicale/`; autostarted                                       |
-| NixPi      | host + every MicroVM         | `/nixpi/` on the host and per-service domains                                    | private web interface for Pi RPC sessions; route exposure controlled by `nix/fleet/exposure.nix` |
+| Service    | VM                           | Private/Public endpoint                                                             | Notes                                                                                            |
+| ---------- | ---------------------------- | ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| Git        | host `nazar`                 | `git.nazar.studio:10022` on sshuttle-routed `10.44.0.1` and NAT bridge `10.10.10.1` | SSH-only bare Git on host; no web UI; no separate VM                                             |
+| Minecraft  | `minecraft` / `10.10.10.30`  | `mc.nazar.studio`; public game `25565/tcp`, voice `24454/udp`; private `/nixpi/`    | no public webapp                                                                                 |
+| DAV Server | `dav-server` / `10.10.10.41` | `dav.nazar.studio` on sshuttle-routed `10.44.0.1`                                   | WebDAV `/files/`, CalDAV/CardDAV `/radicale/`; autostarted                                       |
+| NixPi      | host + every MicroVM         | `/nixpi/` on the host and per-service domains                                       | private web interface for Pi RPC sessions; route exposure controlled by `nix/fleet/exposure.nix` |
 
 ## DNS intent
 
@@ -74,20 +74,20 @@ Configured laptops receive declarative `/etc/hosts` entries mapping private/oper
 
 ## Fleet orchestration
 
-Day-2 production VM changes are deployed by `/root/nazar` on the host, using `deploy-rs` over the private VM aliases as `alex` with sudo to the root system profile.
+Day-2 production VM changes are applied from `/root/nazar` on the host with plain `nixos-rebuild switch` plus MicroVM restarts.
 
 ```bash
 ssh alex@10.44.0.1  # canonical, through sshuttle from a configured laptop
 # or direct control endpoint when needed: ssh alex@167.235.12.22
 cd /root/nazar
 nix flake check --no-build
-nix run .#deploy-git
-nix run .#deploy-minecraft
-nix run .#deploy-dav-server
-NAZAR_DEPLOY_ALL_CONFIRM=yes nix run .#deploy-all
+nix run .#switch-git
+nix run .#switch-minecraft
+nix run .#switch-dav-server
+nix run .#switch-fleet
 ```
 
-After each deploy, run the VM's service checks. These commands switch the NixOS system profile on existing MicroVM guests; lifecycle actions remain separately gated.
+After each switch, run the VM's service checks. These commands switch the host NixOS profile and restart existing MicroVM guests; lifecycle actions remain separately gated. See `runbooks/GIT_SERVER.md` for host Git operations.
 
 ## Useful commands
 
@@ -96,7 +96,7 @@ git status --short --branch
 nix fmt
 nix flake check --no-build
 sudo nix --accept-flake-config build .#nixosConfigurations.nazar.config.system.build.toplevel --print-build-logs
-systemctl is-active sshd systemd-networkd nginx git-ssh-proxy nixpi microvm@git
+systemctl is-active sshd systemd-networkd nginx nixpi nazar-git-authorized-keys.timer
 ip addr show nazar-private
 ```
 

@@ -46,9 +46,9 @@ in
     workspaces = {
       nazar = hostWorkspace;
     } // vmWorkspaces;
-    # Run directly from local git checkout so server.js changes are picked up
-    # immediately without needing to rebuild the nixpi package.
-    sourceDir = /home/alex/repos/nixpi;
+    # Use the nixpi input package instead of a local checkout.
+    # The nixpi flake provides its own server.js; no --impure needed.
+    package = inputs.nixpi.packages.${pkgs.stdenv.hostPlatform.system}.nixpi or inputs.nixpi.packages.x86_64-linux.nixpi;
   };
 
   # NixPi spawns `node` for its RPC/web worker path; keep that executable in

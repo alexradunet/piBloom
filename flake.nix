@@ -23,11 +23,6 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
-    sops-nix = {
-      url = "github:Mic92/sops-nix";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-
     minecraft = {
       url = "git+ssh://git@git.nazar.studio:10022/nazar/minecraft.git";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -44,7 +39,6 @@
       self,
       nixpkgs,
       disko,
-      sops-nix,
       ...
     }:
     let
@@ -63,24 +57,17 @@
 
       microvmGuestBaseModules = [
         inputs.microvm.nixosModules.microvm
-        sops-nix.nixosModules.sops
         ./nix/modules/common/base.nix
         ./nix/modules/common/users.nix
         ./nix/modules/common/security.nix
         ./nix/modules/common/development.nix
-        ./nix/modules/common/sops.nix
         ./nix/modules/common/nazar-context.nix
-        ./nix/modules/common/git-ssh.nix
         ./nix/modules/host/microvm-guest.nix
       ];
 
       piAgentModule = ./nix/modules/common/pi-agent.nix;
 
       microvmServiceModules = {
-        git = [
-          ./nix/modules/services/forgejo.nix
-          ./nix/modules/services/forgejo-bootstrap.nix
-        ];
         minecraft = [
           ./nix/modules/services/minecraft-identity.nix
           inputs.minecraft.nixosModules.minecraft-service
@@ -99,12 +86,10 @@
     in
     {
       nixosModules = {
-        forgejo-service = ./nix/modules/services/forgejo.nix;
-        forgejo-bootstrap = ./nix/modules/services/forgejo-bootstrap.nix;
         dav-server-service = ./nix/modules/services/dav-server.nix;
-        git-ssh = ./nix/modules/common/git-ssh.nix;
         microvm-guest = ./nix/modules/host/microvm-guest.nix;
         microvm-host = ./nix/modules/host/microvm-host.nix;
+        host-git-ssh = ./nix/modules/host/git-ssh.nix;
       };
 
       nixosConfigurations = {
@@ -115,7 +100,6 @@
           };
           modules = [
             disko.nixosModules.disko
-            sops-nix.nixosModules.sops
             ./nix/hosts/nazar
           ];
         };
@@ -128,7 +112,6 @@
           modules = [ ./nix/hosts/alex-laptop ];
         };
 
-        git = mkMicrovmGuest "git";
         minecraft = mkMicrovmGuest "minecraft";
         "dav-server" = mkMicrovmGuest "dav-server";
       };
@@ -139,12 +122,19 @@
 
       apps.${system} =
         let
-          deployNodeNames = nixpkgs.lib.attrNames fleet.vms;
-          deployNodeList = nixpkgs.lib.concatStringsSep " " deployNodeNames;
-          mkDeployProgram = name: nodes:
+          switchNodeNames = nixpkgs.lib.attrNames fleet.vms;
+          switchNodeList = nixpkgs.lib.concatStringsSep " " switchNodeNames;
+          mkSwitchProgram =
+            name: nodes:
+            let
+              nodeList = nixpkgs.lib.concatStringsSep " " nodes;
+            in
             pkgs.writeShellApplication {
-              name = "nazar-deploy-${name}";
-              runtimeInputs = [ pkgs.systemd ];
+              name = "nazar-switch-${name}";
+              runtimeInputs = [
+                pkgs.nixos-rebuild
+                pkgs.systemd
+              ];
               text = ''
                 set -euo pipefail
 
@@ -152,48 +142,39 @@
                   exec sudo "$0" "$@"
                 fi
 
-                cd ${self.outPath}
-                nixos-rebuild switch --flake ${self.outPath}#nazar --impure "$@"
+                nixos-rebuild switch --flake ${self.outPath}#nazar "$@"
 
-                # shellcheck disable=SC2043
-                for node in ${nixpkgs.lib.concatStringsSep " " nodes}; do
-                  echo "==> restarting MicroVM $node"
-                  systemctl restart "microvm@$node.service"
-                  systemctl is-active --quiet "microvm@$node.service"
-                done
+                ${nixpkgs.lib.optionalString (nodes != [ ]) ''
+                  for node in ${nodeList}; do
+                    echo "==> restarting MicroVM $node"
+                    systemctl restart "microvm@$node.service"
+                    systemctl is-active --quiet "microvm@$node.service"
+                  done
+                ''}
               '';
             };
-          mkDeployApp = name: {
+          mkSwitchApp = name: {
             type = "app";
-            program = "${mkDeployProgram name [ name ]}/bin/nazar-deploy-${name}";
-            meta.description = "Apply the Nazar host configuration and restart the ${name} MicroVM";
+            program = "${mkSwitchProgram name [ name ]}/bin/nazar-switch-${name}";
+            meta.description = "Switch the Nazar host configuration and restart the ${name} MicroVM";
+          };
+          switchFleetApp = {
+            type = "app";
+            program = "${mkSwitchProgram "fleet" switchNodeNames}/bin/nazar-switch-fleet";
+            meta.description = "Switch the Nazar host configuration and restart the MicroVM fleet: ${switchNodeList}";
           };
         in
         {
-          deploy = {
+          default = switchFleetApp;
+          switch = switchFleetApp;
+          switch-fleet = switchFleetApp;
+          switch-host = {
             type = "app";
-            program = "${mkDeployProgram "fleet" deployNodeNames}/bin/nazar-deploy-fleet";
-            meta.description = "Apply the Nazar host configuration and restart the MicroVM fleet";
+            program = "${mkSwitchProgram "host" [ ]}/bin/nazar-switch-host";
+            meta.description = "Switch only the Nazar host configuration";
           };
-          deploy-git = mkDeployApp "git";
-          deploy-minecraft = mkDeployApp "minecraft";
-          deploy-dav-server = mkDeployApp "dav-server";
-          deploy-all = {
-            type = "app";
-            program = toString (
-              pkgs.writeShellScript "nazar-deploy-all" ''
-                set -euo pipefail
-                if [ "''${NAZAR_DEPLOY_ALL_CONFIRM:-}" != "yes" ]; then
-                  echo "Refusing all-fleet deploy without NAZAR_DEPLOY_ALL_CONFIRM=yes." >&2
-                  echo "Deploy one canary first, validate it, then rerun with the confirmation variable." >&2
-                  exit 2
-                fi
-
-                exec ${mkDeployProgram "fleet" deployNodeNames}/bin/nazar-deploy-fleet "$@"
-              ''
-            );
-            meta.description = "Apply the Nazar host configuration and restart all current MicroVMs: ${deployNodeList}";
-          };
+          switch-minecraft = mkSwitchApp "minecraft";
+          switch-dav-server = mkSwitchApp "dav-server";
         };
 
       checks.${system} = { };

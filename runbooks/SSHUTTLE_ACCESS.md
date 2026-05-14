@@ -48,7 +48,7 @@ If the private key has a different filename, override `nazar.access.sshuttle.key
 
 ## First laptop bootstrap
 
-A fresh laptop may not yet have the declarative `/etc/hosts` entries needed to fetch this flake's private Forgejo inputs. For the first rebuild only, start a temporary sshuttle tunnel and temporary hosts entry from an existing checkout:
+A fresh laptop may not yet have the declarative `/etc/hosts` entries needed to fetch this flake's private Git inputs. For the first rebuild only, start a temporary sshuttle tunnel and temporary hosts entry from an existing checkout:
 
 ```bash
 sudo sh -c 'printf "10.44.0.1 nazar.studio mc.nazar.studio git.nazar.studio dav.nazar.studio\n" >> /etc/hosts'
@@ -85,7 +85,6 @@ curl -I http://nazar.studio/nixpi/
 curl -I http://mc.nazar.studio/nixpi/
 curl -I http://dav.nazar.studio/
 curl -I http://dav.nazar.studio/nixpi/
-curl -I http://git.nazar.studio/nixpi/
 git ls-remote ssh://git@git.nazar.studio:10022/nazar/nazar.git
 ```
 
@@ -108,5 +107,5 @@ Check host private address and services:
 ```bash
 ip addr show nazar-private
 systemctl is-active sshd systemd-networkd nginx git-ssh-proxy nixpi
-curl -I --resolve git.nazar.studio:80:10.44.0.1 http://git.nazar.studio/
+git ls-remote ssh://git@git.nazar.studio:10022/nazar/nazar.git
 ```

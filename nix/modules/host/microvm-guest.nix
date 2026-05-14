@@ -23,12 +23,6 @@ let
     mountPoint = "/var/lib/nazar/ssh";
     proto = "virtiofs";
   };
-  gitSshKeyShare = {
-    tag = "${vm.hostname}-git-ssh";
-    source = "/persist/microvms/${vm.hostname}/git-ssh";
-    mountPoint = "/var/lib/nazar/git-ssh";
-    proto = "virtiofs";
-  };
 in
 {
   networking = {
@@ -89,7 +83,6 @@ in
     ]
     ++ [
       sshHostKeyShare
-      gitSshKeyShare
     ]
     ++ map guestShare (vm.microvm.shares or [ ]);
   };

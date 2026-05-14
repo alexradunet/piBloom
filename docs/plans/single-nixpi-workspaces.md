@@ -77,7 +77,7 @@ A **workspace** is a named profile in nixpi that maps to:
 | nazar      | `/home/alex/nazar`      | local (host)        | Infrastructure repo on the host    |
 | minecraft  | `/home/alex/minecraft`  | SSH → `10.10.10.30` | Minecraft VM, PaperMC server       |
 | dav-server | `/home/alex/dav-server` | SSH → `10.10.10.41` | DAV server VM                      |
-| git        | `/home/alex/nazar`      | SSH → `10.10.10.21` | Forgejo VM (same repo, remote ops) |
+| git        | `/home/alex/nazar`      | SSH → `10.10.10.21` | SSH-only Git VM (same repo, remote ops) |
 
 ## Implementation Plan
 
@@ -331,7 +331,7 @@ execution. This is simpler and gives nixpi local file access for the UI.
 2. ~~**Add WorkspaceManager**~~ — ✅ done (WorkspaceManager class, lazy spawn, idle kill)
 3. ~~**Add workspace UI**~~ — ✅ done (select dropdown in header, switch handler)
 4. ~~**Update nixpi NixOS module**~~ — ✅ done (services.nixpi.workspaces, .idleTimeoutMs, .defaultWorkspace)
-5. ~~**Add `nixpi.nazar.studio` DNS + nginx**~~ — ✅ done (exposure.nix, forgejo-proxy.nix updated)
+5. ~~**Add `nixpi.nazar.studio` DNS + nginx**~~ — ✅ done (exposure.nix, service-proxy.nix updated)
 6. ~~**Generate workspaces.json from NixOS config**~~ — ✅ done (workspacesJson in nixpi module, NIXPI_WORKSPACES_CONFIG env)
 7. ~~**Remove VM nixpi instances**~~ — ✅ done (removed from commonGuestModules, exposure, flake.nix)
 8. ~~**Remove VM virtiofs pi shares**~~ — ✅ done (removed git-pi, minecraft-pi, dav-server-pi from vms.nix)

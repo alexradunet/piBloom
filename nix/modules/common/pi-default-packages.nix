@@ -34,14 +34,12 @@ in
     install -d -m 0755 -o alex -g users "$agent_dir" "$npm_prefix" "$npm_prefix/bin" "$npm_prefix/lib"
 
     # --- Layer 3: ~/.npmrc ---
-    # Write the npm prefix into the user npmrc so `npm install -g` works even
-    # when NPM_CONFIG_PREFIX isn't in the environment (e.g. env -i, sudo -E).
-    # This is the last-resort fallback in the three-layer strategy.
+    # Fallback for environments where NPM_CONFIG_PREFIX isn't available
+    # (e.g. env -i, sudo -E). The session variable is the primary mechanism.
     npmrc_file=/home/alex/.npmrc
     desired_prefix_line="prefix=/home/alex/.pi/npm-global"
     if [ -f "$npmrc_file" ]; then
       if ! grep -qFx "$desired_prefix_line" "$npmrc_file"; then
-        # Remove any existing prefix line and append the correct one
         sed -i '/^prefix=/d' "$npmrc_file"
         echo "$desired_prefix_line" >> "$npmrc_file"
       fi
@@ -50,54 +48,17 @@ in
       chown alex:users "$npmrc_file"
     fi
 
-    ${pkgs.python3}/bin/python3 - "$settings_file" '${defaultPiPackagesJson}' <<'PY'
-import json
-import os
-import sys
-
-settings_path = sys.argv[1]
-default_packages = json.loads(sys.argv[2])
-
-settings = {}
-if os.path.exists(settings_path) and os.path.getsize(settings_path) > 0:
-    try:
-        with open(settings_path, "r", encoding="utf-8") as f:
-            loaded = json.load(f)
-        if isinstance(loaded, dict):
-            settings = loaded
-        else:
-            print(f"warning: {settings_path} is not a JSON object; leaving unchanged", file=sys.stderr)
-            sys.exit(0)
-    except json.JSONDecodeError as exc:
-        print(f"warning: cannot parse {settings_path}: {exc}; leaving unchanged", file=sys.stderr)
-        sys.exit(0)
-
-packages = settings.get("packages")
-if not isinstance(packages, list):
-    packages = []
-
-seen = set()
-for entry in packages:
-    if isinstance(entry, str):
-        seen.add(entry)
-    elif isinstance(entry, dict) and isinstance(entry.get("source"), str):
-        seen.add(entry["source"])
-
-changed = False
-for package in default_packages:
-    if package not in seen:
-        packages.append(package)
-        seen.add(package)
-        changed = True
-
-if changed or settings.get("packages") is not packages:
-    settings["packages"] = packages
-    tmp_path = settings_path + ".tmp"
-    with open(tmp_path, "w", encoding="utf-8") as f:
-        json.dump(settings, f, indent=2)
-        f.write("\n")
-    os.replace(tmp_path, settings_path)
-PY
+    # --- Pi agent default packages ---
+    # Merge default packages into settings.json, preserving any user-added entries.
+    # Uses jq instead of embedded Python for simplicity.
+    if [ -f "$settings_file" ] && [ -s "$settings_file" ]; then
+      ${pkgs.jq}/bin/jq --argjson defaults '${defaultPiPackagesJson}' \
+        '.packages = ((.packages // []) + $defaults | unique)' \
+        "$settings_file" > "$settings_file.tmp" \
+        && mv "$settings_file.tmp" "$settings_file"
+    else
+      printf '{"packages":%s}\n' '${defaultPiPackagesJson}' > "$settings_file"
+    fi
 
     if [ -e "$settings_file" ]; then
       chown alex:users "$settings_file"

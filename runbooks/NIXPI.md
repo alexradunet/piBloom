@@ -11,7 +11,6 @@ Primary per-service paths:
 - Host UI: `http://nazar.studio/nixpi/` -> host `127.0.0.1:4815`
 - Minecraft VM UI: `http://mc.nazar.studio/nixpi/` -> `10.10.10.30:4815`
 - DAV Server VM UI: `http://dav.nazar.studio/nixpi/` -> `10.10.10.41:4815`
-- Git VM UI: `http://git.nazar.studio/nixpi/` -> `10.10.10.21:4815`
 
 NixPi is path-based only. There are no dedicated `nixpi*.nazar.studio` virtual hosts; use the `/nixpi/` path on the host or service domain.
 
@@ -51,7 +50,7 @@ This keeps Pi config and NixPi session history across VM recreation. The host se
 
 ## Input source
 
-The Nazar flake uses the private Forgejo repository:
+The Nazar flake uses the private SSH-only Git repository:
 
 ```nix
 git+ssh://git@git.nazar.studio:10022/nazar/nixpi.git
@@ -63,7 +62,7 @@ Update it from `/root/nazar` with:
 nix flake lock --update-input nixpi
 ```
 
-## Deploy
+## Switch
 
 From `/root/nazar` on the host:
 
@@ -73,12 +72,12 @@ sudo nix --accept-flake-config build .#nixosConfigurations.nazar.config.system.b
 sudo nixos-rebuild switch --flake .#nazar
 ```
 
-Then deploy MicroVMs as usual if needed:
+Then switch/restart MicroVMs as usual if needed:
 
 ```bash
-nix run .#deploy-git
-nix run .#deploy-minecraft
-nix run .#deploy-dav-server
+nix run .#switch-git
+nix run .#switch-minecraft
+nix run .#switch-dav-server
 ```
 
 ## Validate
@@ -99,7 +98,6 @@ getent hosts nazar.studio mc.nazar.studio dav.nazar.studio git.nazar.studio
 curl -I http://nazar.studio/nixpi/
 curl -I http://mc.nazar.studio/nixpi/
 curl -I http://dav.nazar.studio/nixpi/
-curl -I http://git.nazar.studio/nixpi/
 ```
 
 Inside each VM:
@@ -124,7 +122,7 @@ systemctl status nixpi
 curl -I http://127.0.0.1:4815/
 ```
 
-If the host was rebuilt but the VM was not redeployed, run the relevant deploy app (`nix run .#deploy-git`, `.#deploy-minecraft`, or `.#deploy-dav-server`) so the VM-local `nixpi` systemd service exists and is running.
+If the host was rebuilt but the VM was not switched/restarted, run the relevant switch app (`nix run .#switch-git`, `.#switch-minecraft`, or `.#switch-dav-server`) so the VM-local `nixpi` systemd service exists and is running.
 
 ## Rollback
 
@@ -137,7 +135,7 @@ sudo nixos-rebuild switch --rollback
 VM rollback:
 
 ```bash
-nix run .#deploy-<vm> -- --rollback
+nix run .#switch-<vm> -- --rollback
 # or inside a VM if the VM-local self flake is healthy:
 sudo nixos-rebuild switch --rollback
 ```

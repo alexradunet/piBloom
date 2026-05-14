@@ -6,7 +6,7 @@
       "flakes"
     ];
     # `alex` is a passwordless-sudo wheel admin on VMs. Trust wheel for Nix so
-    # deploy-rs can copy store paths over SSH as alex before activating as root.
+    # plain nixos-rebuild/VM-local switches can build and activate as needed.
     trusted-users = [
       "root"
       "@wheel"

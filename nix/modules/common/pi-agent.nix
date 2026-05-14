@@ -13,38 +13,34 @@ let
     }
     .${vm.hostname} or vm.hostname;
   repoRoot = "/home/alex/${repoName}";
-  repoUrl = "ssh://git@10.10.10.21:10022/nazar/${repoName}.git";
-  pi = pkgs.callPackage ../../packages/pi { };
   bootstrap = pkgs.writeShellScriptBin "nazar-vm-repo-bootstrap" ''
     set -euo pipefail
 
     repo_name=${lib.escapeShellArg repoName}
     repo_root=${lib.escapeShellArg repoRoot}
-    repo_url=${lib.escapeShellArg repoUrl}
 
-    mkdir -p "$repo_root"
+    if [ ! -d "$repo_root" ]; then
+      echo "Repo directory $repo_root does not exist." >&2
+      echo "This should be a virtiofs mount from the host." >&2
+      exit 1
+    fi
+
     cd "$repo_root"
 
-    export GIT_SSH_COMMAND="ssh -o StrictHostKeyChecking=accept-new"
-
     if [ ! -d .git ]; then
-      git init -b main
+      echo "Repo not initialized at $repo_root." >&2
+      echo "The host should provision this directory via:" >&2
+      echo "  nazar-git-init $repo_name" >&2
+      exit 1
     fi
 
-    if git remote get-url origin >/dev/null 2>&1; then
-      git remote set-url origin "$repo_url"
-    else
-      git remote add origin "$repo_url"
-    fi
-
-    git fetch origin main || true
-    git checkout -B main --track origin/main || git checkout -B main
-
-    echo "VM repo ready: $repo_root ($repo_url)"
+    echo "VM repo ready: $repo_root"
     echo "Pi is available as: pi"
-    echo "You may edit, test, commit, and push here; production deploys are handed off with: nazar-deploy-request"
+    echo "You may edit, test, commit here; production switches are handed off with: nazar-switch-request"
     echo "Next: cd $repo_root && pi"
   '';
+  pi = pkgs.callPackage ../../packages/pi { };
+
   # Per-VM LSP servers. Override in fleet config with
   #   vm.nixpi.lspServers = [ pkgs.gopls ];
   # or add to the defaults below.

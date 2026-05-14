@@ -8,14 +8,11 @@
 let
   commonGuestModules = [
     inputs.microvm.nixosModules.microvm
-    inputs.sops-nix.nixosModules.sops
     ../common/base.nix
     ../common/users.nix
     ../common/security.nix
     ../common/development.nix
-    ../common/sops.nix
     ../common/nazar-context.nix
-    ../common/git-ssh.nix
     ./microvm-guest.nix
   ];
 
@@ -24,25 +21,12 @@ let
   commonPiAgentModule = ../common/pi-agent.nix;
 
   serviceModules = {
-    git = [
-      ../services/forgejo.nix
-      ../services/forgejo-bootstrap.nix
-    ];
     minecraft = [
       ../services/minecraft-identity.nix
       inputs.minecraft.nixosModules.minecraft-service
     ];
     dav-server = [ ../services/dav-server.nix ];
   };
-
-  fleetGitKeyShares =
-    map (vm: {
-      tag = "fleet-git-key-${vm.hostname}";
-      source = "/persist/microvms/${vm.hostname}/git-ssh";
-      mountPoint = "/var/lib/nazar/fleet-git-keys/${vm.hostname}";
-      proto = "virtiofs";
-      readOnly = true;
-    }) (lib.attrValues fleet.vms);
 
   hostMicrovmSshConfig = lib.concatStringsSep "\n" (
     lib.mapAttrsToList (_name: vm: ''
@@ -67,9 +51,6 @@ let
       imports = commonGuestModules
         ++ lib.optional (vm.piAgent.enable or false) commonPiAgentModule
         ++ serviceModules.${name};
-    }
-    // lib.optionalAttrs (name == "git") {
-      microvm.shares = fleetGitKeyShares;
     };
   };
 
@@ -82,19 +63,13 @@ let
   sshHostKeyShareTmpfiles = map (vm: "d /persist/microvms/${vm.hostname}/ssh 0700 root root - -") (
     lib.attrValues fleet.vms
   );
-  gitSshKeyShareTmpfiles = map (vm: "d /persist/microvms/${vm.hostname}/git-ssh 0700 alex users - -") (
-    lib.attrValues fleet.vms
-  );
 in
 {
   imports = [ inputs.microvm.nixosModules.host ];
 
   microvm = {
     stateDir = "/persist/microvms-runtime";
-    # Bring persistent services back automatically. DAV remains deliberately
-    # started only when its data/secrets are restored and validated.
     autostart = [
-      "git"
       "minecraft"
       "dav-server"
     ];
@@ -108,8 +83,7 @@ in
     "f /home/alex/.ssh/nazar_microvm_known_hosts 0600 alex users - -"
   ]
   ++ guestShareTmpfiles
-  ++ sshHostKeyShareTmpfiles
-  ++ gitSshKeyShareTmpfiles;
+  ++ sshHostKeyShareTmpfiles;
 
   programs.ssh.extraConfig = hostMicrovmSshConfig;
 

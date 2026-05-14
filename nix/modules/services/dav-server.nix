@@ -15,16 +15,6 @@ let
   authEnable = auth.enable or false;
   authRealm = auth.realm or "Nazar DAV";
   htpasswdFile = auth.htpasswdFile or "${stateDir}/secrets/dav-server-htpasswd";
-  gitBackup = cfg.gitBackup or { };
-  gitBackupEnable = gitBackup.enable or false;
-  gitBackupSourceDir = gitBackup.sourceDir or "${webdavRoot}/wiki";
-  gitBackupWorkTree = gitBackup.workTree or "${stateDir}/wiki-git-backup";
-  gitBackupRepo = gitBackup.repo or "ssh://git@10.10.10.21:10022/nazar/personal-wiki-backup.git";
-  gitBackupBranch = gitBackup.branch or "main";
-  gitBackupSshKey = gitBackup.sshKeyFile or "${stateDir}/secrets/dav-server-wiki-backup-ed25519";
-  gitBackupKnownHosts =
-    gitBackup.knownHostsFile or "${stateDir}/secrets/dav-server-wiki-backup-known_hosts";
-  gitBackupCalendar = gitBackup.onCalendar or "hourly";
   authBasicConfig = lib.optionalString authEnable ''
     auth_basic "${authRealm}";
     auth_basic_user_file ${htpasswdFile};
@@ -42,9 +32,7 @@ in
 
   environment.systemPackages = with pkgs; [
     curl
-    git
     jq
-    openssh
     rsync
   ];
 
@@ -111,94 +99,11 @@ in
     "d ${radicaleStateDir} 0750 radicale radicale - -"
   ];
 
-  systemd.services.dav-server-wiki-git-backup = lib.mkIf gitBackupEnable {
-    description = "Snapshot Nazar DAV wiki to git";
-    after = [ "network-online.target" ];
-    wants = [ "network-online.target" ];
-    path = with pkgs; [
-      coreutils
-      findutils
-      git
-      openssh
-      rsync
-    ];
-    serviceConfig = {
-      Type = "oneshot";
-      User = "root";
-      Group = "root";
-      UMask = "0077";
-    };
-    script = ''
-      set -euo pipefail
-
-      if [ ! -r ${gitBackupSshKey} ]; then
-        echo "Missing git backup SSH key: ${gitBackupSshKey}" >&2
-        exit 1
-      fi
-
-      install -d -o root -g root -m 0700 ${gitBackupWorkTree}
-      chown root:root ${gitBackupWorkTree}
-      install -d -o nginx -g nginx -m 0750 ${gitBackupSourceDir}
-
-      cd ${gitBackupWorkTree}
-      if [ ! -d .git ]; then
-        git init -b ${gitBackupBranch}
-        git remote add origin ${gitBackupRepo}
-      fi
-
-      git config user.name "Nazar DAV Wiki Backup"
-      git config user.email "dav-server@nazar.studio"
-
-      rsync -a --delete --no-owner --no-group --exclude='.git/' ${gitBackupSourceDir}/ ${gitBackupWorkTree}/
-      chown -R root:root ${gitBackupWorkTree}
-
-      if ! find ${gitBackupWorkTree} -mindepth 1 -maxdepth 1 ! -name .git | grep -q .; then
-        printf 'Nazar DAV wiki backup placeholder. Remove once the WebDAV wiki contains files.\n' > .backup-placeholder
-      else
-        rm -f .backup-placeholder
-      fi
-
-      git add -A
-      if git diff --cached --quiet; then
-        echo "No DAV wiki changes to snapshot."
-      else
-        git commit -m "DAV wiki snapshot $(date -u +%Y-%m-%dT%H:%M:%SZ)"
-      fi
-
-      GIT_SSH_COMMAND="ssh -i ${gitBackupSshKey} -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=${gitBackupKnownHosts}" \
-        git push origin HEAD:${gitBackupBranch}
-    '';
-  };
-
-  systemd.timers.dav-server-wiki-git-backup = lib.mkIf gitBackupEnable {
-    description = "Periodically snapshot Nazar DAV wiki to git";
-    wantedBy = [ "timers.target" ];
-    timerConfig = {
-      OnCalendar = gitBackupCalendar;
-      Persistent = true;
-      Unit = "dav-server-wiki-git-backup.service";
-    };
-  };
-
-  systemd.services.dav-server-auth-gate = {
-    description = "Document Nazar DAV bootstrap auth gate";
-    wantedBy = [ "multi-user.target" ];
-    after = [
-      "nginx.service"
-      "radicale.service"
-    ];
-    serviceConfig = {
-      Type = "oneshot";
-      RemainAfterExit = true;
-    };
-    script = ''
-      cat <<'EOF'
-      Nazar DAV VM mode: Radicale and WebDAV are reachable through the private Nazar network.
-      Authentication enabled: ${if authEnable then "yes" else "no"}.
-      If authentication is enabled, keep ${htpasswdFile} provisioned outside git with root:nginx 0640 permissions.
-      EOF
-    '';
-  };
+  # dav-server-auth-gate removed — was a no-op oneshot that only printed a
+  # boot message to stdout. Radicale and WebDAV are reachable through the
+  # private Nazar network; auth status is visible in the NixOS config.
+  # Git backup removed — SSH-for-Git is no longer used on this private network.
+  # VM repos are available via virtiofs shares from the host.
 
   networking.firewall.allowedTCPPorts = [ httpPort ];
 

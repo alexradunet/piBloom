@@ -31,50 +31,6 @@
   };
 
   vms = {
-    git = {
-      vmid = 101;
-      hostname = "git";
-      service = "forgejo";
-      ip = "10.10.10.21";
-      mac = "BC:24:11:0A:4B:0E";
-      microvm = {
-        tap = "vm101";
-        mac = "02:00:00:00:00:21";
-        shares = [
-          {
-            tag = "git-forgejo";
-            source = "/persist/microvms/git/forgejo";
-            mountPoint = "/var/lib/forgejo";
-            proto = "virtiofs";
-          }
-          {
-            tag = "git-repo";
-            source = "/persist/microvms/git/repo";
-            mountPoint = "/home/alex/nazar";
-            proto = "virtiofs";
-            owner = "alex";
-            group = "users";
-            mode = "0755";
-          }
-        ];
-      };
-      dns = "git.nazar.studio";
-      webPort = 3000;
-      sshPort = 10022;
-      cores = 2;
-      memoryMiB = 2048;
-      balloonMiB = 512;
-      diskGiB = 32;
-      onboot = true;
-      startupOrder = 20;
-      role = "private Git forge for the nazar infrastructure repository";
-      piAgent.enable = true;
-      nixpi = {
-        port = 4815;
-        workingDirectory = "/home/alex/nazar";
-      };
-    };
-
     minecraft = {
       vmid = 110;
       hostname = "minecraft";
@@ -258,18 +214,6 @@
         stateDir = "/var/lib/dav-server";
         webdavRoot = "/var/lib/dav-server/webdav";
         radicaleStateDir = "/var/lib/radicale/collections";
-        gitBackup = {
-          enable = true;
-          sourceDir = "/var/lib/dav-server/webdav/wiki";
-          workTree = "/var/lib/dav-server/wiki-git-backup";
-          # Use the private NAT bridge for VM-to-VM backup pushes. Public and
-          # admin clients continue to use git.nazar.studio through nazar.
-          repo = "ssh://git@10.10.10.21:10022/nazar/personal-wiki-backup.git";
-          branch = "main";
-          sshKeyFile = "/var/lib/dav-server/secrets/dav-server-wiki-backup-ed25519";
-          knownHostsFile = "/var/lib/dav-server/secrets/dav-server-wiki-backup-known_hosts";
-          onCalendar = "hourly";
-        };
       };
     };
   };
