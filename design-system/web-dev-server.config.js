@@ -4,7 +4,10 @@ export default {
 	rootDir: ".",
 	port: 4820,
 	open: false,
-	nodeResolve: true,
+	nodeResolve: {
+		exportConditions: ["development"],
+		fileExtensions: [".ts", ".js", ".mjs"],
+	},
 	watch: true,
 	preserveSymlinks: true,
 };

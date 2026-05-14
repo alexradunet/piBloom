@@ -10,7 +10,14 @@
  */
 
 import { spawn } from "node:child_process";
-import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, unlinkSync } from "node:fs";
+import {
+	existsSync,
+	mkdirSync,
+	readdirSync,
+	readFileSync,
+	renameSync,
+	unlinkSync,
+} from "node:fs";
 import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createRequire } from "node:module";
@@ -28,19 +35,19 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const _require = createRequire(import.meta.url);
 
 function resolveModuleFile(pkgName, subpath) {
-  try {
-    const mainPath = _require.resolve(pkgName);
-    // Walk up to find the package root (where package.json lives)
-    let dir = dirname(mainPath);
-    while (dir !== dirname(dir)) {
-      if (existsSync(join(dir, "package.json"))) break;
-      dir = dirname(dir);
-    }
-    return join(dir, subpath);
-  } catch {
-    // Fallback: assume package is installed alongside this package
-    return join(__dirname, "node_modules", pkgName, subpath);
-  }
+	try {
+		const mainPath = _require.resolve(pkgName);
+		// Walk up to find the package root (where package.json lives)
+		let dir = dirname(mainPath);
+		while (dir !== dirname(dir)) {
+			if (existsSync(join(dir, "package.json"))) break;
+			dir = dirname(dir);
+		}
+		return join(dir, subpath);
+	} catch {
+		// Fallback: assume package is installed alongside this package
+		return join(__dirname, "node_modules", pkgName, subpath);
+	}
 }
 
 const MARKED_UMD_PATH = resolveModuleFile("marked", "lib/marked.umd.js");
@@ -65,658 +72,840 @@ let currentThinkingLevel = "medium";
 
 // ── Session utilities ────────────────────────────────────────────────────
 function parseSessions() {
-  const homeDir = process.env.HOME || "";
-  const sessionBaseDir = join(homeDir, ".pi", "agent", "sessions");
-  // /home/alex/repos/nixpi → --home-alex-repos-nixpi--
-  const cwdKey = "--" + CWD.replace(/^\//, "").replace(/\//g, "-") + "--";
-  const sessionDir = join(sessionBaseDir, cwdKey);
+	const homeDir = process.env.HOME || "";
+	const sessionBaseDir = join(homeDir, ".pi", "agent", "sessions");
+	// /home/alex/repos/nixpi → --home-alex-repos-nixpi--
+	const cwdKey = "--" + CWD.replace(/^\//, "").replace(/\//g, "-") + "--";
+	const sessionDir = join(sessionBaseDir, cwdKey);
 
-  if (!existsSync(sessionDir)) return [];
+	if (!existsSync(sessionDir)) return [];
 
-  const files = readdirSync(sessionDir)
-    .filter((f) => f.endsWith(".jsonl"))
-    .map((f) => join(sessionDir, f));
+	const files = readdirSync(sessionDir)
+		.filter((f) => f.endsWith(".jsonl"))
+		.map((f) => join(sessionDir, f));
 
-  const sessions = [];
-  for (const file of files) {
-    try {
-      const content = readFileSync(file, "utf8");
-      const lines = content.trim().split("\n").filter((l) => l.trim());
+	const sessions = [];
+	for (const file of files) {
+		try {
+			const content = readFileSync(file, "utf8");
+			const lines = content
+				.trim()
+				.split("\n")
+				.filter((l) => l.trim());
 
-      let header = null;
-      let name = null;
-      let firstUserMessage = null;
-      let messageCount = 0;
-      let lastTimestamp = null;
+			let header = null;
+			let name = null;
+			let firstUserMessage = null;
+			let messageCount = 0;
+			let lastTimestamp = null;
 
-      for (const line of lines) {
-        try {
-          const entry = JSON.parse(line);
-          if (entry.type === "session") {
-            header = entry;
-          } else if (entry.type === "session_info" && entry.name) {
-            name = entry.name; // keep latest
-          } else if (entry.type === "message") {
-            if (entry.message?.role === "user") {
-              if (!firstUserMessage) {
-                const c = entry.message.content;
-                if (typeof c === "string") firstUserMessage = c.slice(0, 80);
-                else if (Array.isArray(c)) {
-                  const t = c.find((b) => b.type === "text");
-                  if (t) firstUserMessage = t.text.slice(0, 80);
-                }
-              }
-              messageCount++;
-            } else if (entry.message?.role === "assistant") {
-              messageCount++;
-            }
-            if (entry.timestamp) lastTimestamp = entry.timestamp;
-          }
-        } catch {}
-      }
+			for (const line of lines) {
+				try {
+					const entry = JSON.parse(line);
+					if (entry.type === "session") {
+						header = entry;
+					} else if (entry.type === "session_info" && entry.name) {
+						name = entry.name; // keep latest
+					} else if (entry.type === "message") {
+						if (entry.message?.role === "user") {
+							if (!firstUserMessage) {
+								const c = entry.message.content;
+								if (typeof c === "string") firstUserMessage = c.slice(0, 80);
+								else if (Array.isArray(c)) {
+									const t = c.find((b) => b.type === "text");
+									if (t) firstUserMessage = t.text.slice(0, 80);
+								}
+							}
+							messageCount++;
+						} else if (entry.message?.role === "assistant") {
+							messageCount++;
+						}
+						if (entry.timestamp) lastTimestamp = entry.timestamp;
+					}
+				} catch {}
+			}
 
-      if (!header) continue;
+			if (!header) continue;
 
-      sessions.push({
-        id: header.id,
-        file,
-        cwd: header.cwd || CWD,
-        timestamp: header.timestamp,
-        lastTimestamp: lastTimestamp || header.timestamp,
-        name,
-        preview: name || firstUserMessage || "New session",
-        messageCount,
-      });
-    } catch {}
-  }
+			sessions.push({
+				id: header.id,
+				file,
+				cwd: header.cwd || CWD,
+				timestamp: header.timestamp,
+				lastTimestamp: lastTimestamp || header.timestamp,
+				name,
+				preview: name || firstUserMessage || "New session",
+				messageCount,
+			});
+		} catch {}
+	}
 
-  sessions.sort((a, b) => new Date(b.lastTimestamp) - new Date(a.lastTimestamp));
-  return sessions;
+	sessions.sort(
+		(a, b) => new Date(b.lastTimestamp) - new Date(a.lastTimestamp),
+	);
+	return sessions;
 }
 
 // ── Express ─────────────────────────────────────────────────────────────
 const app = express();
 app.use(express.json());
-app.use("/assets", express.static(join(__dirname, "public/assets"), { dotfiles: "allow" }));
+app.use(
+	"/assets",
+	express.static(join(__dirname, "public/assets"), { dotfiles: "allow" }),
+);
 
 app.get("/", (_req, res) => {
-  res.setHeader("Content-Type", "text/html; charset=utf-8");
-  res.sendFile(join(__dirname, "public", "index.html"), { dotfiles: "allow" });
+	res.setHeader("Content-Type", "text/html; charset=utf-8");
+	res.sendFile(join(__dirname, "public", "index.html"), { dotfiles: "allow" });
 });
 
 // Serve bundled JS libs (resolved dynamically to handle hoisted node_modules)
-app.get("/lib/marked.umd.js", (_req, res) => res.sendFile(MARKED_UMD_PATH, { dotfiles: "allow" }));
-app.get("/lib/purify.js", (_req, res) => res.sendFile(DOMPURIFY_PATH, { dotfiles: "allow" }));
+app.get("/lib/marked.umd.js", (_req, res) =>
+	res.sendFile(MARKED_UMD_PATH, { dotfiles: "allow" }),
+);
+app.get("/lib/purify.js", (_req, res) =>
+	res.sendFile(DOMPURIFY_PATH, { dotfiles: "allow" }),
+);
 
 app.get("/favicon.ico", (_req, res) => {
-  res.setHeader("Content-Type", "image/svg+xml");
-  res.send(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><text y="24" font-size="24" fill="#6EA8DB">π</text></svg>`);
+	res.setHeader("Content-Type", "image/svg+xml");
+	res.send(
+		`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><text y="24" font-size="24" fill="#6EA8DB">π</text></svg>`,
+	);
 });
 
 // ── Design System Showcase ──────────────────────────────────────────────
 // Proxy /storybook/* to the web-dev-server on localhost:4820 so
 // TypeScript files get transpiled on the fly and live reload works.
 app.use("/storybook", (req, res) => {
-  const isRoot = req.url === '' || req.url === '/';
-  const targetPath = isRoot ? '/showcase/index.html' : req.url;
-  const targetUrl = `http://127.0.0.1:4820${targetPath}`;
+	const isRoot = req.url === "" || req.url === "/";
+	let targetPath = isRoot ? "/showcase/index.html" : req.url;
 
-  const proxyRequest = (http) => {
-    const upstream = http.get(targetUrl, { headers: { ...req.headers, host: '127.0.0.1:4820' } }, (uresp) => {
-      res.status(uresp.statusCode ?? 200);
-      uresp.headers && Object.entries(uresp.headers).forEach(([k, v]) => res.setHeader(k, v));
-      let body = '';
-      uresp.on('data', (c) => { body += c; });
-      uresp.on('end', () => {
-        if (targetPath.endsWith('.html')) {
-          // Rewrite absolute paths so the showcase works under /storybook/
-          res.send(body.replace(/(href|src)="\//g, '$1="/storybook/'));
-          return;
-        }
-        res.send(body);
-      });
-      uresp.on('error', (err) => res.status(502).send(`Upstream error: ${err.message}`));
-    });
-    upstream.on('error', (err) => res.status(503).send(`Design System dev server unavailable: ${err.message}`));
-    req.pipe ? req.pipe(upstream) : null;
-  };
+	// ES modules omit .ts extension; add it when requesting from WDS
+	if (!isRoot) {
+		const base = basename(targetPath);
+		if (!base.includes(".") && base.startsWith("ds-")) {
+			targetPath += ".ts";
+		}
+	}
 
-  import("node:http").then((http) => proxyRequest(http)).catch(() => {
-    // Fallback: try import('https') in case of SSL — not used for localhost
-    res.status(503).send("Design System dev server unavailable");
-  });
+	const targetUrl = `http://127.0.0.1:4820${targetPath}`;
+
+	const proxyRequest = (http) => {
+		const upstream = http.get(
+			targetUrl,
+			{ headers: { ...req.headers, host: "127.0.0.1:4820" } },
+			(uresp) => {
+				res.status(uresp.statusCode ?? 200);
+				uresp.headers &&
+					Object.entries(uresp.headers).forEach(([k, v]) =>
+						res.setHeader(k, v),
+					);
+				let body = "";
+				uresp.on("data", (c) => {
+					body += c;
+				});
+				uresp.on("end", () => {
+					if (targetPath.endsWith(".html")) {
+						// Rewrite absolute paths so the showcase works under /storybook/
+						res.send(body.replace(/(href|src)="\//g, '$1="/storybook/'));
+						return;
+					}
+					res.send(body);
+				});
+				uresp.on("error", (err) =>
+					res.status(502).send(`Upstream error: ${err.message}`),
+				);
+			},
+		);
+		upstream.on("error", (err) =>
+			res
+				.status(503)
+				.send(`Design System dev server unavailable: ${err.message}`),
+		);
+		req.pipe ? req.pipe(upstream) : null;
+	};
+
+	import("node:http")
+		.then((http) => proxyRequest(http))
+		.catch(() => {
+			// Fallback: try import('https') in case of SSL — not used for localhost
+			res.status(503).send("Design System dev server unavailable");
+		});
 });
 
 app.get("/manifest.json", (_req, res) => {
-  res.setHeader("Content-Type", "application/json");
-  res.json({
-    name: "nixpi",
-    short_name: "nixpi",
-    start_url: "/",
-    display: "standalone",
-    background_color: "#1a1a2e",
-    theme_color: "#6EA8DB",
-    icons: [{ src: "/favicon.ico", sizes: "any", type: "image/svg+xml" }],
-  });
+	res.setHeader("Content-Type", "application/json");
+	res.json({
+		name: "nixpi",
+		short_name: "nixpi",
+		start_url: "/",
+		display: "standalone",
+		background_color: "#1a1a2e",
+		theme_color: "#6EA8DB",
+		icons: [{ src: "/favicon.ico", sizes: "any", type: "image/svg+xml" }],
+	});
 });
-
-
-
 
 // Session list REST endpoint
 app.get("/api/sessions", (_req, res) => {
-  try {
-    res.json({ sessions: parseSessions(), currentFile: currentSessionFile });
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
+	try {
+		res.json({ sessions: parseSessions(), currentFile: currentSessionFile });
+	} catch (e) {
+		res.status(500).json({ error: e.message });
+	}
 });
 
 // List archived sessions
 app.get("/api/sessions/archived", (_req, res) => {
-  try {
-    const sessionBaseDir = join(process.env.HOME || "", ".pi", "agent", "sessions");
-    const cwdKey = "--" + CWD.replace(/^\//, "").replace(/\//g, "-") + "--";
-    const archiveDir = join(sessionBaseDir, cwdKey, "archived");
-    if (!existsSync(archiveDir)) return res.json({ sessions: [] });
-    const files = readdirSync(archiveDir).filter(f => f.endsWith(".jsonl")).map(f => join(archiveDir, f));
-    const sessions = [];
-    for (const file of files) {
-      try {
-        const lines = readFileSync(file, "utf8").trim().split("\n").filter(Boolean);
-        let header = null, name = null, firstUserMessage = null, lastTimestamp = null;
-        for (const line of lines) {
-          try {
-            const e = JSON.parse(line);
-            if (e.type === "session") header = e;
-            else if (e.type === "session_info" && e.name) name = e.name;
-            else if (e.type === "message" && e.message?.role === "user" && !firstUserMessage) {
-              const c = e.message.content;
-              firstUserMessage = typeof c === "string" ? c.slice(0,80) : (Array.isArray(c) ? (c.find(b=>b.type==="text")?.text||"" ).slice(0,80) : "");
-            }
-            if (e.timestamp) lastTimestamp = e.timestamp;
-          } catch {}
-        }
-        if (!header) continue;
-        sessions.push({ id: header.id, file, timestamp: header.timestamp, lastTimestamp: lastTimestamp || header.timestamp, name, preview: name || firstUserMessage || "Archived session" });
-      } catch {}
-    }
-    sessions.sort((a,b) => new Date(b.lastTimestamp) - new Date(a.lastTimestamp));
-    res.json({ sessions });
-  } catch(e) { res.status(500).json({ error: e.message }); }
+	try {
+		const sessionBaseDir = join(
+			process.env.HOME || "",
+			".pi",
+			"agent",
+			"sessions",
+		);
+		const cwdKey = "--" + CWD.replace(/^\//, "").replace(/\//g, "-") + "--";
+		const archiveDir = join(sessionBaseDir, cwdKey, "archived");
+		if (!existsSync(archiveDir)) return res.json({ sessions: [] });
+		const files = readdirSync(archiveDir)
+			.filter((f) => f.endsWith(".jsonl"))
+			.map((f) => join(archiveDir, f));
+		const sessions = [];
+		for (const file of files) {
+			try {
+				const lines = readFileSync(file, "utf8")
+					.trim()
+					.split("\n")
+					.filter(Boolean);
+				let header = null,
+					name = null,
+					firstUserMessage = null,
+					lastTimestamp = null;
+				for (const line of lines) {
+					try {
+						const e = JSON.parse(line);
+						if (e.type === "session") header = e;
+						else if (e.type === "session_info" && e.name) name = e.name;
+						else if (
+							e.type === "message" &&
+							e.message?.role === "user" &&
+							!firstUserMessage
+						) {
+							const c = e.message.content;
+							firstUserMessage =
+								typeof c === "string"
+									? c.slice(0, 80)
+									: Array.isArray(c)
+										? (c.find((b) => b.type === "text")?.text || "").slice(
+												0,
+												80,
+											)
+										: "";
+						}
+						if (e.timestamp) lastTimestamp = e.timestamp;
+					} catch {}
+				}
+				if (!header) continue;
+				sessions.push({
+					id: header.id,
+					file,
+					timestamp: header.timestamp,
+					lastTimestamp: lastTimestamp || header.timestamp,
+					name,
+					preview: name || firstUserMessage || "Archived session",
+				});
+			} catch {}
+		}
+		sessions.sort(
+			(a, b) => new Date(b.lastTimestamp) - new Date(a.lastTimestamp),
+		);
+		res.json({ sessions });
+	} catch (e) {
+		res.status(500).json({ error: e.message });
+	}
 });
 
 // Restore archived session
 app.post("/api/sessions/restore", (req, res) => {
-  const { file } = req.body || {};
-  if (!file || !file.endsWith(".jsonl")) return res.status(400).json({ error: "Invalid file" });
-  const sessionBaseDir = join(process.env.HOME || "", ".pi", "agent", "sessions");
-  if (!file.startsWith(sessionBaseDir)) return res.status(403).json({ error: "Forbidden" });
-  try {
-    const dest = join(dirname(file), "..", basename(file));
-    renameSync(file, dest);
-    res.json({ ok: true, restoredTo: dest });
-  } catch(e) { res.status(500).json({ error: e.message }); }
+	const { file } = req.body || {};
+	if (!file || !file.endsWith(".jsonl"))
+		return res.status(400).json({ error: "Invalid file" });
+	const sessionBaseDir = join(
+		process.env.HOME || "",
+		".pi",
+		"agent",
+		"sessions",
+	);
+	if (!file.startsWith(sessionBaseDir))
+		return res.status(403).json({ error: "Forbidden" });
+	try {
+		const dest = join(dirname(file), "..", basename(file));
+		renameSync(file, dest);
+		res.json({ ok: true, restoredTo: dest });
+	} catch (e) {
+		res.status(500).json({ error: e.message });
+	}
 });
 
 // Archive session (move to archived/ subfolder)
 app.post("/api/sessions/archive", (req, res) => {
-  const { file } = req.body || {};
-  if (!file || !file.endsWith(".jsonl")) return res.status(400).json({ error: "Invalid file" });
-  const sessionBaseDir = join(process.env.HOME || "", ".pi", "agent", "sessions");
-  if (!file.startsWith(sessionBaseDir)) return res.status(403).json({ error: "Forbidden" });
-  try {
-    const archiveDir = join(dirname(file), "archived");
-    if (!existsSync(archiveDir)) mkdirSync(archiveDir, { recursive: true });
-    const dest = join(archiveDir, basename(file));
-    renameSync(file, dest);
-    res.json({ ok: true, archivedTo: dest });
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
+	const { file } = req.body || {};
+	if (!file || !file.endsWith(".jsonl"))
+		return res.status(400).json({ error: "Invalid file" });
+	const sessionBaseDir = join(
+		process.env.HOME || "",
+		".pi",
+		"agent",
+		"sessions",
+	);
+	if (!file.startsWith(sessionBaseDir))
+		return res.status(403).json({ error: "Forbidden" });
+	try {
+		const archiveDir = join(dirname(file), "archived");
+		if (!existsSync(archiveDir)) mkdirSync(archiveDir, { recursive: true });
+		const dest = join(archiveDir, basename(file));
+		renameSync(file, dest);
+		res.json({ ok: true, archivedTo: dest });
+	} catch (e) {
+		res.status(500).json({ error: e.message });
+	}
 });
 
 // Delete session permanently
 app.delete("/api/sessions", (req, res) => {
-  const { file } = req.body || {};
-  if (!file || !file.endsWith(".jsonl")) return res.status(400).json({ error: "Invalid file" });
-  const sessionBaseDir = join(process.env.HOME || "", ".pi", "agent", "sessions");
-  if (!file.startsWith(sessionBaseDir)) return res.status(403).json({ error: "Forbidden" });
-  try {
-    unlinkSync(file);
-    res.json({ ok: true });
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
+	const { file } = req.body || {};
+	if (!file || !file.endsWith(".jsonl"))
+		return res.status(400).json({ error: "Invalid file" });
+	const sessionBaseDir = join(
+		process.env.HOME || "",
+		".pi",
+		"agent",
+		"sessions",
+	);
+	if (!file.startsWith(sessionBaseDir))
+		return res.status(403).json({ error: "Forbidden" });
+	try {
+		unlinkSync(file);
+		res.json({ ok: true });
+	} catch (e) {
+		res.status(500).json({ error: e.message });
+	}
 });
 
 // Restart Pi subprocess
 app.post("/api/restart", (_req, res) => {
-  try {
-    restarting = true;
-    if (piProc && !piProc.killed) { piProc.kill("SIGTERM"); piProc = null; }
-    busy = false;
-    setPiHealth(false);
-    broadcast({ type: "status", busy: false, piConnected: false });
-    setTimeout(() => {
-      ensurePi();
-      setTimeout(() => { restarting = false; }, 2000);
-    }, 500);
-    res.json({ ok: true });
-  } catch (e) {
-    restarting = false;
-    res.status(500).json({ error: e.message });
-  }
+	try {
+		restarting = true;
+		if (piProc && !piProc.killed) {
+			piProc.kill("SIGTERM");
+			piProc = null;
+		}
+		busy = false;
+		setPiHealth(false);
+		broadcast({ type: "status", busy: false, piConnected: false });
+		setTimeout(() => {
+			ensurePi();
+			setTimeout(() => {
+				restarting = false;
+			}, 2000);
+		}, 500);
+		res.json({ ok: true });
+	} catch (e) {
+		restarting = false;
+		res.status(500).json({ error: e.message });
+	}
 });
 
 // ── Whisper Speech-to-Text ──────────────────────────────────────────────
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY || "";
 
-app.post("/api/transcribe", express.raw({ type: "audio/webm", limit: "25mb" }), async (req, res) => {
-  if (!OPENAI_API_KEY) return res.status(500).json({ error: "OPENAI_API_KEY not set" });
-  if (!req.body?.length) return res.status(400).json({ error: "No audio data" });
-  try {
-    const { default: fetch } = await import("node-fetch");
-    const FormData = (await import("form-data")).default;
-    const form = new FormData();
-    form.append("file", req.body, { filename: "audio.webm", contentType: "audio/webm" });
-    form.append("model", "whisper-1");
-    form.append("language", "en");
-    form.append("response_format", "json");
-    const r = await fetch("https://api.openai.com/v1/audio/transcriptions", {
-      method: "POST",
-      headers: { "Authorization": `Bearer ${OPENAI_API_KEY}`, ...form.getHeaders() },
-      body: form,
-    });
-    if (!r.ok) {
-      const errText = await r.text();
-      console.error("Whisper error:", r.status, errText);
-      return res.status(r.status).json({ error: `Whisper API error: ${r.status}` });
-    }
-    const data = await r.json();
-    res.json({ text: data.text || "" });
-  } catch (e) {
-    console.error("Transcription error:", e);
-    res.status(500).json({ error: e.message });
-  }
-});
+app.post(
+	"/api/transcribe",
+	express.raw({ type: "audio/webm", limit: "25mb" }),
+	async (req, res) => {
+		if (!OPENAI_API_KEY)
+			return res.status(500).json({ error: "OPENAI_API_KEY not set" });
+		if (!req.body?.length)
+			return res.status(400).json({ error: "No audio data" });
+		try {
+			const { default: fetch } = await import("node-fetch");
+			const FormData = (await import("form-data")).default;
+			const form = new FormData();
+			form.append("file", req.body, {
+				filename: "audio.webm",
+				contentType: "audio/webm",
+			});
+			form.append("model", "whisper-1");
+			form.append("language", "en");
+			form.append("response_format", "json");
+			const r = await fetch("https://api.openai.com/v1/audio/transcriptions", {
+				method: "POST",
+				headers: {
+					Authorization: `Bearer ${OPENAI_API_KEY}`,
+					...form.getHeaders(),
+				},
+				body: form,
+			});
+			if (!r.ok) {
+				const errText = await r.text();
+				console.error("Whisper error:", r.status, errText);
+				return res
+					.status(r.status)
+					.json({ error: `Whisper API error: ${r.status}` });
+			}
+			const data = await r.json();
+			res.json({ text: data.text || "" });
+		} catch (e) {
+			console.error("Transcription error:", e);
+			res.status(500).json({ error: e.message });
+		}
+	},
+);
 
 const server = app.listen(PORT, HOST, () => {
-  console.log(`✓ nixpi http://${HOST}:${PORT}`);
+	console.log(`✓ nixpi http://${HOST}:${PORT}`);
 });
 
-server.on('error', (err) => {
-  if (err.code === 'EADDRINUSE') {
-    console.error(`❌ Port ${PORT} is already in use.`);
-    console.error('   Make sure no other instance of nixpi is running.');
-    console.error('   Run: ./nixpi.sh stop');
-    process.exit(1);
-  } else {
-    console.error('Server error:', err);
-    process.exit(1);
-  }
+server.on("error", (err) => {
+	if (err.code === "EADDRINUSE") {
+		console.error(`❌ Port ${PORT} is already in use.`);
+		console.error("   Make sure no other instance of nixpi is running.");
+		console.error("   Run: ./nixpi.sh stop");
+		process.exit(1);
+	} else {
+		console.error("Server error:", err);
+		process.exit(1);
+	}
 });
 
 // ── WebSocket ───────────────────────────────────────────────────────────
 const wss = new WebSocketServer({ server, path: "/ws" });
 
 wss.on("connection", (ws) => {
-  clients.add(ws);
-  ws.send(JSON.stringify({ type: "status", busy, connected: true, piConnected }));
-  if (cachedCommands.length > 0) {
-    ws.send(JSON.stringify({ type: "commands", commands: cachedCommands }));
-  }
-  if (currentSessionFile || currentModel) {
-    ws.send(JSON.stringify({
-      type: "session_state",
-      sessionFile: currentSessionFile,
-      sessionId: currentSessionId,
-      model: currentModel,
-      thinkingLevel: currentThinkingLevel,
-    }));
-  }
-  console.log(`↔ client connected (${clients.size})`);
+	clients.add(ws);
+	ws.send(
+		JSON.stringify({ type: "status", busy, connected: true, piConnected }),
+	);
+	if (cachedCommands.length > 0) {
+		ws.send(JSON.stringify({ type: "commands", commands: cachedCommands }));
+	}
+	if (currentSessionFile || currentModel) {
+		ws.send(
+			JSON.stringify({
+				type: "session_state",
+				sessionFile: currentSessionFile,
+				sessionId: currentSessionId,
+				model: currentModel,
+				thinkingLevel: currentThinkingLevel,
+			}),
+		);
+	}
+	console.log(`↔ client connected (${clients.size})`);
 
-  ws.on("message", (raw) => {
-    let msg;
-    try { msg = JSON.parse(raw); } catch { return; }
-    handleClientMessage(ws, msg);
-  });
+	ws.on("message", (raw) => {
+		let msg;
+		try {
+			msg = JSON.parse(raw);
+		} catch {
+			return;
+		}
+		handleClientMessage(ws, msg);
+	});
 
-  ws.on("close", () => {
-    clients.delete(ws);
-    console.log(`↔ client disconnected (${clients.size})`);
-  });
+	ws.on("close", () => {
+		clients.delete(ws);
+		console.log(`↔ client disconnected (${clients.size})`);
+	});
 });
 
 function broadcast(data) {
-  const s = JSON.stringify(data);
-  for (const ws of clients) {
-    if (ws.readyState === 1) ws.send(s);
-  }
+	const s = JSON.stringify(data);
+	for (const ws of clients) {
+		if (ws.readyState === 1) ws.send(s);
+	}
 }
 
 // ── Client message handler ─────────────────────────────────────────────
 async function handleClientMessage(ws, msg) {
-  switch (msg.type) {
-    case "prompt":
-      if (!msg.text?.trim()) return;
-      ensurePi();
-      if (busy) {
-        // Pi supports queuing via streamingBehavior
-        const qParams = { message: msg.text, streamingBehavior: "followUp" };
-        if (msg.images?.length) qParams.images = msg.images;
-        sendRpc("prompt", qParams);
-      } else {
-        busy = true;
-        broadcast({ type: "status", busy: true });
-        broadcast({ type: "agent_start" });
-        const promptParams = { message: msg.text };
-        if (msg.images?.length) promptParams.images = msg.images;
-        sendRpc("prompt", promptParams);
-      }
-      break;
+	switch (msg.type) {
+		case "prompt":
+			if (!msg.text?.trim()) return;
+			ensurePi();
+			if (busy) {
+				// Pi supports queuing via streamingBehavior
+				const qParams = { message: msg.text, streamingBehavior: "followUp" };
+				if (msg.images?.length) qParams.images = msg.images;
+				sendRpc("prompt", qParams);
+			} else {
+				busy = true;
+				broadcast({ type: "status", busy: true });
+				broadcast({ type: "agent_start" });
+				const promptParams = { message: msg.text };
+				if (msg.images?.length) promptParams.images = msg.images;
+				sendRpc("prompt", promptParams);
+			}
+			break;
 
-    case "abort":
-      ensurePi();
-      sendRpc("abort", {});
-      busy = false;
-      broadcast({ type: "status", busy: false, aborted: true });
-      broadcast({ type: "agent_end" });
-      break;
+		case "abort":
+			ensurePi();
+			sendRpc("abort", {});
+			busy = false;
+			broadcast({ type: "status", busy: false, aborted: true });
+			broadcast({ type: "agent_end" });
+			break;
 
-    case "new_session":
-      ensurePi();
-      sendRpc("new_session", {});
-      busy = false;
-      broadcast({ type: "status", busy: false });
-      broadcast({ type: "session_reset" });
-      setTimeout(() => {
-        sendRpc("get_commands", {});
-        sendRpc("get_state", {});
-      }, 500);
-      break;
+		case "new_session":
+			ensurePi();
+			sendRpc("new_session", {});
+			busy = false;
+			broadcast({ type: "status", busy: false });
+			broadcast({ type: "session_reset" });
+			setTimeout(() => {
+				sendRpc("get_commands", {});
+				sendRpc("get_state", {});
+			}, 500);
+			break;
 
-    case "switch_session":
-      if (!msg.sessionPath) return;
-      if (busy) {
-        ws.send(JSON.stringify({ type: "error", message: "Agent is busy. Stop before switching sessions." }));
-        return;
-      }
-      ensurePi();
-      pendingRequests.set("switch_session_path", msg.sessionPath);
-      sendRpc("switch_session", { sessionPath: msg.sessionPath });
-      break;
+		case "switch_session":
+			if (!msg.sessionPath) return;
+			if (busy) {
+				ws.send(
+					JSON.stringify({
+						type: "error",
+						message: "Agent is busy. Stop before switching sessions.",
+					}),
+				);
+				return;
+			}
+			ensurePi();
+			pendingRequests.set("switch_session_path", msg.sessionPath);
+			sendRpc("switch_session", { sessionPath: msg.sessionPath });
+			break;
 
-    case "load_history":
-      if (busy) return;
-      ensurePi();
-      historyLoadPending = true;
-      sendRpc("get_messages", {});
-      break;
+		case "load_history":
+			if (busy) return;
+			ensurePi();
+			historyLoadPending = true;
+			sendRpc("get_messages", {});
+			break;
 
-    case "set_session_name":
-      if (typeof msg.name !== "string") return;
-      ensurePi();
-      sendRpc("set_session_name", { name: msg.name });
-      break;
+		case "set_session_name":
+			if (typeof msg.name !== "string") return;
+			ensurePi();
+			sendRpc("set_session_name", { name: msg.name });
+			break;
 
-    case "set_model":
-      if (!msg.provider || !msg.modelId) return;
-      ensurePi();
-      sendRpc("set_model", { provider: msg.provider, modelId: msg.modelId });
-      break;
-    case "cycle_model":
-      ensurePi(); sendRpc("cycle_model", {}); break;
-    case "set_thinking_level":
-      if (!msg.level) return;
-      ensurePi(); sendRpc("set_thinking_level", { level: msg.level }); break;
-    case "cycle_thinking_level":
-      ensurePi(); sendRpc("cycle_thinking_level", {}); break;
-    case "get_stats":
-      ensurePi(); sendRpc("get_session_stats", {}); break;
-    case "get_models":
-      ensurePi(); sendRpc("get_available_models", {}); break;
-    case "export_request":
-      ensurePi();
-      sendRpc("get_messages", {});
-      pendingRequests.set("export", {
-        resolve: (messages) => {
-          broadcast({ type: "export_response", session: { messages, exportedAt: new Date().toISOString(), cwd: CWD } });
-        },
-      });
-      break;
-  }
+		case "set_model":
+			if (!msg.provider || !msg.modelId) return;
+			ensurePi();
+			sendRpc("set_model", { provider: msg.provider, modelId: msg.modelId });
+			break;
+		case "cycle_model":
+			ensurePi();
+			sendRpc("cycle_model", {});
+			break;
+		case "set_thinking_level":
+			if (!msg.level) return;
+			ensurePi();
+			sendRpc("set_thinking_level", { level: msg.level });
+			break;
+		case "cycle_thinking_level":
+			ensurePi();
+			sendRpc("cycle_thinking_level", {});
+			break;
+		case "get_stats":
+			ensurePi();
+			sendRpc("get_session_stats", {});
+			break;
+		case "get_models":
+			ensurePi();
+			sendRpc("get_available_models", {});
+			break;
+		case "export_request":
+			ensurePi();
+			sendRpc("get_messages", {});
+			pendingRequests.set("export", {
+				resolve: (messages) => {
+					broadcast({
+						type: "export_response",
+						session: {
+							messages,
+							exportedAt: new Date().toISOString(),
+							cwd: CWD,
+						},
+					});
+				},
+			});
+			break;
+	}
 }
 
 // ── Pi RPC subprocess ──────────────────────────────────────────────────
 function setPiHealth(connected) {
-  const changed = piConnected !== connected;
-  piConnected = connected;
-  if (changed) {
-    broadcast({ type: "pi_health", connected, busy });
-    console.log(`  pi health: ${connected ? "CONNECTED" : "DISCONNECTED"}`);
-  }
+	const changed = piConnected !== connected;
+	piConnected = connected;
+	if (changed) {
+		broadcast({ type: "pi_health", connected, busy });
+		console.log(`  pi health: ${connected ? "CONNECTED" : "DISCONNECTED"}`);
+	}
 }
 
 function startPiHeartbeat() {
-  if (piHealthInterval) clearInterval(piHealthInterval);
-  piHealthInterval = setInterval(() => {
-    if (!piProc || piProc.killed) {
-      setPiHealth(false);
-    }
-  }, 10000);
+	if (piHealthInterval) clearInterval(piHealthInterval);
+	piHealthInterval = setInterval(() => {
+		if (!piProc || piProc.killed) {
+			setPiHealth(false);
+		}
+	}, 10000);
 }
 
 function ensurePi() {
-  if (piProc && !piProc.killed) return;
+	if (piProc && !piProc.killed) return;
 
-  console.log("→ spawning pi --mode rpc");
-  setPiHealth(false);
-  piProc = spawn(PI_BIN, ["--mode", "rpc"], {
-    cwd: CWD,
-    stdio: ["pipe", "pipe", "pipe"],
-    env: { ...process.env },
-    shell: process.platform === "win32",
-  });
+	console.log("→ spawning pi --mode rpc");
+	setPiHealth(false);
+	piProc = spawn(PI_BIN, ["--mode", "rpc"], {
+		cwd: CWD,
+		stdio: ["pipe", "pipe", "pipe"],
+		env: { ...process.env },
+		shell: process.platform === "win32",
+	});
 
-  console.log(`  pi PID: ${piProc.pid}`);
+	console.log(`  pi PID: ${piProc.pid}`);
 
-  piProc.stdout.on("data", (chunk) => {
-    lineBuffer += chunk.toString();
-    const lines = lineBuffer.split("\n");
-    lineBuffer = lines.pop();
-    for (const line of lines) {
-      if (!line.trim()) continue;
-      try {
-        const data = JSON.parse(line);
-        handleRpcEvent(data);
-      } catch (e) {
-        console.log("  pi stdout:", line.substring(0, 120));
-      }
-    }
-  });
+	piProc.stdout.on("data", (chunk) => {
+		lineBuffer += chunk.toString();
+		const lines = lineBuffer.split("\n");
+		lineBuffer = lines.pop();
+		for (const line of lines) {
+			if (!line.trim()) continue;
+			try {
+				const data = JSON.parse(line);
+				handleRpcEvent(data);
+			} catch (e) {
+				console.log("  pi stdout:", line.substring(0, 120));
+			}
+		}
+	});
 
-  piProc.stderr.on("data", (chunk) => {
-    const text = chunk.toString().trim();
-    if (text) console.log("  pi stderr:", text.substring(0, 200));
-  });
+	piProc.stderr.on("data", (chunk) => {
+		const text = chunk.toString().trim();
+		if (text) console.log("  pi stderr:", text.substring(0, 200));
+	});
 
-  piProc.on("error", (err) => {
-    console.error("  pi spawn error:", err.message);
-    setPiHealth(false);
-    broadcast({ type: "error", message: `Pi failed to start: ${err.message}. Click ↻ to retry.` });
-  });
+	piProc.on("error", (err) => {
+		console.error("  pi spawn error:", err.message);
+		setPiHealth(false);
+		broadcast({
+			type: "error",
+			message: `Pi failed to start: ${err.message}. Click ↻ to retry.`,
+		});
+	});
 
-  // Debug: log when stdout closes
-  piProc.stdout.on("end", () => {
-    console.log("  [DEBUG] pi stdout ended");
-  });
-  
-  piProc.stdin.on("error", (err) => {
-    console.error("  [DEBUG] pi stdin error:", err.message);
-  });
+	// Debug: log when stdout closes
+	piProc.stdout.on("end", () => {
+		console.log("  [DEBUG] pi stdout ended");
+	});
 
-  // Request initial state once pi is ready
-  setTimeout(() => {
-    if (piProc && !piProc.killed) {
-      console.log("  requesting initial state from pi...");
-      setPiHealth(true);
-      startPiHeartbeat();
-      sendRpc("get_commands", {});
-      sendRpc("get_state", {});
-      sendRpc("get_available_models", {});
-    } else {
-      setPiHealth(false);
-      if (!restarting) broadcast({ type: "error", message: "Pi exited immediately. Click Restart to retry." });
-    }
-  }, 1500);
+	piProc.stdin.on("error", (err) => {
+		console.error("  [DEBUG] pi stdin error:", err.message);
+	});
 
-  piProc.on("close", (code, signal) => {
-    console.log(`→ pi exited (code ${code}, signal ${signal})`);
-    piProc = null;
-    busy = false;
-    setPiHealth(false);
-    broadcast({ type: "status", busy: false, connected: false });
-    setTimeout(() => { if (!piProc) ensurePi(); }, 3000);
-  });
+	// Request initial state once pi is ready
+	setTimeout(() => {
+		if (piProc && !piProc.killed) {
+			console.log("  requesting initial state from pi...");
+			setPiHealth(true);
+			startPiHeartbeat();
+			sendRpc("get_commands", {});
+			sendRpc("get_state", {});
+			sendRpc("get_available_models", {});
+		} else {
+			setPiHealth(false);
+			if (!restarting)
+				broadcast({
+					type: "error",
+					message: "Pi exited immediately. Click Restart to retry.",
+				});
+		}
+	}, 1500);
+
+	piProc.on("close", (code, signal) => {
+		console.log(`→ pi exited (code ${code}, signal ${signal})`);
+		piProc = null;
+		busy = false;
+		setPiHealth(false);
+		broadcast({ type: "status", busy: false, connected: false });
+		setTimeout(() => {
+			if (!piProc) ensurePi();
+		}, 3000);
+	});
 }
 
 function sendRpc(command, params) {
-  if (!piProc || piProc.killed) return;
-  const id = `${++requestId}`;
-  const msg = JSON.stringify({ id, type: command, ...params }) + "\n";
-  piProc.stdin.write(msg);
+	if (!piProc || piProc.killed) return;
+	const id = `${++requestId}`;
+	const msg = JSON.stringify({ id, type: command, ...params }) + "\n";
+	piProc.stdin.write(msg);
 }
 
 function handleRpcEvent(data) {
-  // RPC responses (have id)
-  if (data.id) {
-    if (data.type === "response") {
-      if (data.command === "prompt" && !data.success) {
-        broadcast({ type: "error", message: data.error || "Prompt failed" });
-        busy = false;
-        broadcast({ type: "status", busy: false });
-      }
+	// RPC responses (have id)
+	if (data.id) {
+		if (data.type === "response") {
+			if (data.command === "prompt" && !data.success) {
+				broadcast({ type: "error", message: data.error || "Prompt failed" });
+				busy = false;
+				broadcast({ type: "status", busy: false });
+			}
 
-      if (data.command === "get_messages" && data.success && data.data?.messages) {
-        if (historyLoadPending) {
-          historyLoadPending = false;
-          broadcast({ type: "history", messages: data.data.messages });
-        }
-        const pending = pendingRequests.get("export");
-        if (pending) {
-          pending.resolve(data.data.messages);
-          pendingRequests.delete("export");
-        }
-      }
+			if (
+				data.command === "get_messages" &&
+				data.success &&
+				data.data?.messages
+			) {
+				if (historyLoadPending) {
+					historyLoadPending = false;
+					broadcast({ type: "history", messages: data.data.messages });
+				}
+				const pending = pendingRequests.get("export");
+				if (pending) {
+					pending.resolve(data.data.messages);
+					pendingRequests.delete("export");
+				}
+			}
 
-      if (data.command === "get_commands" && data.success && data.data?.commands) {
-        cachedCommands = data.data.commands;
-        broadcast({ type: "commands", commands: cachedCommands });
-      }
+			if (
+				data.command === "get_commands" &&
+				data.success &&
+				data.data?.commands
+			) {
+				cachedCommands = data.data.commands;
+				broadcast({ type: "commands", commands: cachedCommands });
+			}
 
-      if (data.command === "get_state" && data.success && data.data) {
-        currentSessionFile = data.data.sessionFile || null;
-        currentSessionId = data.data.sessionId || null;
-        currentModel = data.data.model || currentModel;
-        currentThinkingLevel = data.data.thinkingLevel || currentThinkingLevel;
-        broadcast({
-          type: "session_state",
-          sessionFile: currentSessionFile,
-          sessionId: currentSessionId,
-          sessionName: data.data.sessionName,
-          model: currentModel,
-          thinkingLevel: currentThinkingLevel,
-        });
-      }
+			if (data.command === "get_state" && data.success && data.data) {
+				currentSessionFile = data.data.sessionFile || null;
+				currentSessionId = data.data.sessionId || null;
+				currentModel = data.data.model || currentModel;
+				currentThinkingLevel = data.data.thinkingLevel || currentThinkingLevel;
+				broadcast({
+					type: "session_state",
+					sessionFile: currentSessionFile,
+					sessionId: currentSessionId,
+					sessionName: data.data.sessionName,
+					model: currentModel,
+					thinkingLevel: currentThinkingLevel,
+				});
+			}
 
-      if (data.command === "set_model" && data.success) {
-        sendRpc("get_state", {});
-      }
-      if (data.command === "cycle_model" && data.success && data.data?.model) {
-        currentModel = data.data.model;
-        broadcast({ type: "model_state", model: currentModel, thinkingLevel: currentThinkingLevel });
-      }
-      if (data.command === "set_thinking_level" && data.success) {
-        sendRpc("get_state", {});
-      }
-      if (data.command === "cycle_thinking_level" && data.success && data.data?.level) {
-        currentThinkingLevel = data.data.level;
-        broadcast({ type: "model_state", model: currentModel, thinkingLevel: currentThinkingLevel });
-      }
-      if (data.command === "get_session_stats" && data.success && data.data) {
-        broadcast({ type: "session_stats", stats: data.data });
-      }
-      if (data.command === "get_available_models" && data.success && data.data?.models) {
-        broadcast({ type: "available_models", models: data.data.models });
-      }
+			if (data.command === "set_model" && data.success) {
+				sendRpc("get_state", {});
+			}
+			if (data.command === "cycle_model" && data.success && data.data?.model) {
+				currentModel = data.data.model;
+				broadcast({
+					type: "model_state",
+					model: currentModel,
+					thinkingLevel: currentThinkingLevel,
+				});
+			}
+			if (data.command === "set_thinking_level" && data.success) {
+				sendRpc("get_state", {});
+			}
+			if (
+				data.command === "cycle_thinking_level" &&
+				data.success &&
+				data.data?.level
+			) {
+				currentThinkingLevel = data.data.level;
+				broadcast({
+					type: "model_state",
+					model: currentModel,
+					thinkingLevel: currentThinkingLevel,
+				});
+			}
+			if (data.command === "get_session_stats" && data.success && data.data) {
+				broadcast({ type: "session_stats", stats: data.data });
+			}
+			if (
+				data.command === "get_available_models" &&
+				data.success &&
+				data.data?.models
+			) {
+				broadcast({ type: "available_models", models: data.data.models });
+			}
 
-      if (data.command === "switch_session" && data.success) {
-        const cancelled = data.data?.cancelled;
-        // Load messages for the newly switched session (or re-load if same session)
-        historyLoadPending = true;
-        sendRpc("get_messages", {});
-        sendRpc("get_state", {});
-        if (!cancelled) broadcast({ type: "session_switched" });
-        pendingRequests.delete("switch_session_path");
-      }
+			if (data.command === "switch_session" && data.success) {
+				const cancelled = data.data?.cancelled;
+				// Load messages for the newly switched session (or re-load if same session)
+				historyLoadPending = true;
+				sendRpc("get_messages", {});
+				sendRpc("get_state", {});
+				if (!cancelled) broadcast({ type: "session_switched" });
+				pendingRequests.delete("switch_session_path");
+			}
 
-      if (data.command === "new_session" && data.success && !data.data?.cancelled) {
-        // get_state already scheduled via handleClientMessage timeout
-      }
-    }
-    return;
-  }
+			if (
+				data.command === "new_session" &&
+				data.success &&
+				!data.data?.cancelled
+			) {
+				// get_state already scheduled via handleClientMessage timeout
+			}
+		}
+		return;
+	}
 
-  // RPC events (no id)
-  switch (data.type) {
-    case "agent_start":
-      broadcast(data);
-      break;
+	// RPC events (no id)
+	switch (data.type) {
+		case "agent_start":
+			broadcast(data);
+			break;
 
-    case "agent_end":
-      busy = false;
-      broadcast({ type: "status", busy: false });
-      broadcast(data);
-      sendRpc("get_state", {});
-      sendRpc("get_session_stats", {});
-      break;
+		case "agent_end":
+			busy = false;
+			broadcast({ type: "status", busy: false });
+			broadcast(data);
+			sendRpc("get_state", {});
+			sendRpc("get_session_stats", {});
+			break;
 
-    case "message_start":
-    case "message_update":
-    case "message_end":
-      broadcast(data);
-      break;
+		case "message_start":
+		case "message_update":
+		case "message_end":
+			broadcast(data);
+			break;
 
-    case "turn_start":
-    case "turn_end":
-      broadcast(data);
-      break;
+		case "turn_start":
+		case "turn_end":
+			broadcast(data);
+			break;
 
-    case "tool_execution_start":
-    case "tool_execution_update":
-    case "tool_execution_end":
-      broadcast(data);
-      break;
+		case "tool_execution_start":
+		case "tool_execution_update":
+		case "tool_execution_end":
+			broadcast(data);
+			break;
 
-    case "compaction_start":
-    case "compaction_end":
-      broadcast(data);
-      break;
+		case "compaction_start":
+		case "compaction_end":
+			broadcast(data);
+			break;
 
-    default:
-      broadcast(data);
-  }
+		default:
+			broadcast(data);
+	}
 }
 
 // ── Graceful shutdown ───────────────────────────────────────────────────
 function shutdown() {
-  console.log("→ shutting down");
-  if (piProc && !piProc.killed) piProc.kill("SIGTERM");
-  wss.close();
-  server.close();
-  process.exit(0);
+	console.log("→ shutting down");
+	if (piProc && !piProc.killed) piProc.kill("SIGTERM");
+	wss.close();
+	server.close();
+	process.exit(0);
 }
 
 process.on("SIGTERM", shutdown);
