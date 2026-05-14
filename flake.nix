@@ -155,6 +155,7 @@
                 cd ${self.outPath}
                 nixos-rebuild switch --flake ${self.outPath}#nazar --impure "$@"
 
+                # shellcheck disable=SC2043
                 for node in ${nixpkgs.lib.concatStringsSep " " nodes}; do
                   echo "==> restarting MicroVM $node"
                   systemctl restart "microvm@$node.service"
