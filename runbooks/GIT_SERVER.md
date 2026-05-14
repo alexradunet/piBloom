@@ -1,6 +1,6 @@
-# SSH-only Git server runbook
+# Git server runbook
 
-Git is served directly from the Nazar host, not from a MicroVM. There is no Forgejo, no database, and no Git web UI.
+Git is served directly from the Nazar host via SSH bare repos. No web UI, no database.
 
 ## Layout
 
@@ -12,18 +12,13 @@ Git is served directly from the Nazar host, not from a MicroVM. There is no Forg
 
 ## Access
 
-The `git` user uses `git-shell`. SSH keys come from:
+Admin SSH keys are declared in `nix/users/admin-keys.nix` and written to `/etc/ssh/authorized_keys.d/git` by NixOS. The `git` user is restricted to `git-shell` (no PTY, no port forwarding, no X11).
 
-- declarative admin public keys in `nix/users/admin-keys.nix`
-- VM-generated Git keys under `/persist/microvms/*/git-ssh/id_ed25519.pub`
-
-The authorized keys file is rebuilt every 15 minutes by `nazar-git-authorized-keys.timer` and stored at `/var/lib/nazar/git-authorized_keys`.
-
-There is no Git HTTP endpoint. Keep `git.nazar.studio` private behind sshuttle and use port `10022`.
+Keep `git.nazar.studio` private behind sshuttle and use port `10022`.
 
 ### Firewall
 
-VMs may reach `10.10.10.1:10022` through a narrow exception in the host nftables guard chain. This is the only VM-to-host connection allowed; all other VM-to-host traffic remains blocked. The endpoint restricts the `git` user to `git-shell` only (no PTY, no port forwarding, no X11).
+VMs may reach `10.10.10.1:10022` through a narrow exception in the host nftables guard chain. This is the only VM-to-host connection allowed; all other VM-to-host traffic remains blocked.
 
 ## Creating a repository
 
@@ -48,7 +43,4 @@ git push -u origin main
 git ls-remote ssh://git@10.10.10.1:10022/nazar/nazar.git
 git ls-remote ssh://git@10.44.0.1:10022/nazar/nazar.git
 git ls-remote ssh://git@git.nazar.studio:10022/nazar/nazar.git
-systemctl is-active nazar-git-authorized-keys.timer
 ```
-
-`git-shell` may reject an interactive `ssh git@...`; that is expected. Git commands such as `git ls-remote`, `git fetch`, and `git push` are the supported interface.
