@@ -184,7 +184,7 @@
     <!-- TOP APP BAR                                 -->
     <!-- =========================================== -->
     <header
-      class="w-full h-16 border-b border-outline-variant bg-surface flex items-center justify-between px-margin flex-shrink-0 z-20 relative"
+      class="w-full h-14 sm:h-16 border-b border-outline-variant bg-surface flex items-center justify-between gap-2 px-3 sm:px-margin flex-shrink-0 z-20 relative"
     >
       <div
         class="flex items-center gap-base cursor-pointer active:scale-95 transition-transform group"
@@ -204,7 +204,7 @@
           >terminal</span
         >
         <h1
-          class="font-headline-md text-headline-md text-primary tracking-tight font-semibold"
+          class="font-headline-md text-[24px] sm:text-headline-md text-primary tracking-tight font-semibold"
         >
           nixpi
         </h1>
@@ -217,7 +217,10 @@
         ></select>
       </div>
 
-      <div class="flex items-center gap-4">
+      <div
+        id="topbar-actions"
+        class="mobile-action-rail flex items-center gap-1 sm:gap-4 overflow-x-auto"
+      >
         <ds-button
           id="btn-theme-toggle"
           variant="fab"
@@ -228,7 +231,13 @@
             >dark_mode</span
           >
         </ds-button>
-        <ds-button id="btn-restart" variant="fab" size="md" title="Restart Pi">
+        <ds-button
+          id="btn-restart"
+          class="mobile-secondary-action"
+          variant="fab"
+          size="md"
+          title="Restart Pi"
+        >
           <span class="material-symbols-outlined">sync</span>
         </ds-button>
         <ds-button
@@ -252,7 +261,7 @@
           ></span>
         </ds-button>
         <ds-avatar
-          class="ml-2 cursor-pointer active:scale-95"
+          class="mobile-avatar ml-2 cursor-pointer active:scale-95"
           fallback="π"
           size="md"
         ></ds-avatar>
@@ -262,7 +271,7 @@
     <!-- Status bar -->
     <div
       id="pi-health-banner"
-      class="bg-error-container/10 border-b border-error-container px-margin py-2 hidden flex items-center justify-between"
+      class="bg-error-container/10 border-b border-error-container px-3 sm:px-margin py-2 hidden flex-col sm:flex-row gap-2 items-start sm:items-center justify-between"
     >
       <div class="flex items-center gap-2 text-error font-label-sm">
         <span class="material-symbols-outlined text-sm">warning</span>
@@ -281,7 +290,7 @@
     <!-- =========================================== -->
     <!-- LAYOUT: Sidebar | Main | Right Panel       -->
     <!-- =========================================== -->
-    <div class="flex flex-1 overflow-hidden relative">
+    <div class="flex flex-1 min-h-0 overflow-hidden relative">
       <!-- Left SideNavBar (Sessions) -->
       <nav
         id="sidebar-left"
@@ -327,16 +336,16 @@
       <main class="flex-1 flex flex-col bg-surface overflow-hidden relative">
         <div
           id="messages"
-          class="flex-1 overflow-y-auto p-margin flex flex-col gap-6 w-full"
+          class="flex-1 min-h-0 overflow-y-auto p-4 sm:p-margin flex flex-col gap-4 sm:gap-6 w-full"
         >
           <!-- Messages rendered here via JS -->
         </div>
         <!-- Spacer for floating input -->
-        <div class="h-40 flex-shrink-0"></div>
+        <div class="h-44 sm:h-40 flex-shrink-0"></div>
 
         <!-- Chat Input Area -->
         <div
-          class="absolute bottom-0 left-0 w-full p-6 bg-gradient-to-t from-surface via-surface/95 to-transparent pt-16 pointer-events-none"
+          class="absolute bottom-0 left-0 w-full p-3 sm:p-6 pb-[calc(0.75rem+env(safe-area-inset-bottom))] sm:pb-6 bg-gradient-to-t from-surface via-surface/95 to-transparent pt-12 sm:pt-16 pointer-events-none"
         >
           <div class="max-w-3xl mx-auto relative pointer-events-auto">
             <div
@@ -351,7 +360,7 @@
                 placeholder="Direct the Atelier… (type / for commands)"
               ></ds-input>
               <div
-                class="flex items-center justify-between mt-2 px-2 pb-1 border-t border-dashed border-outline-variant pt-2"
+                class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mt-2 px-2 pb-1 border-t border-dashed border-outline-variant pt-2"
               >
                 <div class="flex gap-2 items-center">
                   <ds-button
@@ -379,11 +388,14 @@
                   >
                     <span class="material-symbols-outlined text-sm">mic</span>
                   </ds-button>
-                  <span class="text-outline-variant text-xs font-label-sm"
+                  <span
+                    class="hidden sm:inline text-outline-variant text-xs font-label-sm"
                     >Ctrl+Enter to send</span
                   >
                 </div>
-                <div class="flex items-center gap-2">
+                <div
+                  class="flex items-center gap-2 justify-end w-full sm:w-auto"
+                >
                   <ds-button id="btn-abort" variant="error" size="md" disabled>
                     <span class="material-symbols-outlined text-sm">stop</span>
                     Stop
@@ -577,7 +589,7 @@
     <!-- MODALS                                      -->
     <!-- =========================================== -->
     <dialog id="help-modal">
-      <article class="p-6 min-w-[400px]">
+      <article class="p-4 sm:p-6 w-[min(92vw,420px)] min-w-0">
         <header
           class="flex items-center justify-between mb-4 pb-2 border-b border-outline-variant"
         >
@@ -669,7 +681,7 @@
     </dialog>
 
     <dialog id="model-modal">
-      <article class="p-6 min-w-[450px] max-w-[90vw]">
+      <article class="p-4 sm:p-6 w-[min(92vw,520px)] min-w-0">
         <header
           class="flex items-center justify-between mb-4 pb-2 border-b border-outline-variant"
         >

@@ -99,6 +99,32 @@
 	--tw-on-error-container: 255 218 214;
 }
 
+html,
+body {
+	height: 100%;
+}
+
+body {
+	min-height: 100dvh;
+	overscroll-behavior: none;
+}
+
+main,
+#messages,
+.msg-body,
+.msg-markdown {
+	min-width: 0;
+}
+
+.mobile-action-rail {
+	scrollbar-width: none;
+	-webkit-overflow-scrolling: touch;
+}
+
+.mobile-action-rail::-webkit-scrollbar {
+	display: none;
+}
+
 .pixel-divider-h {
 	background-image: linear-gradient(
 		to right,
@@ -194,6 +220,14 @@
 }
 
 /* Markdown content in messages */
+.msg-body {
+	overflow-wrap: anywhere;
+}
+
+.msg-markdown {
+	max-width: 100%;
+}
+
 .msg-body h1 {
 	font-family: "Newsreader", serif;
 	font-size: 24px;
@@ -214,7 +248,9 @@
 	border: 1px solid var(--color-outline-variant);
 	border-radius: 2px;
 	overflow-x: auto;
+	max-width: 100%;
 	padding: 12px;
+	-webkit-overflow-scrolling: touch;
 }
 .msg-body code {
 	font-family: "JetBrains Mono", monospace;
@@ -302,25 +338,65 @@
 	animation: pulse-glow 2s ease-in-out infinite;
 }
 
-/* Mobile sidebar */
+/* Mobile layout */
 @media (max-width: 1024px) {
+	#workspace-switcher {
+		display: none !important;
+	}
+
 	#sidebar-left {
 		position: absolute;
 		left: 0;
 		top: 0;
 		bottom: 0;
 		z-index: 50;
+		width: min(88vw, 20rem);
+		box-shadow: 0 24px 64px rgb(0 0 0 / 0.35);
 		transform: translateX(-100%);
-		transition: transform 0.3s;
+		transition: transform 0.3s ease;
 	}
+
 	#sidebar-left.open {
 		transform: translateX(0);
 	}
+
 	#sidebar-right {
 		display: none;
 	}
+
 	#sidebar-overlay {
-		display: block;
+		backdrop-filter: blur(2px);
+	}
+}
+
+@media (max-width: 640px) {
+	#topbar-actions {
+		max-width: 58vw;
+	}
+
+	.mobile-avatar {
+		display: none;
+	}
+
+	.msg-body {
+		font-size: 15px;
+		line-height: 1.55;
+	}
+
+	.msg-body pre,
+	.tool-call pre {
+		font-size: 11px;
+	}
+
+	dialog article {
+		max-height: 84dvh;
+		overflow: auto;
+	}
+}
+
+@media (max-width: 380px) {
+	.mobile-secondary-action {
+		display: none;
 	}
 }
 

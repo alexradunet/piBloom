@@ -85,7 +85,7 @@ const diagCtxBar = $("#diag-ctx-bar");
 const diagModelText = $("#diag-model");
 const diagCtxText = $("#diag-ctx");
 
-function setStatus(text, busy = false) {
+function setStatus(text, _busy = false) {
 	if (!statusLabel) return;
 	statusLabel.textContent = text;
 }
@@ -184,15 +184,30 @@ window
 	});
 
 // ── Sidebar ───────────────────────────────────────────────────────────────
-function toggleLeftSidebar() {
-	sidebarOpen = !sidebarOpen;
-	sidebarLeft.classList.toggle("open", sidebarOpen);
-	sidebarOverlay.style.display = sidebarOpen ? "block" : "none";
+function setLeftSidebar(open) {
+	sidebarOpen = Boolean(open);
+	sidebarLeft?.classList.toggle("open", sidebarOpen);
+	if (sidebarOverlay)
+		sidebarOverlay.style.display = sidebarOpen ? "block" : "none";
+	document.body.classList.toggle("sidebar-open", sidebarOpen);
 }
+
+function toggleLeftSidebar() {
+	setLeftSidebar(!sidebarOpen);
+}
+
+function closeLeftSidebar() {
+	setLeftSidebar(false);
+}
+
+window.matchMedia("(min-width: 1025px)").addEventListener("change", (event) => {
+	if (event.matches) closeLeftSidebar();
+});
+
 function newChat() {
 	if (!ws || ws.readyState !== 1) return;
 	ws.send(JSON.stringify({ type: "new_session" }));
-	if (window.innerWidth <= 1024) toggleLeftSidebar();
+	if (window.innerWidth <= 1024) closeLeftSidebar();
 }
 
 // ── Scroll ─────────────────────────────────────────────────────────────────
@@ -268,7 +283,8 @@ function avatar(kind) {
 function setMarkdown(el, text) {
 	// Sanitizer boundary: markdown is intentionally rendered as HTML here.
 	// md() escapes source text and emits only a tiny safe Markdown subset.
-	el.innerHTML = md(text);
+	const parsed = new DOMParser().parseFromString(md(text), "text/html");
+	el.replaceChildren(...parsed.body.childNodes);
 }
 
 function addMsg(type, content, options = {}) {
@@ -289,17 +305,17 @@ function addMsg(type, content, options = {}) {
 		wrapper.classList.add("flex-row-reverse");
 		const body = divWithClass("flex-1 flex justify-end");
 		const bubble = divWithClass(
-			"font-body-md text-on-surface bg-surface-container-high border border-outline-variant rounded-lg rounded-tr-none px-4 py-2 max-w-[80%]",
+			"font-body-md text-on-surface bg-surface-container-high border border-outline-variant rounded-lg rounded-tr-none px-3 sm:px-4 py-2 max-w-[88%] sm:max-w-[80%]",
 		);
 		setMarkdown(bubble, content);
 		const messageImages = options.images || pendingImages;
 		if (messageImages.length) {
-			const images = divWithClass("flex gap-1 mt-2");
+			const images = divWithClass("flex flex-wrap gap-1 mt-2");
 			for (const pending of messageImages) {
 				const img = document.createElement("img");
 				img.src = pending.dataUrl;
 				img.className =
-					"w-16 h-16 object-cover rounded border border-outline-variant";
+					"w-14 h-14 sm:w-16 sm:h-16 object-cover rounded border border-outline-variant";
 				images.appendChild(img);
 			}
 			bubble.appendChild(images);
@@ -497,7 +513,7 @@ function renderSessionList(sessions, activeFile) {
 function switchSession(sessionPath) {
 	if (!ws || ws.readyState !== 1) return;
 	ws.send(JSON.stringify({ type: "switch_session", sessionPath }));
-	if (window.innerWidth <= 1024) toggleLeftSidebar();
+	if (window.innerWidth <= 1024) closeLeftSidebar();
 }
 
 // ── Model picker ──────────────────────────────────────────────────────────
@@ -690,7 +706,7 @@ function connect() {
 		clearTimeout(reconnectTimer);
 		reconnectTimer = setTimeout(connect, 2000);
 	};
-	ws.onerror = (err) => {
+	ws.onerror = () => {
 		ws.close();
 	};
 	ws.onmessage = (e) => {
@@ -1126,6 +1142,10 @@ function isTextEntryActive() {
 
 document.addEventListener("keydown", (e) => {
 	if (e.key === "Escape") {
+		if (sidebarOpen) {
+			closeLeftSidebar();
+			return;
+		}
 		const openDialog = document.querySelector("dialog[open]");
 		if (openDialog) {
 			closeModal(openDialog.id);

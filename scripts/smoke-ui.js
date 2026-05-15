@@ -199,6 +199,12 @@ async function run() {
 		customElements.whenDefined('ds-session-item'),
 		customElements.whenDefined('ds-avatar'),
 	]).then(() => true)`);
+	await cdp("Emulation.setDeviceMetricsOverride", {
+		width: 390,
+		height: 844,
+		deviceScaleFactor: 2,
+		mobile: true,
+	});
 
 	const rows = await evalOk(`(async () => {
 		const rows = [];
@@ -252,6 +258,20 @@ async function run() {
 		ok('markdown-fallback-safe', fallback.querySelector('strong') && !fallback.querySelector('img') && fallback.textContent.includes('<img') && !window.__bad);
 		window.marked = markedSaved;
 		window.DOMPurify = purifySaved;
+
+		await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+		ok('mobile-no-horizontal-overflow', document.documentElement.scrollWidth <= window.innerWidth + 2);
+		ok('mobile-right-sidebar-hidden', getComputedStyle(document.querySelector('#sidebar-right')).display === 'none');
+		document.querySelector('#btn-sidebar-toggle').click();
+		await new Promise((resolve) => setTimeout(resolve, 80));
+		ok('mobile-sidebar-opens', document.querySelector('#sidebar-left').classList.contains('open') && getComputedStyle(document.querySelector('#sidebar-overlay')).display !== 'none');
+		document.querySelector('#sidebar-overlay').click();
+		await new Promise((resolve) => setTimeout(resolve, 80));
+		ok('mobile-sidebar-closes', !document.querySelector('#sidebar-left').classList.contains('open') && getComputedStyle(document.querySelector('#sidebar-overlay')).display === 'none');
+		openModal('help-modal');
+		await new Promise((resolve) => requestAnimationFrame(resolve));
+		ok('mobile-help-modal-fits', document.querySelector('#help-modal article').getBoundingClientRect().width <= window.innerWidth * 0.95);
+		closeModal('help-modal');
 
 		return rows;
 	})()`);
