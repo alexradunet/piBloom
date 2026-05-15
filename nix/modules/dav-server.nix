@@ -15,15 +15,6 @@ let
   authEnable = auth.enable or false;
   authRealm = auth.realm or "DAV Server";
   htpasswdFile = auth.htpasswdFile or "/var/lib/dav-server/secrets/dav-server-htpasswd";
-  gitBackup = cfg.gitBackup or { };
-  gitBackupEnable = gitBackup.enable or false;
-  gitBackupSourceDir = gitBackup.sourceDir or "${webdavRoot}/wiki";
-  gitBackupWorkTree = gitBackup.workTree or "${stateDir}/wiki-git-backup";
-  gitBackupRepo = gitBackup.repo or "ssh://git@git.nazar.studio:10022/nazar/personal-wiki-backup.git";
-  gitBackupBranch = gitBackup.branch or "main";
-  gitBackupSshKey = gitBackup.sshKeyFile or "${stateDir}/secrets/dav-server-wiki-backup-ed25519";
-  gitBackupKnownHosts = gitBackup.knownHostsFile or "${stateDir}/secrets/dav-server-wiki-backup-known_hosts";
-  gitBackupCalendar = gitBackup.onCalendar or "hourly";
   authBasicConfig = lib.optionalString authEnable ''
     auth_basic "${authRealm}";
     auth_basic_user_file ${htpasswdFile};
@@ -39,10 +30,7 @@ in
 
   environment.systemPackages = with pkgs; [
     curl
-    git
     jq
-    openssh
-    rsync
   ];
 
   services.radicale = {
@@ -112,75 +100,6 @@ in
   # default; peers, including VM 120, should use the NetBird name/IP once both
   # VMs are enrolled.
   networking.firewall.interfaces.wt0.allowedTCPPorts = [ httpPort ];
-
-  systemd.services.dav-server-wiki-git-backup = lib.mkIf gitBackupEnable {
-    description = "Snapshot personal WebDAV wiki to git";
-    after = [ "network-online.target" ];
-    wants = [ "network-online.target" ];
-    path = with pkgs; [
-      coreutils
-      findutils
-      git
-      openssh
-      rsync
-    ];
-    serviceConfig = {
-      Type = "oneshot";
-      User = "root";
-      Group = "root";
-      UMask = "0077";
-    };
-    script = ''
-      set -euo pipefail
-
-      if [ ! -r ${gitBackupSshKey} ]; then
-        echo "Missing git backup SSH key: ${gitBackupSshKey}" >&2
-        exit 1
-      fi
-
-      install -d -o root -g root -m 0700 ${gitBackupWorkTree}
-      chown root:root ${gitBackupWorkTree}
-      install -d -o nginx -g nginx -m 0750 ${gitBackupSourceDir}
-
-      cd ${gitBackupWorkTree}
-      if [ ! -d .git ]; then
-        git init -b ${gitBackupBranch}
-        git remote add origin ${gitBackupRepo}
-      fi
-
-      git config user.name "DAV Server Wiki Backup"
-      git config user.email "dav-server@nazar.studio"
-
-      rsync -a --delete --no-owner --no-group --exclude='.git/' ${gitBackupSourceDir}/ ${gitBackupWorkTree}/
-      chown -R root:root ${gitBackupWorkTree}
-
-      if ! find ${gitBackupWorkTree} -mindepth 1 -maxdepth 1 ! -name .git | grep -q .; then
-        printf 'Personal wiki backup placeholder. Remove once the WebDAV wiki contains files.\n' > .backup-placeholder
-      else
-        rm -f .backup-placeholder
-      fi
-
-      git add -A
-      if git diff --cached --quiet; then
-        echo "No personal wiki changes to snapshot."
-      else
-        git commit -m "Personal wiki snapshot $(date -u +%Y-%m-%dT%H:%M:%SZ)"
-      fi
-
-      GIT_SSH_COMMAND="ssh -i ${gitBackupSshKey} -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=${gitBackupKnownHosts}" \
-        git push origin HEAD:${gitBackupBranch}
-    '';
-  };
-
-  systemd.timers.dav-server-wiki-git-backup = lib.mkIf gitBackupEnable {
-    description = "Periodically snapshot personal WebDAV wiki to git";
-    wantedBy = [ "timers.target" ];
-    timerConfig = {
-      OnCalendar = gitBackupCalendar;
-      Persistent = true;
-      Unit = "dav-server-wiki-git-backup.service";
-    };
-  };
 
   systemd.services.dav-server-auth-gate = {
     description = "Document DAV server bootstrap auth gate";
