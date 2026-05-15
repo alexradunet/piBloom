@@ -6,6 +6,11 @@ const buttonStyles = `
     height: max-content;
   }
 
+  :host([full]) {
+    display: flex;
+    width: 100%;
+  }
+
   button {
     display: inline-flex;
     align-items: center;
@@ -83,6 +88,12 @@ const buttonStyles = `
   .size-md:not(.variant-fab) { padding: 6px 14px; font-size: var(--typo-label-md-size, 14px); }
   .size-lg:not(.variant-fab) { padding: 10px 20px; font-size: var(--typo-label-md-size, 14px); }
 
+  :host([full]) button {
+    width: 100%;
+    justify-content: flex-start;
+    text-align: left;
+  }
+
   .variant-fab.size-sm { width: 32px; height: 32px; }
   .variant-fab.size-md { width: 40px; height: 40px; }
   .variant-fab.size-lg { width: 48px; height: 48px; }
@@ -125,75 +136,82 @@ const avatarStyles = `
 `;
 
 class DsButton extends HTMLElement {
-  static observedAttributes = ["disabled", "primary", "size", "type", "variant"];
+	static observedAttributes = [
+		"disabled",
+		"primary",
+		"size",
+		"type",
+		"variant",
+	];
 
-  constructor() {
-    super();
-    this.attachShadow({ mode: "open" });
-  }
+	constructor() {
+		super();
+		this.attachShadow({ mode: "open" });
+	}
 
-  connectedCallback() {
-    this.render();
-  }
+	connectedCallback() {
+		this.render();
+	}
 
-  attributeChangedCallback() {
-    if (this.isConnected) this.render();
-  }
+	attributeChangedCallback() {
+		if (this.isConnected) this.render();
+	}
 
-  render() {
-    const variant = this.getAttribute("variant") || "filled";
-    const size = this.getAttribute("size") || "md";
-    const type = this.getAttribute("type") || "button";
-    const disabled = this.hasAttribute("disabled");
-    const primary = this.hasAttribute("primary");
+	render() {
+		const variant = this.getAttribute("variant") || "filled";
+		const size = this.getAttribute("size") || "md";
+		const type = this.getAttribute("type") || "button";
+		const disabled = this.hasAttribute("disabled");
+		const primary = this.hasAttribute("primary");
 
-    const style = document.createElement("style");
-    style.textContent = buttonStyles;
+		const style = document.createElement("style");
+		style.textContent = buttonStyles;
 
-    const button = document.createElement("button");
-    button.type = type;
-    button.disabled = disabled;
-    button.ariaLabel = this.getAttribute("aria-label") || this.getAttribute("title") || "";
-    button.classList.add(`variant-${variant}`, `size-${size}`);
-    if (primary) button.classList.add("primary");
+		const button = document.createElement("button");
+		button.type = type;
+		button.disabled = disabled;
+		button.ariaLabel =
+			this.getAttribute("aria-label") || this.getAttribute("title") || "";
+		button.classList.add(`variant-${variant}`, `size-${size}`);
+		if (primary) button.classList.add("primary");
 
-    button.appendChild(document.createElement("slot"));
-    this.shadowRoot.replaceChildren(style, button);
-  }
+		button.appendChild(document.createElement("slot"));
+		this.shadowRoot.replaceChildren(style, button);
+	}
 }
 
 class DsAvatar extends HTMLElement {
-  static observedAttributes = ["fallback", "size"];
+	static observedAttributes = ["fallback", "size"];
 
-  constructor() {
-    super();
-    this.attachShadow({ mode: "open" });
-  }
+	constructor() {
+		super();
+		this.attachShadow({ mode: "open" });
+	}
 
-  connectedCallback() {
-    this.render();
-  }
+	connectedCallback() {
+		this.render();
+	}
 
-  attributeChangedCallback() {
-    if (this.isConnected) this.render();
-  }
+	attributeChangedCallback() {
+		if (this.isConnected) this.render();
+	}
 
-  render() {
-    const fallback = this.getAttribute("fallback") || "";
-    const size = this.getAttribute("size") || "md";
+	render() {
+		const fallback = this.getAttribute("fallback") || "";
+		const size = this.getAttribute("size") || "md";
 
-    const style = document.createElement("style");
-    style.textContent = avatarStyles;
+		const style = document.createElement("style");
+		style.textContent = avatarStyles;
 
-    const avatar = document.createElement("span");
-    avatar.classList.add("avatar", `size-${size}`);
+		const avatar = document.createElement("span");
+		avatar.classList.add("avatar", `size-${size}`);
 
-    const slot = document.createElement("slot");
-    slot.textContent = fallback;
-    avatar.appendChild(slot);
+		const slot = document.createElement("slot");
+		slot.textContent = fallback;
+		avatar.appendChild(slot);
 
-    this.shadowRoot.replaceChildren(style, avatar);
-  }
+		this.shadowRoot.replaceChildren(style, avatar);
+	}
 }
 
 customElements.define("ds-button", DsButton);

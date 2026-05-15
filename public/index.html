@@ -315,13 +315,14 @@
       >
         <div class="px-4 mb-4 flex items-center justify-between">
           <h2 class="font-label-md text-label-md text-on-surface">Sessions</h2>
-          <button
+          <ds-button
+            variant="fab"
+            size="sm"
             onclick="newChat()"
-            class="text-primary hover:text-primary-fixed-dim transition-colors cursor-pointer active:scale-95"
             title="New chat (Ctrl+N)"
           >
             <span class="material-symbols-outlined text-lg">add</span>
-          </button>
+          </ds-button>
         </div>
         <div id="session-list" class="flex-1 overflow-y-auto px-4 space-y-1">
           <p class="text-on-surface-variant font-label-sm text-xs">Loading…</p>
@@ -329,20 +330,24 @@
         <div
           class="mt-auto px-4 pt-4 border-t border-dashed border-outline-variant mx-4 space-y-1"
         >
-          <button
+          <ds-button
+            variant="text"
+            size="md"
+            full
             onclick="openModal('help-modal')"
-            class="group cursor-pointer flex items-center gap-3 px-3 py-2 rounded text-on-surface-variant pl-2 hover:text-primary hover:bg-surface-container transition-all w-full text-left"
           >
             <span class="material-symbols-outlined text-lg">help</span>
             <span class="font-label-md text-label-md">Help</span>
-          </button>
-          <button
+          </ds-button>
+          <ds-button
+            variant="text"
+            size="md"
+            full
             onclick="exportSession()"
-            class="group cursor-pointer flex items-center gap-3 px-3 py-2 rounded text-on-surface-variant pl-2 hover:text-primary hover:bg-surface-container transition-all w-full text-left"
           >
             <span class="material-symbols-outlined text-lg">download</span>
             <span class="font-label-md text-label-md">Export</span>
-          </button>
+          </ds-button>
         </div>
       </nav>
 
@@ -624,12 +629,15 @@
           <strong class="font-headline-md text-xl text-primary"
             >Keyboard Shortcuts</strong
           >
-          <button
+          <ds-button
+            variant="fab"
+            size="sm"
             onclick="closeModal('help-modal')"
-            class="text-on-surface-variant hover:text-primary"
+            aria-label="Close help modal"
+            title="Close"
           >
             <span class="material-symbols-outlined">close</span>
-          </button>
+          </ds-button>
         </header>
         <div class="space-y-2 font-label-sm mb-4">
           <div class="flex items-center">
@@ -713,12 +721,15 @@
           <strong class="font-headline-md text-xl text-primary"
             >Switch Model</strong
           >
-          <button
+          <ds-button
+            variant="fab"
+            size="sm"
             onclick="closeModal('model-modal')"
-            class="text-on-surface-variant hover:text-primary"
+            aria-label="Close model modal"
+            title="Close"
           >
             <span class="material-symbols-outlined">close</span>
-          </button>
+          </ds-button>
         </header>
         <input
           id="model-search"
