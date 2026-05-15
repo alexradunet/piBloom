@@ -388,15 +388,16 @@
                 class="flex items-center justify-between mt-2 px-2 pb-1 border-t border-dashed border-outline-variant pt-2"
               >
                 <div class="flex gap-2 items-center">
-                  <button
+                  <ds-button
                     id="attach-btn"
-                    class="text-on-surface-variant hover:text-secondary transition-colors"
+                    variant="fab"
+                    size="sm"
                     title="Attach image"
                   >
                     <span class="material-symbols-outlined text-sm"
                       >attach_file</span
                     >
-                  </button>
+                  </ds-button>
                   <input
                     id="attach-input"
                     type="file"
@@ -404,33 +405,32 @@
                     multiple
                     hidden
                   />
-                  <button
+                  <ds-button
                     id="mic-btn"
-                    class="text-on-surface-variant hover:text-secondary transition-colors"
+                    variant="fab"
+                    size="sm"
                     title="Speech to text"
                   >
                     <span class="material-symbols-outlined text-sm">mic</span>
-                  </button>
+                  </ds-button>
                   <span class="text-outline-variant text-xs font-label-sm"
                     >Ctrl+Enter to send</span
                   >
                 </div>
                 <div class="flex items-center gap-2">
-                  <button
+                  <ds-button
                     id="btn-abort"
-                    class="bg-error-container/20 border border-error-container text-error hover:bg-error-container/40 px-3 py-1.5 rounded font-label-md flex items-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    variant="error"
+                    size="md"
                     disabled
                   >
                     <span class="material-symbols-outlined text-sm">stop</span>
                     Stop
-                  </button>
-                  <button
-                    id="send-btn"
-                    class="bg-primary-container text-on-primary-container hover:bg-inverse-primary px-4 py-1.5 rounded font-label-md flex items-center gap-2 transition-colors disabled:opacity-50"
-                  >
+                  </ds-button>
+                  <ds-button id="send-btn" variant="filled" size="md">
                     Send
                     <span class="material-symbols-outlined text-sm">send</span>
-                  </button>
+                  </ds-button>
                 </div>
               </div>
             </div>
@@ -464,21 +464,9 @@
         </div>
 
         <div class="flex border-b border-outline-variant px-2 mb-4">
-          <button
-            class="px-3 py-1.5 font-label-sm text-tertiary-fixed-dim font-bold border-b-2 border-tertiary-fixed-dim"
-          >
-            Context
-          </button>
-          <button
-            class="px-3 py-1.5 font-label-sm text-on-surface-variant hover:bg-surface-container-highest transition-opacity duration-200"
-          >
-            Telemetry
-          </button>
-          <button
-            class="px-3 py-1.5 font-label-sm text-on-surface-variant hover:bg-surface-container-highest transition-opacity duration-200"
-          >
-            Status
-          </button>
+          <ds-button variant="tab" size="sm" active>Context</ds-button>
+          <ds-button variant="tab" size="sm">Telemetry</ds-button>
+          <ds-button variant="tab" size="sm">Status</ds-button>
         </div>
 
         <div class="flex-1 overflow-y-auto px-4 space-y-6">

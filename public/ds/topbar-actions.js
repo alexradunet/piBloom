@@ -64,6 +64,32 @@ const buttonStyles = `
     background: var(--color-surface-container-high, #322824);
   }
 
+  .variant-error {
+    background: color-mix(in srgb, var(--color-error, #ffb4ab) 12%, transparent);
+    border-color: var(--color-error-container, #93000a);
+    color: var(--color-error, #ffb4ab);
+  }
+
+  .variant-error:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--color-error, #ffb4ab) 22%, transparent);
+  }
+
+  .variant-tab {
+    border: 0;
+    border-radius: 0;
+    color: var(--color-on-surface-variant, #dcc1b8);
+  }
+
+  .variant-tab:hover:not(:disabled) {
+    background: var(--color-surface-container-highest, #3e322f);
+  }
+
+  :host([active]) .variant-tab {
+    color: var(--color-tertiary-fixed-dim, #76d5dc);
+    border-bottom: 2px solid var(--color-tertiary-fixed-dim, #76d5dc);
+    font-weight: 700;
+  }
+
   .variant-text {
     border: 0;
     border-radius: var(--radius-full, 9999px);
@@ -72,6 +98,10 @@ const buttonStyles = `
   .variant-text:hover:not(:disabled),
   .variant-fab:hover:not(:disabled) {
     background: var(--color-surface-container-high, #322824);
+    color: var(--color-primary, #ffb59d);
+  }
+
+  :host(.text-primary) button {
     color: var(--color-primary, #ffb59d);
   }
 
@@ -113,6 +143,11 @@ const buttonStyles = `
     line-height: 1;
   }
 
+  ::slotted(.material-symbols-outlined.text-sm) {
+    font-size: 18px;
+  }
+
+
   ::slotted(#thinking-indicator) {
     position: absolute;
     top: 8px;
@@ -153,6 +188,14 @@ class DsButton extends HTMLElement {
 		"type",
 		"variant",
 	];
+
+	get disabled() {
+		return this.hasAttribute("disabled");
+	}
+
+	set disabled(value) {
+		this.toggleAttribute("disabled", Boolean(value));
+	}
 
 	constructor() {
 		super();
