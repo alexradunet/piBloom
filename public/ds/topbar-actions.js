@@ -134,6 +134,7 @@ const buttonStyles = `
     text-align: left;
   }
 
+  .variant-fab.size-xs { width: 20px; height: 20px; font-size: 12px; }
   .variant-fab.size-sm { width: 32px; height: 32px; }
   .variant-fab.size-md { width: 40px; height: 40px; }
   .variant-fab.size-lg { width: 48px; height: 48px; }
