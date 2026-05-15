@@ -111,8 +111,8 @@ NixPi supports being served at the root of a private name, for example `http://n
 
 ```bash
 npm install
-node --check server.js
-nix flake check --no-build
+make check
+nix build .#nixpi --no-link
 ```
 
 ## License

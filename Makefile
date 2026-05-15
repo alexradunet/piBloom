@@ -8,6 +8,7 @@ start:
 
 check:
 	node --check server.js
+	node --check public/app.js
 	nix flake check --no-build
 
 build:

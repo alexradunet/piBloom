@@ -98,6 +98,11 @@ app.use(
 	"/assets",
 	express.static(join(__dirname, "public/assets"), { dotfiles: "allow" }),
 );
+app.use(
+	express.static(join(__dirname, "public"), {
+		index: false,
+	}),
+);
 
 app.get("/", (_req, res) => {
 	res.setHeader("Content-Type", "text/html; charset=utf-8");
