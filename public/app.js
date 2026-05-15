@@ -1079,6 +1079,27 @@ abortBtn.addEventListener("click", () => {
 	ws.send(JSON.stringify({ type: "abort" }));
 });
 
+function onClick(selector, handler) {
+	$(selector)?.addEventListener("click", handler);
+}
+
+$("#sidebar-overlay")?.addEventListener("click", toggleLeftSidebar);
+onClick("#btn-sidebar-toggle", toggleLeftSidebar);
+$("#workspace-select")?.addEventListener("change", (e) =>
+	switchWorkspace(e.target.value),
+);
+onClick("#btn-theme-toggle", toggleTheme);
+onClick("#btn-restart", restartPi);
+onClick("#btn-model-picker", openModelPicker);
+onClick("#btn-thinking-cycle", cycleThinking);
+onClick("#btn-refresh", () => location.reload());
+onClick("#btn-new-chat", newChat);
+onClick("#btn-help", () => openModal("help-modal"));
+onClick("#btn-export", exportSession);
+onClick("#btn-help-close", () => closeModal("help-modal"));
+onClick("#btn-model-close", () => closeModal("model-modal"));
+$("#model-search")?.addEventListener("input", (e) => filterModels(e.target.value));
+
 $("#attach-btn").addEventListener("click", () => {
 	if (!currentModelSupportsImages) return;
 	$("#attach-input").click();
