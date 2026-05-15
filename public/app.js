@@ -189,6 +189,18 @@ function scrollBottom() {
 	}
 }
 
+function replaceToolCall(details, summaryText, previewText) {
+	const summary = document.createElement("summary");
+	summary.textContent = summaryText;
+	if (previewText === undefined) {
+		details.replaceChildren(summary);
+		return;
+	}
+	const pre = document.createElement("pre");
+	pre.textContent = previewText;
+	details.replaceChildren(summary, pre);
+}
+
 // ── Message helpers ────────────────────────────────────────────────────────
 function addMsg(type, content, isHtml = false) {
 	const wrapper = document.createElement("div");
@@ -641,7 +653,7 @@ function handleEvent(data) {
 			// Reload sessions for the new workspace
 			loadSessions();
 			// Clear the chat area for the new workspace
-			document.getElementById("messages").innerHTML = "";
+			document.getElementById("messages").replaceChildren();
 			currentAssistantEl = null;
 			currentThinkingEl = null;
 			break;
@@ -771,7 +783,7 @@ function handleEvent(data) {
 			break;
 
 		case "session_switched":
-			msgs.innerHTML = "";
+			msgs.replaceChildren();
 			currentAssistantEl = null;
 			currentThinkingEl = null;
 			currentToolCalls = {};
@@ -781,7 +793,7 @@ function handleEvent(data) {
 			break;
 
 		case "session_reset":
-			msgs.innerHTML = "";
+			msgs.replaceChildren();
 			currentAssistantEl = null;
 			currentThinkingEl = null;
 			currentToolCalls = {};
@@ -790,7 +802,7 @@ function handleEvent(data) {
 			break;
 
 		case "history":
-			msgs.innerHTML = "";
+			msgs.replaceChildren();
 			if (data.messages?.length) {
 				for (const m of data.messages) {
 					if (m.role === "user") {
@@ -877,7 +889,7 @@ function handleEvent(data) {
 					tc.open = true;
 					tc.className = "tool-call";
 					tc.dataset.id = evt.toolCallId;
-					tc.innerHTML = `<summary>${esc(name)}</summary>`;
+					replaceToolCall(tc, name);
 					body.appendChild(tc);
 					currentToolCalls[evt.toolCallId] = tc;
 					scrollBottom();
@@ -889,8 +901,8 @@ function handleEvent(data) {
 					const preview =
 						typeof args === "string"
 							? args.slice(0, 200)
-							: JSON.stringify(args).slice(0, 200);
-					tc.innerHTML = `<summary>${esc(evt.toolCall.name)}</summary><pre>${esc(preview)}</pre>`;
+							: JSON.stringify(args ?? {}).slice(0, 200);
+					replaceToolCall(tc, evt.toolCall.name, preview);
 				}
 			}
 			break;
@@ -906,7 +918,7 @@ function handleEvent(data) {
 			const te = document.createElement("details");
 			te.className = "tool-call";
 			te.open = true;
-			te.innerHTML = `<summary>⚙ ${esc(data.toolName)} running…</summary>`;
+			replaceToolCall(te, `⚙ ${data.toolName} running…`);
 			body.appendChild(te);
 			currentToolCalls[data.toolCallId] = te;
 			scrollBottom();
@@ -918,7 +930,7 @@ function handleEvent(data) {
 			const te = currentToolCalls[data.toolCallId];
 			if (te) {
 				const result = data.result?.content?.[0]?.text || "done";
-				te.innerHTML = `<summary>⚙ ${esc(data.toolName)}</summary><pre>${esc(result.slice(0, 300))}</pre>`;
+				replaceToolCall(te, `⚙ ${data.toolName}`, result.slice(0, 300));
 			}
 			logEvent(`Tool: ${data.toolName} done`);
 			break;
@@ -958,7 +970,7 @@ function sendPrompt() {
 			`${esc(currentModel?.name || "This model")} doesn't support images — sending text only.`,
 		);
 		pendingImages = [];
-		imagePreviews.innerHTML = "";
+		imagePreviews.replaceChildren();
 	}
 
 	const payload = { type: "prompt", text };
@@ -972,7 +984,7 @@ function sendPrompt() {
 
 	input.value = "";
 	pendingImages = [];
-	imagePreviews.innerHTML = "";
+	imagePreviews.replaceChildren();
 
 	addUserMsg(text);
 	if (streaming) {
@@ -1039,7 +1051,7 @@ document.addEventListener("keydown", (e) => {
 	}
 	if (e.key === "l" && e.ctrlKey) {
 		e.preventDefault();
-		msgs.innerHTML = "";
+		msgs.replaceChildren();
 		addMsg("system", "Chat cleared. Session history preserved.", true);
 	}
 	if (
@@ -1112,15 +1124,21 @@ function stopSilenceDetection() {
 	analyser = null;
 }
 
+function setMicIcon(iconName, active = false) {
+	const icon = document.createElement("span");
+	icon.className = `material-symbols-outlined text-sm${active ? " text-primary" : ""}`;
+	icon.textContent = iconName;
+	micBtn.replaceChildren(icon);
+	micBtn.classList.toggle("text-primary", active);
+}
+
 function stopRecording() {
 	if (!micRecording) return;
 	micRecording = false;
 	stopSilenceDetection();
 	if (mediaRecorder && mediaRecorder.state === "recording")
 		mediaRecorder.stop();
-	micBtn.innerHTML =
-		'<span class="material-symbols-outlined text-sm">hourglass_top</span>';
-	micBtn.classList.add("text-primary");
+	setMicIcon("hourglass_top", true);
 }
 
 if (micBtn) {
@@ -1143,9 +1161,7 @@ if (micBtn) {
 					stream.getTracks().forEach((t) => t.stop());
 					const blob = new Blob(audioChunks, { type: "audio/webm" });
 					if (blob.size < 1000) {
-						micBtn.innerHTML =
-							'<span class="material-symbols-outlined text-sm">mic</span>';
-						micBtn.classList.remove("text-primary");
+						setMicIcon("mic");
 						return;
 					}
 					try {
@@ -1161,14 +1177,11 @@ if (micBtn) {
 								: data.text.trim();
 						}
 					} catch (e) {}
-					micBtn.innerHTML =
-						'<span class="material-symbols-outlined text-sm">mic</span>';
-					micBtn.classList.remove("text-primary");
+					setMicIcon("mic");
 				};
 				mediaRecorder.start();
 				micRecording = true;
-				micBtn.innerHTML =
-					'<span class="material-symbols-outlined text-sm text-primary">mic</span>';
+				setMicIcon("mic", true);
 				startSilenceDetection(stream);
 			} catch (e) {
 				logEvent("Mic access denied");
