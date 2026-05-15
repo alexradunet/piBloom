@@ -210,12 +210,6 @@
         >
           nixpi
         </h1>
-        <div id="workspace-switcher" class="hidden ml-3">
-          <select
-            id="workspace-select"
-            class="bg-surface-container border border-outline-variant rounded-sm px-3 py-1 text-on-surface font-label-md outline-none focus:border-primary cursor-pointer"
-          ></select>
-        </div>
       </div>
 
       <div class="flex-1 max-w-lg mx-gutter hidden md:block">
@@ -297,6 +291,12 @@
         id="sidebar-left"
         class="h-full w-64 border-r border-dashed border-outline-variant bg-surface-container-lowest flex flex-col py-md flex-shrink-0 z-10 transition-transform duration-300"
       >
+        <div id="workspace-switcher" class="px-4 mb-2 hidden">
+          <select
+            id="workspace-select"
+            class="bg-surface-container border border-outline-variant rounded-sm px-3 py-1 text-on-surface font-label-md outline-none focus:border-primary cursor-pointer w-full"
+          ></select>
+        </div>
         <div class="px-4 mb-4 flex items-center justify-between">
           <h2 class="font-label-md text-label-md text-on-surface">Sessions</h2>
           <ds-button
