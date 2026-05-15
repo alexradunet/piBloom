@@ -1,20 +1,18 @@
 # NixPi Runbook
 
-NixPi is the private browser interface for Pi Coding Agent in Nazar. It reuses Pi RPC (`pi --mode rpc`) and runs one service on the host plus one service in each concrete MicroVM.
+NixPi is the private browser interface for Pi Coding Agent in Nazar. It reuses Pi RPC (`pi --mode rpc`) and runs one service on the host.
 
 ## Exposure model
 
 NixPi is an operator surface: it can drive Pi as `alex` in the configured working directory. Keep it private behind sshuttle only.
 
-Primary per-service paths:
+Canonical UI:
 
-- Host UI: `http://nazar.studio/nixpi/` -> host `127.0.0.1:4815`
-- Minecraft VM UI: `http://mc.nazar.studio/nixpi/` -> `10.10.10.30:4815`
-- DAV Server VM UI: `http://dav.nazar.studio/nixpi/` -> `10.10.10.41:4815`
+- Host UI: `http://nixpi.nazar.studio/` -> host `127.0.0.1:4815`
 
-NixPi is path-based only. There are no dedicated `nixpi*.nazar.studio` virtual hosts; use the `/nixpi/` path on the host or service domain.
+NixPi uses a dedicated private virtual host. Do not use `http://nazar.studio/nixpi/`; the public `nazar.studio` virtual host is only the static dashboard.
 
-Private/operator hostnames resolve to `10.44.0.1` through declarative laptop `/etc/hosts` entries and are proxied by host nginx. `nazar.studio` and `mc.nazar.studio` may also have public DNS, but their NixPi paths are only served on the private listener.
+Private/operator hostnames resolve to `10.44.0.1` through declarative laptop `/etc/hosts` entries and are proxied by host nginx. `nazar.studio` and `mc.nazar.studio` may also have public DNS, but NixPi is only served on the private `nixpi.nazar.studio` listener.
 
 ## Declarative exposure switch
 
@@ -86,42 +84,29 @@ On the host:
 ```bash
 systemctl is-active nixpi nginx
 curl -I http://127.0.0.1:4815/
-curl -I --resolve nazar.studio:80:10.44.0.1 http://nazar.studio/nixpi/
+curl -I --resolve nixpi.nazar.studio:80:10.44.0.1 http://nixpi.nazar.studio/
 ```
 
 From a configured sshuttle laptop:
 
 ```bash
 systemctl status nazar-sshuttle
-getent hosts nazar.studio mc.nazar.studio dav.nazar.studio git.nazar.studio
-curl -I http://nazar.studio/nixpi/
-curl -I http://mc.nazar.studio/nixpi/
-curl -I http://dav.nazar.studio/nixpi/
-```
-
-Inside each VM:
-
-```bash
-systemctl is-active nixpi
-curl -I http://127.0.0.1:4815/
+getent hosts nazar.studio nixpi.nazar.studio dav.nazar.studio git.nazar.studio
+curl -I http://nixpi.nazar.studio/
 ```
 
 ## Troubleshooting 502 Bad Gateway
 
-A 502 from `*/nixpi/` means host nginx is reachable but the backend NixPi service is not reachable. Check:
+A 502 from `nixpi.nazar.studio` means host nginx is reachable but the backend NixPi service is not reachable. Check:
 
 ```bash
 # host
 systemctl status nginx
 journalctl -u nginx -n 100 --no-pager
 
-# matching VM
-ssh alex@<vm-hostname>
-systemctl status nixpi
+# host-local backend
 curl -I http://127.0.0.1:4815/
 ```
-
-If the host was rebuilt but the VM was not switched/restarted, run the relevant switch app (`nix run .#switch-minecraft` or `.#switch-dav-server`) so the VM-local `nixpi` systemd service exists and is running.
 
 ## Rollback
 

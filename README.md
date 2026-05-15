@@ -24,9 +24,8 @@ Canonical paths from a configured laptop:
 - Private tunnel: `nazar-sshuttle.service`, using `sshuttle` over `nazar-sshuttle` SSH host alias.
 - Daily host SSH: `ssh alex@10.44.0.1` through sshuttle.
 - Public main page: `http://nazar.studio/`, served by host nginx.
-- Private host NixPi: `http://nazar.studio/nixpi/` through sshuttle.
+- Private NixPi: `http://nixpi.nazar.studio/` through sshuttle.
 - Private DAV Server: `dav.nazar.studio` through sshuttle and declarative `/etc/hosts` entries.
-- Private per-service NixPi: `/nixpi/` on service domains such as `mc.nazar.studio` and `dav.nazar.studio`.
 - Private Git: `git.nazar.studio` through sshuttle; Git remains an infrastructure service managed from the Nazar repo and Pi/subagent workflows.
 - Hetzner Rescue: final recovery path if SSH is unusable.
 
@@ -38,11 +37,9 @@ Publicly reachable services are limited to:
 
 Private sshuttle services:
 
-- `nazar.studio/nixpi/` -> `10.44.0.1`, HTTP via host nginx to the host-local NixPi service.
+- `nixpi.nazar.studio` -> `10.44.0.1`, HTTP via host nginx to the host-local NixPi service.
 - `git.nazar.studio` -> `10.44.0.1`, SSH-only Git via host sshd on port `22/tcp`.
-- `mc.nazar.studio/nixpi/` -> `10.44.0.1`, HTTP via host nginx to the Minecraft VM-local NixPi service.
 - `dav.nazar.studio` -> `10.44.0.1`, HTTP via host nginx to the DAV Server MicroVM when it is running.
-- `dav.nazar.studio/nixpi/` -> `10.44.0.1`, HTTP via host nginx to the DAV Server VM-local NixPi service.
 
 There is intentionally no public HTTP/TCP/80 DNAT to Minecraft and no public Git, DAV, or NixPi exposure.
 
@@ -66,11 +63,11 @@ runbooks/                 # operational runbooks
 | Git        | host `nazar`                 | `git.nazar.studio` on sshuttle-routed `10.44.0.1`                                | SSH-only bare Git on host; no web UI; no separate VM                                             |
 | Minecraft  | `minecraft` / `10.10.10.30`  | `mc.nazar.studio`; public game `25565/tcp`, voice `24454/udp`; private `/nixpi/` | no public webapp                                                                                 |
 | DAV Server | `dav-server` / `10.10.10.41` | `dav.nazar.studio` on sshuttle-routed `10.44.0.1`                                | WebDAV `/files/`, CalDAV/CardDAV `/radicale/`; autostarted                                       |
-| NixPi      | host + every MicroVM         | `/nixpi/` on the host and per-service domains                                    | private web interface for Pi RPC sessions; route exposure controlled by `nix/fleet/exposure.nix` |
+| NixPi      | host `nazar`                 | `nixpi.nazar.studio` on sshuttle-routed `10.44.0.1`                              | private web interface for Pi RPC workspaces; route exposure controlled by `nix/fleet/exposure.nix` |
 
 ## DNS intent
 
-Configured laptops receive declarative `/etc/hosts` entries mapping private/operator hostnames to `10.44.0.1`, then sshuttle routes that address over SSH. Public DNS should publish only names that are intentionally public: `nazar.studio` for the static page and `mc.nazar.studio` for Minecraft, both pointing at `167.235.12.22`. NixPi remains private even when it shares a public service hostname; public nginx only serves the static `nazar.studio` page.
+Configured laptops receive declarative `/etc/hosts` entries mapping private/operator hostnames to `10.44.0.1`, then sshuttle routes that address over SSH. Public DNS should publish only names that are intentionally public: `nazar.studio` for the static page and `mc.nazar.studio` for Minecraft, both pointing at `167.235.12.22`. NixPi remains private on `nixpi.nazar.studio`; public nginx only serves the static `nazar.studio` page.
 
 ## Fleet orchestration
 
@@ -103,11 +100,9 @@ From a configured sshuttle laptop:
 
 ```bash
 systemctl status nazar-sshuttle
-getent hosts nazar.studio mc.nazar.studio dav.nazar.studio git.nazar.studio
+getent hosts nazar.studio nixpi.nazar.studio dav.nazar.studio git.nazar.studio
 curl -I http://nazar.studio/
-curl -I http://nazar.studio/nixpi/
-curl -I http://mc.nazar.studio/nixpi/
-curl -I http://dav.nazar.studio/nixpi/
+curl -I http://nixpi.nazar.studio/
 git ls-remote ssh://alex@git.nazar.studio/nazar/nazar.git
 ```
 

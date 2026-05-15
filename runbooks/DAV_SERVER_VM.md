@@ -48,7 +48,6 @@ Persistent shares are declared in `nix/fleet/vms.nix`:
 ssh alex@dav-server systemctl status nginx radicale --no-pager
 curl -I http://dav.nazar.studio/files/
 curl -I http://dav.nazar.studio/radicale/
-curl -I http://dav.nazar.studio/nixpi/
 ```
 
 ## Policy

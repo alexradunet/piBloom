@@ -81,10 +81,8 @@ Use normal service URLs; no browser SOCKS configuration is required:
 
 ```bash
 curl -I http://nazar.studio/
-curl -I http://nazar.studio/nixpi/
-curl -I http://mc.nazar.studio/nixpi/
+curl -I http://nixpi.nazar.studio/
 curl -I http://dav.nazar.studio/
-curl -I http://dav.nazar.studio/nixpi/
 git ls-remote ssh://alex@git.nazar.studio/nazar/nazar.git
 ```
 

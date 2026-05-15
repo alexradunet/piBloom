@@ -6,7 +6,7 @@
 ┌─────────────────────────────────────────────────────┐
 │                   Nazar Host                          │
 │  ┌──────────────┐                                    │
-│  │ NixPi :4815  │ ← nazar.studio/nixpi/             │
+│  │ NixPi :4815  │ ← nixpi.nazar.studio              │
 │  │ CWD=/home/alex│                                   │
 │  └──────────────┘                                    │
 │         │                                            │
