@@ -105,7 +105,12 @@ async function evalOk(expression) {
 async function waitForServer() {
 	for (let i = 0; i < 80; i++) {
 		try {
-			if ((await httpText(`http://127.0.0.1:${port}/`)).includes("<!doctype html>")) return;
+			if (
+				(await httpText(`http://127.0.0.1:${port}/`)).includes(
+					"<!doctype html>",
+				)
+			)
+				return;
 		} catch {}
 		await wait(100);
 	}
@@ -115,7 +120,9 @@ async function waitForServer() {
 async function waitForCdp() {
 	for (let i = 0; i < 100; i++) {
 		try {
-			const pages = JSON.parse(await httpText(`http://127.0.0.1:${cdpPort}/json/list`));
+			const pages = JSON.parse(
+				await httpText(`http://127.0.0.1:${cdpPort}/json/list`),
+			);
 			const page = pages.find((entry) => entry.type === "page");
 			if (page?.webSocketDebuggerUrl) return page.webSocketDebuggerUrl;
 		} catch {}
@@ -127,7 +134,9 @@ async function waitForCdp() {
 async function run() {
 	const chromeBin = chromiumBin();
 	if (!chromeBin) {
-		console.log("ui-smoke: SKIP (Chromium not found; set CHROMIUM_BIN to enable)");
+		console.log(
+			"ui-smoke: SKIP (Chromium not found; set CHROMIUM_BIN to enable)",
+		);
 		return;
 	}
 
