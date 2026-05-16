@@ -9,7 +9,8 @@
   "scripts": {
     "start": "bun server.js",
     "dev": "bun --watch server.js",
-    "smoke": "NIXPI_SERVER_RUNTIME=bun NIXPI_SERVER_ENTRY=server.js bun scripts/smoke-ui.js"
+    "smoke": "NIXPI_SERVER_RUNTIME=bun NIXPI_SERVER_ENTRY=server.js bun scripts/smoke-ui.js",
+    "visual:mobile": "node scripts/visual-mobile.js"
   },
   "keywords": [
     "nix",
@@ -29,5 +30,8 @@
     "type": "git",
     "url": "ssh://alex@git.nazar.studio/nazar/nixpi-bun.git"
   },
-  "homepage": "https://git.nazar.studio/nazar/nixpi-bun"
+  "homepage": "https://git.nazar.studio/nazar/nixpi-bun",
+  "devDependencies": {
+    "playwright": "^1.60.0"
+  }
 }

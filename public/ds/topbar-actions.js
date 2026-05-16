@@ -279,9 +279,11 @@ const sessionItemStyles = `
   button {
     display: flex;
     width: 100%;
+    min-width: 0;
     justify-content: space-between;
     align-items: center;
     gap: var(--space-sm, 12px);
+    overflow: hidden;
     padding: 8px 12px;
     border: 0;
     border-left: 2px solid transparent;
@@ -311,11 +313,14 @@ const sessionItemStyles = `
   }
 
   .content {
+    flex: 1 1 auto;
     overflow: hidden;
     min-width: 0;
+    max-width: 100%;
   }
 
   .title {
+    display: block;
     font-family: var(--font-body, "Work Sans", sans-serif);
     font-size: 14px;
     color: inherit;
@@ -325,10 +330,14 @@ const sessionItemStyles = `
   }
 
   .subtitle {
+    display: block;
     margin-top: 2px;
     color: var(--color-on-surface-variant, #dcc1b8);
     font-family: var(--font-label, "JetBrains Mono", monospace);
     font-size: 11px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 `;
 

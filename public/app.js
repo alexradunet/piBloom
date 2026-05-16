@@ -298,12 +298,12 @@ function addMsg(type, content, options = {}) {
 				: "text-on-surface-variant font-label-sm",
 		);
 		text.textContent = content;
-		const body = divWithClass("flex-1");
+		const body = divWithClass("flex-1 min-w-0");
 		body.appendChild(text);
 		wrapper.append(avatar(type), body);
 	} else if (type === "user") {
 		wrapper.classList.add("flex-row-reverse");
-		const body = divWithClass("flex-1 flex justify-end");
+		const body = divWithClass("flex-1 min-w-0 flex justify-end");
 		const bubble = divWithClass(
 			"font-body-md text-on-surface bg-surface-container-high border border-outline-variant rounded-lg rounded-tr-none px-3 sm:px-4 py-2 max-w-[88%] sm:max-w-[80%]",
 		);
@@ -323,7 +323,7 @@ function addMsg(type, content, options = {}) {
 		body.appendChild(bubble);
 		wrapper.append(avatar("user"), body);
 	} else if (type === "assistant") {
-		const body = divWithClass("flex-1 space-y-2");
+		const body = divWithClass("flex-1 min-w-0 space-y-2");
 		const message = divWithClass("msg-body font-body-md text-on-surface");
 		const markdown = divWithClass("msg-markdown");
 		setMarkdown(markdown, content);
@@ -343,7 +343,7 @@ function addUserMsg(text, images = pendingImages) {
 function ensureAssistantMsg() {
 	if (!currentAssistantEl) {
 		const wrapper = divWithClass("flex gap-4");
-		const body = divWithClass("flex-1 space-y-2");
+		const body = divWithClass("flex-1 min-w-0 space-y-2");
 		const message = divWithClass("msg-body font-body-md text-on-surface");
 		message.appendChild(divWithClass("msg-markdown"));
 		body.appendChild(message);
