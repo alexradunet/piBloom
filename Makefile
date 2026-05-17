@@ -11,6 +11,7 @@ smoke:
 
 check:
 	node --check server.js
+	node --check pi-rpc.js
 	node --check public/app.js
 	node --check public/ds/topbar-actions.js
 	node --check scripts/smoke-ui.js

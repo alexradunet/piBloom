@@ -25,6 +25,7 @@ stdenvNoCC.mkDerivation {
     cp -R \
       package.json \
       server.js \
+      pi-rpc.js \
       sessions.js \
       workspaces.js \
       bin \
