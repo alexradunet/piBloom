@@ -1,5 +1,5 @@
 {
-  description = "DAV server MicroVM service module for Nazar";
+  description = "DAV server service module for Nazar";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";

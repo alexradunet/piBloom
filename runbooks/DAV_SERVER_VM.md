@@ -1,31 +1,30 @@
-# DAV Server MicroVM runbook
+# DAV Server runbook
 
-Canonical runtime: Nazar MicroVM only. Do not create alternate VM variants for DAV Server.
+Canonical Nazar runtime: host service on `nazar`. The service module remains reusable, but production no longer runs a DAV MicroVM.
 
 ## Ownership
 
 - Orchestrator repo: `/root/nazar`
-- Service repo in guest: `/home/alex/dav-server`
-- Guest hostname: `dav-server`
-- Guest IP: `10.10.10.41`
+- Service repo: `/home/alex/repos/dav-server`
+- Host module: `nazar/nix/modules/host/dav-server.nix`
 - Private endpoint: `dav.nazar.studio` through sshuttle
-- Host NixPi route: `http://nixpi.nazar.studio/` through sshuttle; select the DAV workspace there.
+- Host NixPi route: `http://nixpi.nazar.studio/` through sshuttle; select host/service workspaces there.
 
 ## State and persistence
 
-State is declarative at the OS/service layer and persistent through MicroVM virtiofs shares declared in `nazar/nix/fleet/vms.nix`:
+Nazar reuses the former guest state roots directly on the host:
 
-- `/var/lib/dav-server` from `/persist/microvms/dav-server/data`
-- `/var/lib/radicale/collections` from `/persist/microvms/dav-server/radicale`
-- guest SSH host keys from `/persist/microvms/dav-server/ssh`
+- DAV state root: `/persist/microvms/dav-server/data`
+- WebDAV files: `/persist/microvms/dav-server/data/webdav`
+- Radicale collections: `/persist/microvms/dav-server/radicale`
+- Basic-auth file: `/persist/microvms/dav-server/data/secrets/dav-server-htpasswd`
 
 ## Deploy
 
-From the guest for service-only edits and validation:
+Validate service-only edits locally:
 
 ```bash
-ssh alex@dav-server
-cd ~/dav-server
+cd /home/alex/repos/dav-server
 nix flake check --no-build
 git status
 # commit and push durable changes
@@ -42,25 +41,30 @@ nix run .#switch-dav-server
 
 ## Lifecycle
 
-Lifecycle is managed by the Nazar host MicroVM unit:
+Lifecycle is managed by the Nazar host:
 
 ```bash
-systemctl status microvm@dav-server
-systemctl restart microvm@dav-server
-journalctl -u microvm@dav-server -f
+systemctl status nginx radicale
+journalctl -u nginx -u radicale -f
+```
+
+If a stale DAV guest is still running after migration work, stop it from the host:
+
+```bash
+systemctl stop microvm@dav-server.service microvm-virtiofsd@dav-server.service
 ```
 
 ## Service checks
 
 ```bash
-ssh alex@dav-server systemctl status nginx radicale --no-pager
+systemctl is-active nginx radicale
 curl -I http://dav.nazar.studio/files/
 curl -I http://dav.nazar.studio/radicale/
 ```
 
 ## Policy
 
-- Keep DAV Server as a MicroVM in the declarative Nazar fleet.
+- Keep DAV private through Nazar's sshuttle/host-nginx access model.
 - Keep host firewall/private routing in `/root/nazar` only.
-- Keep mutable DAV/Radicale state in the declared virtiofs shares.
-- Do not add alternate VM builders or host-specific hardware profiles.
+- Keep mutable DAV/Radicale state in the host paths listed above.
+- Do not reintroduce a DAV MicroVM without a new isolation decision.

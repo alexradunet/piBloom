@@ -1,12 +1,5 @@
-# DAV Server MicroVM guest module
+# DAV Server legacy MicroVM guest module
 
-Canonical runtime: Nazar MicroVM only.
+Canonical Nazar runtime is now a host service. This directory remains as a legacy service-only MicroVM guest module alias for compatibility and local experiments; production does not compose it into the active Nazar fleet.
 
-The module in this directory is intentionally service-only. The `/root/nazar` fleet baseline composes hardware-free MicroVM settings, networking, virtiofs persistence, lifecycle, and deploy policy around it.
-
-Important paths:
-
-- DAV state: `/var/lib/dav-server` from the `dav-server-data` virtiofs share.
-- Radicale collections: `/var/lib/radicale/collections` from the `dav-server-radicale` virtiofs share.
-
-Validate service changes in the guest with `nix flake check --no-build`, then commit and push. Production switching happens from `/root/nazar` with `nix flake lock --update-input dav-server`, `nix flake check --no-build`, and `nix run .#switch-dav-server`.
+The reusable service behavior lives in `nix/modules/dav-server.nix`. Production switching happens from `/root/nazar` with `nix flake lock --update-input dav-server`, `nix flake check --no-build`, and `nix run .#switch-dav-server`.

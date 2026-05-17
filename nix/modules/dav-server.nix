@@ -11,6 +11,9 @@ let
   radicaleStateDir = cfg.radicaleStateDir or "/var/lib/radicale/collections";
   radicalePort = cfg.radicalePort or 5232;
   httpPort = cfg.httpPort or 80;
+  listenAddress = cfg.listenAddress or "0.0.0.0";
+  nginxDefault = cfg.nginxDefault or false;
+  firewallInterface = cfg.firewallInterface or null;
   auth = cfg.auth or { };
   authEnable = auth.enable or false;
   authRealm = auth.realm or "DAV Server";
@@ -51,10 +54,10 @@ in
     recommendedProxySettings = true;
 
     virtualHosts.${vm.dns} = {
-      default = true;
+      default = nginxDefault;
       listen = [
         {
-          addr = "0.0.0.0";
+          addr = listenAddress;
           port = httpPort;
         }
       ];
@@ -96,29 +99,8 @@ in
     "d ${radicaleStateDir} 0750 radicale radicale - -"
   ];
 
-  # Canonical access is through NetBird. Do not open DAV on the NAT bridge by
-  # default; peers, including VM 120, should use the NetBird name/IP once both
-  # VMs are enrolled.
-  networking.firewall.interfaces.wt0.allowedTCPPorts = [ httpPort ];
-
-  systemd.services.dav-server-auth-gate = {
-    description = "Document DAV server bootstrap auth gate";
-    wantedBy = [ "multi-user.target" ];
-    after = [
-      "nginx.service"
-      "radicale.service"
-    ];
-    serviceConfig = {
-      Type = "oneshot";
-      RemainAfterExit = true;
-    };
-    script = ''
-      cat <<'EOF'
-      DAV server mode: Radicale and WebDAV are reachable through the NetBird interface only.
-      Authentication enabled: ${if authEnable then "yes" else "no"}.
-      If authentication is enabled, keep ${htpasswdFile} provisioned outside git with root:nginx 0640 permissions.
-      EOF
-    '';
+  networking.firewall.interfaces = lib.optionalAttrs (firewallInterface != null) {
+    ${firewallInterface}.allowedTCPPorts = [ httpPort ];
   };
 
   system.stateVersion = "26.05";
