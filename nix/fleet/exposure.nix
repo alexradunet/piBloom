@@ -1,11 +1,11 @@
 {
   # Declarative HTTP exposure policy for host nginx.
   #
-  # This file owns the active host HTTP routes. VM private service domains are
-  # derived from nix/fleet/vms.nix `privateAccess`; keep VM service exposure
-  # there instead of duplicating it here. service-proxy.nix still tolerates an
-  # optional exposure.vms attrset for future non-service VM routes, but no active
-  # VM service route is configured from this file.
+  # This file owns host HTTP exposure metadata and private hostnames. Host site
+  # and NixPi routes are rendered by service-proxy.nix; DAV's nginx vhost is
+  # rendered by host/dav-server.nix but its private hostname is kept here so
+  # host/laptop private-domain generation has one source. VM private service
+  # domains are derived from nix/fleet/vms.nix `privateAccess`.
   #
   # access = "private" serves the route only on the sshuttle-routed private
   # address, 10.44.0.1.
@@ -35,6 +35,12 @@
         "127.0.0.1"
         "localhost"
       ];
+    };
+
+    dav = {
+      enable = true;
+      domain = "dav.nazar.studio";
+      access = "private";
     };
   };
 }

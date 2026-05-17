@@ -23,7 +23,6 @@ let
   # the canonical service module from the upstream flake input.
   identityModules = {
     minecraft = ../services/minecraft-identity.nix;
-    dav-server = ../services/dav-server-identity.nix;
   };
 
   # Explicit service module mapping for each concrete VM. The fleet inventory
@@ -31,7 +30,6 @@ let
   # imply a different runtime module.
   flakeInputModule = {
     minecraft = inputs.minecraft.nixosModules.minecraft-service;
-    dav-server = inputs.dav-server.nixosModules.dav-server-service;
   };
 
   serviceModules = lib.mapAttrs (name: vm: [
@@ -81,11 +79,10 @@ in
 
   microvm = {
     stateDir = "/persist/microvms-runtime";
-    # Host autostart is intentionally owned here; both current MicroVM services
-    # start with the host and are not inferred from fleet inventory metadata.
+    # Host autostart is intentionally owned here; active MicroVM services start
+    # with the host and are not inferred from fleet inventory metadata.
     autostart = [
       "minecraft"
-      "dav-server"
     ];
     vms = lib.mapAttrs mkMicrovm fleet.vms;
   };

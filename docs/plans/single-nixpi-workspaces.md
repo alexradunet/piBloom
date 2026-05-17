@@ -1,6 +1,8 @@
 # Plan: Single NixPi Instance with Multi-Workspace Architecture
 
-## Current State
+> Historical plan. The single host NixPi workspace architecture was implemented, and DAV later moved from a VM workspace to a host service. Remaining VM examples should be read as historical context unless they reference the active Minecraft VM.
+
+## Historical State
 
 ```
 ┌─────────────────────────────────────────────────────┐
@@ -12,11 +14,11 @@
 │         │                                            │
 │    ┌────┴──────────────────────┐                     │
 │    │   nginx reverse proxy      │                    │
-│    │   per-VM /nixpi/ routes    │                    │
+│    │   old per-service routes    │                    │
 │    └────┬──────────────────────┘                     │
 │         │                                            │
 │  ┌──────┴──────┐ ┌──────────┐ ┌───────────┐        │
-│  │ git VM      │ │ mc VM    │ │ dav VM    │        │
+│  │ old git VM  │ │ mc VM    │ │ old dav VM│        │
 │  │ NixPi :4815│ │NixPi:4815│ │NixPi:4815 │        │
 │  │CWD=nazar/  │ │CWD=mc/   │ │CWD=dav/   │        │
 │  └────────────┘ └──────────┘ └───────────┘        │
@@ -28,7 +30,7 @@
 - 4 separate NixPi processes (1 host + 3 VMs), each with its own systemd service
 - 4 separate Pi `--mode rpc` child processes
 - NixPi is a 1:1 wrapper — one CWD, one pi subprocess per instance
-- nginx routes `/nixpi/` per-VM domain but it's really a different server each time
+- nginx routed old per-service paths but they were really different servers each time
 - VMs need `host = "0.0.0.0"` + firewall rules just so the host nginx can proxy to them
 - Each VM carries the full nixpi package + pi binary + nodejs runtime
 - Session state is siloed per-VM (can't see minecraft sessions from host nixpi)
@@ -76,8 +78,8 @@ A **workspace** is a named profile in nixpi that maps to:
 | ---------- | ----------------------- | ------------------- | ---------------------------------- |
 | nazar      | `/home/alex/nazar`      | local (host)        | Infrastructure repo on the host    |
 | minecraft  | `/home/alex/minecraft`  | SSH → `10.10.10.30` | Minecraft VM, PaperMC server       |
-| dav-server | `/home/alex/dav-server` | SSH → `10.10.10.41` | DAV server VM                      |
-| git        | `/home/alex/nazar`      | SSH → `10.10.10.21` | SSH-only Git VM (same repo, remote ops) |
+| dav-server | `/home/alex`            | local (host)        | DAV host service                   |
+| git        | `/home/alex/nazar`      | local/host SSH      | SSH-only Git on host               |
 
 ## Implementation Plan
 
@@ -110,11 +112,9 @@ Add a workspace config file at `~/.pi/workspaces.json`:
       "thinkingLevel": "medium"
     },
     "dav-server": {
-      "cwd": "/home/alex/dav-server",
-      "mode": "ssh",
-      "sshHost": "10.10.10.41",
-      "sshUser": "alex",
-      "context": "DAV/CalDAV/CardDAV server VM",
+      "cwd": "/home/alex",
+      "mode": "local",
+      "context": "DAV/CalDAV/CardDAV host service",
       "model": null,
       "thinkingLevel": "medium"
     }
@@ -184,10 +184,9 @@ services.nixpi = {
       context = "Minecraft PaperMC server VM";
     };
     dav-server = {
-      cwd = "/home/alex/dav-server";
-      mode = "ssh";
-      sshHost = "10.10.10.41";
-      context = "DAV server VM";
+      cwd = "/home/alex";
+      mode = "local";
+      context = "DAV host service";
     };
   };
 };

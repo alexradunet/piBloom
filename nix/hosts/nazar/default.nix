@@ -18,6 +18,7 @@
     ../../modules/host/llm-agents.nix
     ../../modules/host/pi-agent.nix
     ../../modules/host/nixpi.nix
+    ../../modules/host/dav-server.nix
     ../../modules/host/microvm-host.nix
     ../../modules/host/git-ssh.nix
     ../../modules/host/service-proxy.nix

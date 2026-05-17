@@ -131,64 +131,6 @@
         ];
       };
     };
-
-    dav-server = {
-      vmid = 121;
-      hostname = "dav-server";
-      service = "dav-server";
-      repoName = "dav-server";
-      privateAccess = true;
-      ip = "10.10.10.41";
-      microvm = {
-        tap = "vm121";
-        mac = "02:00:00:00:00:41";
-        shares = [
-          {
-            tag = "dav-server-data";
-            source = "/persist/microvms/dav-server/data";
-            mountPoint = "/var/lib/dav-server";
-            proto = "virtiofs";
-          }
-          {
-            tag = "dav-server-radicale";
-            source = "/persist/microvms/dav-server/radicale";
-            mountPoint = "/var/lib/radicale/collections";
-            proto = "virtiofs";
-          }
-          {
-            tag = "dav-server-repo";
-            source = "/persist/microvms/dav-server/repo";
-            mountPoint = "/home/alex/dav-server";
-            proto = "virtiofs";
-            owner = "alex";
-            group = "users";
-            mode = "0755";
-          }
-        ];
-      };
-      dns = "dav.nazar.studio";
-      aliases = [ ];
-      cores = 2;
-      memoryMiB = 4096;
-      role = "private personal DAV, CalDAV, CardDAV, WebDAV, and markdown wiki data VM";
-      piAgent = {
-        enable = true;
-        workingDirectory = "/home/alex/dav-server";
-      };
-
-      davServer = {
-        radicalePort = 5232;
-        httpPort = 80;
-        auth = {
-          enable = true;
-          realm = "Nazar DAV";
-          htpasswdFile = "/var/lib/dav-server/secrets/dav-server-htpasswd";
-        };
-        stateDir = "/var/lib/dav-server";
-        webdavRoot = "/var/lib/dav-server/webdav";
-        radicaleStateDir = "/var/lib/radicale/collections";
-      };
-    };
   };
 
   reserved = {

@@ -60,11 +60,11 @@ nix flake lock --update-input nixpi
 nix run .#switch-host
 ```
 
-Then switch/restart MicroVMs as usual if a VM service input changed:
+Then switch services as usual if a service input changed:
 
 ```bash
-nix run .#switch-minecraft
-nix run .#switch-dav-server
+nix run .#switch-minecraft   # host switch + Minecraft MicroVM restart
+nix run .#switch-dav-server  # host switch for the DAV host service
 ```
 
 ## Validate

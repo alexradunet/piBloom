@@ -55,7 +55,6 @@
     in
     {
       nixosModules = {
-        dav-server-identity = ./nix/modules/services/dav-server-identity.nix;
         microvm-guest = ./nix/modules/host/microvm-guest.nix;
         microvm-host = ./nix/modules/host/microvm-host.nix;
         host-git-ssh = ./nix/modules/host/git-ssh.nix;
@@ -154,7 +153,11 @@
             meta.description = "Switch only the Nazar host configuration";
           };
           switch-minecraft = mkSwitchApp "minecraft";
-          switch-dav-server = mkSwitchApp "dav-server";
+          switch-dav-server = {
+            type = "app";
+            program = "${mkSwitchProgram "dav-server" [ ]}/bin/nazar-switch-dav-server";
+            meta.description = "Switch the Nazar host configuration for the host DAV service";
+          };
         };
 
       checks.${system} = { };

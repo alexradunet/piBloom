@@ -1,17 +1,19 @@
 # VM repo auto-clone plan
 
-Status: superseded by the canonical MicroVM pattern.
+Status: superseded. Minecraft remains the only active service MicroVM; DAV is now a host service.
 
-All service guests are MicroVMs. Guest repositories should be exposed through explicit virtiofs shares declared in `nix/fleet/vms.nix`, not through per-VM bootstrap variants.
+For active MicroVM services, guest repositories should be exposed through explicit virtiofs shares declared in `nix/fleet/vms.nix`, not through per-VM bootstrap variants.
 
-## Canonical pattern
+## Canonical pattern for active MicroVMs
 
 1. Add a per-service repo share to the VM's `microvm.shares` inventory entry.
 2. Mount it at `/home/alex/<repo>` in the guest.
 3. Keep ownership/mode in the same share declaration.
-4. Let `nazar-vm-repo-bootstrap` initialize or repair the checkout when needed.
-5. Validate in the guest, commit and push, then switch production from `/root/nazar` with the appropriate host app (`nix run .#switch-minecraft` or `nix run .#switch-dav-server`) after updating the service input.
+4. Let guest tooling initialize or repair the checkout when needed.
+5. Validate in the guest if useful, commit and push, then switch production from `/root/nazar` with the appropriate host app after updating the service input.
+
+For DAV, update the `dav-server` flake input in `/root/nazar` and run `nix run .#switch-dav-server`; it switches the host service, not a guest.
 
 ## Policy
 
-Do not introduce separate clone/deploy-key logic for another VM runtime. The only supported runtime is the declarative Nazar MicroVM fleet.
+Do not introduce separate clone/deploy-key logic for another VM runtime. Keep MicroVM repository shares limited to active MicroVMs.

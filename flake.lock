@@ -66,11 +66,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1778830818,
-        "narHash": "sha256-ny4Eul7Wt2GnewNCrk4d/eG36UFaUwFsr/nRP/46gOg=",
+        "lastModified": 1779042201,
+        "narHash": "sha256-u3rz7aFmsV2aqm107fOgYmjSkNaYZ6WuIGo8GTvF0+g=",
         "ref": "refs/heads/main",
-        "rev": "967702a022fc513730d42f3e8b944c14528a8d22",
-        "revCount": 7,
+        "rev": "4ec93fbc82516723f8a4d885b1c4fdf597a0df6c",
+        "revCount": 10,
         "type": "git",
         "url": "ssh://alex@git.nazar.studio/nazar/dav-server.git"
       },
