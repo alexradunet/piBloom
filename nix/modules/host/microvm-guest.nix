@@ -23,12 +23,6 @@ let
     mountPoint = "/var/lib/nazar/ssh";
     proto = "virtiofs";
   };
-  piAgentAuthShare = {
-    tag = "nazar-pi-agent-auth";
-    source = "/persist/microvms/shared/pi-agent";
-    mountPoint = "/var/lib/nazar/pi-agent-auth";
-    proto = "virtiofs";
-  };
 in
 {
   networking = {
@@ -90,7 +84,6 @@ in
     ++ [
       sshHostKeyShare
     ]
-    ++ lib.optional (vm.piAgent.enable or false) piAgentAuthShare
     ++ map guestShare (vm.microvm.shares or [ ]);
   };
 
