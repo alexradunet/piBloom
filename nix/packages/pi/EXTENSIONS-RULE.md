@@ -74,18 +74,22 @@ provides the `npm` and `node` binaries pi's package-manager spawns.
 - `pi` (the wrapped binary — includes `NPM_CONFIG_PREFIX` in its `--run`)
 - `pkgs.nodejs` — so pi can run `npm install -g` for extensions
 
-### B. NixPi VMs (systemd service)
+### B. Host NixPi (Bun systemd service)
 
 ```
-nixpi.nix (common)       →  systemd.services.nixpi.environment.NPM_CONFIG_PREFIX
-                               + path = [ nodejs_22 ]
-         ↑ imported by
-host/nixpi.nix           →  service definition, piBinary
+host/nixpi.nix           →  Bun systemd service from /home/alex/repos/nixpi-bun
+                            + pi-default-packages.nix
+                            + systemd.services.nixpi.path = [ nodejs_22 openssh ]
 ```
 
-**Critical difference from the host:** NixPi runs pi as a **systemd service**,
-not in a PAM session. `environment.sessionVariables` is NOT available. The
-service environment must explicitly set `NPM_CONFIG_PREFIX`.
+NixPi itself is provided by the Bun checkout at `/home/alex/repos/nixpi-bun`
+and runs only on the Nazar host. The old Node.js flake input/module and
+VM-local NixPi services have been removed; VM workspaces are reached through
+SSH.
+
+**Critical difference from an interactive shell:** NixPi runs pi as a
+**systemd service**, not in a PAM session. `environment.sessionVariables` is NOT
+available. The service environment must explicitly set `NPM_CONFIG_PREFIX`.
 
 **The pi wrapper's `--run` handles this** — when systemd executes
 `${pi}/bin/pi`, the wrapper's `--run` exports `NPM_CONFIG_PREFIX` before the
@@ -96,13 +100,9 @@ that pi's package-manager runs).
 
 **Also required:**
 
-- `path = [ pkgs.nodejs_22 ]` — npm must be in `$PATH` for pi to spawn it
-- `~/.npmrc` written by the activation script (if `pi-default-packages.nix`
-  is imported by the VM config)
-
-### C. NixPi on the host (non-VM, local service)
-
-Same as VM but runs on `127.0.0.1`. Same `NPM_CONFIG_PREFIX` requirement.
+- `path = [ pkgs.nodejs_22 pkgs.openssh ]` — npm must be in `$PATH` for pi's
+  extension installer, and SSH is needed for remote VM workspaces
+- `~/.npmrc` written by the activation script from `pi-default-packages.nix`
 
 ## The Extension Install Lifecycle
 

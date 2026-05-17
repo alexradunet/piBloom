@@ -32,11 +32,6 @@
       url = "git+ssh://alex@git.nazar.studio/nazar/dav-server.git";
       inputs.nixpkgs.follows = "nixpkgs";
     };
-
-    nixpi = {
-      url = "git+ssh://alex@git.nazar.studio/nazar/nixpi.git";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
   };
 
   outputs =

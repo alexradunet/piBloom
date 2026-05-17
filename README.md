@@ -37,7 +37,7 @@ Publicly reachable services are limited to:
 
 Private sshuttle services:
 
-- `nixpi.nazar.studio` -> `10.44.0.1`, HTTP via host nginx to the host-local NixPi service.
+- `nixpi.nazar.studio` -> `10.44.0.1`, HTTP via host nginx to the host-local Bun NixPi service.
 - `git.nazar.studio` -> `10.44.0.1`, SSH-only Git via host sshd on port `22/tcp`.
 - `dav.nazar.studio` -> `10.44.0.1`, HTTP via host nginx to the DAV Server MicroVM when it is running.
 
@@ -63,7 +63,7 @@ runbooks/                 # operational runbooks
 | Git        | host `nazar`                 | `git.nazar.studio` on sshuttle-routed `10.44.0.1`                                | SSH-only bare Git on host; no web UI; no separate VM                                             |
 | Minecraft  | `minecraft` / `10.10.10.30`  | `mc.nazar.studio`; public game `25565/tcp`, voice `24454/udp`; private `/nixpi/` | no public webapp                                                                                 |
 | DAV Server | `dav-server` / `10.10.10.41` | `dav.nazar.studio` on sshuttle-routed `10.44.0.1`                                | WebDAV `/files/`, CalDAV/CardDAV `/radicale/`; autostarted                                       |
-| NixPi      | host `nazar`                 | `nixpi.nazar.studio` on sshuttle-routed `10.44.0.1`                              | private web interface for Pi RPC workspaces; route exposure controlled by `nix/fleet/exposure.nix` |
+| NixPi      | host `nazar`                 | `nixpi.nazar.studio` on sshuttle-routed `10.44.0.1`                              | Bun private web interface for Pi RPC workspaces; route exposure controlled by `nix/fleet/exposure.nix` |
 
 ## DNS intent
 

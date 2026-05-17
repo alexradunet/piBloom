@@ -48,17 +48,14 @@ This keeps Pi config and NixPi session history across VM recreation. The host se
 
 ## Input source
 
-The Nazar flake uses the private SSH-only Git repository:
+The active NixPi implementation is the Bun checkout on the Nazar host:
 
-```nix
-git+ssh://alex@git.nazar.studio/nazar/nixpi.git
+```text
+/home/alex/repos/nixpi-bun
 ```
 
-Update it from `/root/nazar` with:
-
-```bash
-nix flake lock --update-input nixpi
-```
+`nix/modules/host/nixpi.nix` runs that checkout directly with Bun, so the old
+Node.js `nixpi` flake input is no longer part of the Nazar flake.
 
 ## Switch
 
