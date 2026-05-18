@@ -10,16 +10,15 @@ The canonical local checkout on the Nazar VPS is:
 /home/alex/repos/nazar
 ```
 
-This repository has one production Nix surface: the root `flake.nix`. The host and laptop configurations import modules directly from `nix/modules`, while service source and reusable service modules live under `services/`.
+This repository has one production Nix surface: the root `flake.nix`. The host and laptop configurations import modules directly from `nix/modules`.
 
-The root flake owns deployment, private access policy, nginx routing, DAV/Code services, Minecraft, operator switch apps, and the Hermes Agent NixOS module wiring.
+The root flake owns deployment, private access policy, nginx routing, DAV/Code services, operator switch apps, and the Hermes Agent NixOS module wiring.
 
 ## Services
 
-- Public Minecraft: `mc.nazar.studio` game traffic on `25565/tcp` and voice chat on `24454/udp`.
 - Host Hermes Agent: `hermes-agent.service` managed declaratively by NixOS; use `hermes` from SSH or the private Code terminal.
 - Private Code: `http://code.nazar.studio/` through sshuttle and host nginx.
-- Private DAV: `http://dav.nazar.studio/` through sshuttle and host nginx.
+- Private DAV: `http://dav.nazar.studio/` through sshuttle and host nginx, using NixOS-native Radicale plus nginx WebDAV configuration in `nix/modules/host/dav-server.nix`.
 
 ## Repository map
 
@@ -30,10 +29,7 @@ nix/hosts/alex-laptop/        # client/laptop composition and hardware config
 nix/modules/host/             # host baseline, networking, service adapters, monitoring
 nix/modules/laptop/           # client-side access modules
 nix/modules/guest/            # shared guest VM helpers
-nix/modules/services/         # small shared service identity modules
-nix/fleet/                    # host identity, exposure policy, service metadata
-services/minecraft/           # Minecraft source and reusable NixOS module
-services/dav-server/          # DAV/Radicale/WebDAV reusable NixOS module
+nix/fleet/                    # host identity and exposure policy
 runbooks/                     # operational notes
 ```
 
@@ -44,8 +40,6 @@ cd /home/alex/repos/nazar
 nix flake check
 nix fmt
 nix run .#switch-host
-nix run .#switch-minecraft
-nix run .#switch-dav-server
 ```
 
 ## Development commands
@@ -57,7 +51,7 @@ nix build .#hermes-agent
 ## Quick health checks
 
 ```bash
-systemctl is-active sshd systemd-networkd nginx hermes-agent openvscode-server radicale minecraft-server
+systemctl is-active sshd systemd-networkd nginx hermes-agent openvscode-server radicale
 curl -I http://dav.nazar.studio/files/
 ```
 

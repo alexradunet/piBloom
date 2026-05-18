@@ -21,7 +21,6 @@
     ../../modules/host/hermes-agent.nix
     ../../modules/host/code.nix
     ../../modules/host/dav-server.nix
-    ../../modules/host/minecraft.nix
     ../../modules/host/service-proxy.nix
     ../../modules/host/backup.nix
     ../../modules/host/monitoring.nix

@@ -6,7 +6,6 @@ let
     cat <<'EOF'
     Nazar backup roots:
       ${hostIdentity.repository.localPath}
-      /persist/services/minecraft
       /persist/services/dav-server
       /persist/secrets
 

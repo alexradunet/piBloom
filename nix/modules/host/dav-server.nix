@@ -1,77 +1,98 @@
 {
   config,
   lib,
+  pkgs,
   ...
 }:
 let
+  exposure = import ../../fleet/exposure.nix;
   hostIdentity = import ../../fleet/host.nix;
-  davServerContext = {
-    hostname = "nazar";
-    service = "dav-server";
-    dns = "dav.nazar.studio";
-    aliases = [ ];
-    davServer = {
-      listenAddress = hostIdentity.private.ip;
-      nginxDefault = false;
-      radicalePort = 5232;
-      httpPort = 80;
-      auth = {
-        enable = true;
-        realm = "Nazar DAV";
-        htpasswdFile = "/persist/services/dav-server/data/secrets/dav-server-htpasswd";
-      };
-      stateDir = "/persist/services/dav-server/data";
-      webdavRoot = "/persist/services/dav-server/data/webdav";
-      radicaleStateDir = "/persist/services/dav-server/radicale";
-    };
-  };
+  dav = exposure.host.dav or { };
+
+  enable = dav.enable or false;
+  domain = dav.domain or "dav.nazar.studio";
+  privateIp = hostIdentity.private.ip;
+
+  stateDir = "/persist/services/dav-server";
+  webdavRoot = "${stateDir}/webdav";
+  radicaleStateDir = "${stateDir}/radicale";
+  radicalePort = 5232;
 in
 {
-  imports = [ ../../../services/dav-server/nix/modules/dav-server.nix ];
+  services.radicale = lib.mkIf enable {
+    enable = true;
+    settings = {
+      server.hosts = [ "127.0.0.1:${toString radicalePort}" ];
+      auth.type = "none";
+      rights.type = "owner_only";
+      storage.filesystem_folder = radicaleStateDir;
+      web.type = "internal";
+    };
+  };
 
-  _module.args.davServerContext = davServerContext;
+  services.nginx = lib.mkIf enable {
+    enable = true;
+    package = pkgs.nginxStable.override { modules = [ pkgs.nginxModules.dav ]; };
+    recommendedOptimisation = true;
 
-  systemd.tmpfiles.rules = [
-    "d /persist/services/dav-server 0755 root root - -"
+    virtualHosts.${domain} = {
+      listen = [
+        {
+          addr = privateIp;
+          port = 80;
+        }
+      ];
+
+      locations."/".return =
+        "200 'Nazar DAV: use /radicale/ for CalDAV/CardDAV and /files/ for WebDAV files.\n'";
+
+      locations."/radicale/" = {
+        proxyPass = "http://127.0.0.1:${toString radicalePort}/";
+        extraConfig = ''
+          proxy_set_header X-Script-Name /radicale;
+          proxy_set_header Host $host;
+          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+          proxy_set_header X-Forwarded-Proto $scheme;
+          proxy_pass_header Authorization;
+        '';
+      };
+
+      locations."/files/".extraConfig = ''
+        alias ${webdavRoot}/;
+        autoindex on;
+
+        dav_methods PUT DELETE MKCOL COPY MOVE;
+        dav_ext_methods PROPFIND OPTIONS;
+        create_full_put_path on;
+        dav_access user:rw group:rw all:r;
+
+        client_max_body_size 512m;
+        client_body_temp_path ${stateDir}/nginx-client-body;
+      '';
+    };
+  };
+
+  systemd.tmpfiles.rules = lib.mkIf enable [
+    "d ${stateDir} 0750 root root - -"
+    "d ${webdavRoot} 0750 nginx nginx - -"
+    "d ${webdavRoot}/wiki 0750 nginx nginx - -"
+    "d ${stateDir}/nginx-client-body 0750 nginx nginx - -"
+    "d ${radicaleStateDir} 0750 radicale radicale - -"
+    "z ${webdavRoot} 0750 nginx nginx - -"
+    "z ${stateDir}/nginx-client-body 0750 nginx nginx - -"
+    "z ${radicaleStateDir} 0750 radicale radicale - -"
   ];
 
-  system.activationScripts.nazar-dav-host-state = lib.stringAfter [ "users" ] ''
-    set -euo pipefail
-
-    state_dir=/persist/services/dav-server/data
-    webdav_root=$state_dir/webdav
-    secrets_dir=$state_dir/secrets
-    htpasswd_file=$secrets_dir/dav-server-htpasswd
-    radicale_dir=/persist/services/dav-server/radicale
-
-    install -d -m 0750 -o nginx -g nginx "$state_dir" "$webdav_root" "$webdav_root/wiki" "$state_dir/nginx-client-body"
-    install -d -m 0750 -o root -g nginx "$secrets_dir"
-    install -d -m 0750 -o radicale -g radicale "$radicale_dir"
-
-    if [ -d "$webdav_root" ]; then
-      chown -R nginx:nginx "$webdav_root" "$state_dir/nginx-client-body"
-      chmod 0750 "$webdav_root" "$state_dir/nginx-client-body"
-    fi
-
-    if [ -d "$radicale_dir" ]; then
-      chown -R radicale:radicale "$radicale_dir"
-      chmod 0750 "$radicale_dir"
-    fi
-
-    if [ -e "$htpasswd_file" ]; then
-      chown root:nginx "$htpasswd_file"
-      chmod 0640 "$htpasswd_file"
-    else
-      echo "warning: DAV auth file missing: $htpasswd_file" >&2
-    fi
-  '';
-
-  assertions = [
+  assertions = lib.mkIf enable [
     {
-      assertion = lib.any (listen: listen.addr == hostIdentity.private.ip && listen.port == 80) (
-        config.services.nginx.virtualHosts."dav.nazar.studio".listen or [ ]
+      assertion = lib.any (listen: listen.addr == privateIp && listen.port == 80) (
+        config.services.nginx.virtualHosts.${domain}.listen or [ ]
       );
       message = "DAV host service must listen on the Nazar private address only.";
+    }
+    {
+      assertion = (dav.access or "private") == "private";
+      message = "DAV must remain private-only behind sshuttle.";
     }
   ];
 }

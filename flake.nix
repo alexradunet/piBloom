@@ -35,13 +35,6 @@
         nazar = ./nix/hosts/nazar;
         alex-laptop = ./nix/hosts/alex-laptop;
         default = nazar;
-
-        dav-server = ./services/dav-server/nix/modules/dav-server.nix;
-        dav-server-service = dav-server;
-
-        minecraft = ./services/minecraft/nix/modules/minecraft-papermc.nix;
-        minecraft-service = minecraft;
-        minecraft-web = ./services/minecraft/nix/modules/minecraft-web.nix;
       };
 
       mkNixosSystem =
@@ -108,69 +101,14 @@
         default = mkSwitchApp "host" "Switch the Nazar host configuration";
         switch = mkSwitchApp "host" "Switch the Nazar host configuration";
         switch-host = mkSwitchApp "host" "Switch the Nazar host configuration";
-        switch-minecraft = mkSwitchApp "minecraft" "Switch the Nazar host configuration for the host Minecraft service";
-        switch-dav-server = mkSwitchApp "dav-server" "Switch the Nazar host configuration for the host DAV service";
       };
 
-      checks.${system} =
-        let
-          minecraftTestSystem = nixpkgs.lib.nixosSystem {
-            inherit system;
-            specialArgs = {
-              minecraftContext = {
-                service = "minecraft";
-                dns = "mc.example.invalid";
-                minecraft = {
-                  operators = [
-                    {
-                      name = "ExampleOp";
-                      uuid = "00000000-0000-0000-0000-000000000001";
-                    }
-                  ];
-                  gameRules.keep_inventory = true;
-                  pluginConfigs."voicechat/voicechat-server.properties" = ''
-                    port=24454
-                    allow_pings=true
-                  '';
-                  rcon = {
-                    enable = true;
-                    passwordFile = builtins.toFile "minecraft-rcon-password-test" "not-a-real-secret\n";
-                  };
-                };
-              };
-            };
-            modules = [ nixosModules.minecraft ];
-          };
-
-          davServerTestSystem = nixpkgs.lib.nixosSystem {
-            inherit system;
-            specialArgs = {
-              davServerContext = {
-                service = "dav-server";
-                dns = "dav.example.invalid";
-                davServer = {
-                  listenAddress = "127.0.0.1";
-                  nginxDefault = false;
-                  radicalePort = 5232;
-                  httpPort = 8080;
-                  auth.enable = false;
-                };
-              };
-            };
-            modules = [ nixosModules.dav-server ];
-          };
-        in
-        {
-          minecraft-module-eval = pkgs.runCommand "minecraft-module-eval" { } ''
-            mkdir -p $out
-            echo ${toString minecraftTestSystem.config.services.minecraft-server.serverProperties.server-port} > $out/server-port
-          '';
-
-          dav-server-module-eval = pkgs.runCommand "dav-server-module-eval" { } ''
-            mkdir -p $out
-            echo ${toString davServerTestSystem.config.services.radicale.enable} > $out/radicale-enabled
-          '';
-        };
+      checks.${system} = {
+        dav-server-module-eval = pkgs.runCommand "dav-server-module-eval" { } ''
+          mkdir -p $out
+          echo ${toString (mkNixosSystem ./nix/modules/host/dav-server.nix).config.services.radicale.enable} > $out/radicale-enabled
+        '';
+      };
 
       devShells.${system} = {
         default = pkgs.mkShell {
@@ -185,7 +123,7 @@
           pkgs.nixfmt
         ];
         text = ''
-          find flake.nix nix services -type f -name '*.nix' -print0 \
+          find flake.nix nix -type f -name '*.nix' -print0 \
             | xargs -0 --no-run-if-empty nixfmt
         '';
       };
