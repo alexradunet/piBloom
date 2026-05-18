@@ -93,8 +93,11 @@
         alex-laptop = mkNixosSystem nixosModules.alex-laptop;
       };
 
-      packages.${system} = {
+      packages.${system} = rec {
         hermes-agent = inputs.hermes-agent.packages.${system}.default;
+        life = pkgs.callPackage ./packages/life-os/package.nix { };
+        life-os = life;
+        default = life;
       };
 
       apps.${system} = {
@@ -104,6 +107,15 @@
       };
 
       checks.${system} = {
+        life-os-package = self.packages.${system}.life-os;
+        life-os-tests = pkgs.runCommand "life-os-tests" { nativeBuildInputs = [ pkgs.bun ]; } ''
+          cp -R ${./packages/life-os} ./life-os
+          chmod -R u+w ./life-os
+          cd ./life-os
+          bun test
+          mkdir -p $out
+          touch $out/passed
+        '';
         nazar-host-module-eval = pkgs.runCommand "nazar-host-module-eval" { } ''
           mkdir -p $out
           echo ${toString self.nixosConfigurations.nazar.config.services.openssh.enable} > $out/openssh-enabled
@@ -112,7 +124,10 @@
 
       devShells.${system} = {
         default = pkgs.mkShell {
-          packages = [ pkgs.nixos-rebuild ];
+          packages = [
+            pkgs.bun
+            pkgs.nixos-rebuild
+          ];
         };
       };
 

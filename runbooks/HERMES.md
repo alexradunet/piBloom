@@ -6,18 +6,17 @@ Hermes Agent is installed through the upstream Hermes NixOS module and runs as `
 
 ```text
 inputs.hermes-agent.nixosModules.default -> nix/modules/host/hermes-agent.nix -> services.hermes-agent
-nix/modules/host/hermes-webui.nix -> hermes-webui.service -> SSH tunnel -> http://127.0.0.1:8787/
+nix/modules/host/hermes-dashboard.nix -> hermes-dashboard.service -> SSH tunnel -> http://127.0.0.1:9119/
 ```
 
 Nazar uses native mode with the services running as `alex`:
 
 - agent service unit: `hermes-agent.service`
-- WebUI service unit: `hermes-webui.service`
-- laptop WebUI URL: `http://127.0.0.1:8787/`
+- dashboard service unit: `hermes-dashboard.service`
+- laptop dashboard URL: `http://127.0.0.1:9119/`
 - state directory: `/var/lib/hermes`
 - managed home: `/var/lib/hermes/.hermes`
 - workspace: `/var/lib/hermes/workspace`
-- WebUI state directory: `/var/lib/hermes/webui`
 - CLI: `hermes` is on the system PATH with `HERMES_HOME=/var/lib/hermes/.hermes`
 - main model/provider: `openai-codex` with `gpt-5.5`
 
@@ -39,23 +38,14 @@ hermes auth add openai-codex --method browser
 hermes model
 ```
 
-Do not put API keys, OAuth JSON, or WebUI passwords in Nix files. If you later need non-OAuth secrets such as an API server key, seed the optional host-local environment file:
+Do not put API keys or OAuth JSON in Nix files. If you later need non-OAuth secrets such as an API server key, seed the optional host-local environment file:
 
 ```bash
 printf 'API_SERVER_KEY=change-me\n' \
   | sudo install -m 0600 -o alex -g users /dev/stdin /var/lib/hermes/env
 ```
 
-The WebUI can optionally read a runtime-only password file:
-
-```bash
-read -rsp 'Hermes WebUI password: ' HERMES_WEBUI_PASSWORD; echo
-printf 'HERMES_WEBUI_PASSWORD=%s\n' "$HERMES_WEBUI_PASSWORD" \
-  | sudo install -m 0600 -o alex -g users /dev/stdin /var/lib/hermes/webui-env
-unset HERMES_WEBUI_PASSWORD
-```
-
-The Hermes module merges `/var/lib/hermes/env` into `/var/lib/hermes/.hermes/.env` during `nixos-rebuild switch` when the file exists.
+The dashboard edits `/var/lib/hermes/.hermes/.env`. Both `hermes-agent.service` and `hermes-dashboard.service` load that file, so dashboard-managed API keys are picked up on service restart. Use `/reload` in an active Hermes CLI session to refresh environment variables without restarting that session.
 
 ## Switch
 
@@ -77,12 +67,12 @@ nix run .#switch-host
 
 ```bash
 systemctl status hermes-agent
-systemctl status hermes-webui
+systemctl status hermes-dashboard
 journalctl -u hermes-agent -n 100 --no-pager
-journalctl -u hermes-webui -n 100 --no-pager
+journalctl -u hermes-dashboard -n 100 --no-pager
 hermes version
 hermes config
-curl -fsS http://127.0.0.1:8787/health
+curl -I http://127.0.0.1:9119/
 ```
 
 If a fresh shell does not see the managed home, open a new login shell and confirm:

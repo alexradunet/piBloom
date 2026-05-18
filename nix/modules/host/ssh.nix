@@ -19,7 +19,7 @@ in
       GatewayPorts = "no";
     };
     extraConfig = ''
-      PermitOpen 127.0.0.1:4821 127.0.0.1:8082 127.0.0.1:8787
+      PermitOpen 127.0.0.1:9119
     '';
   };
 

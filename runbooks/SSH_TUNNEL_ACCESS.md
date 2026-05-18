@@ -18,7 +18,7 @@ The server does not expose HTTP publicly. The laptop opens local ports and forwa
 - `programs.ssh` host alias `nazar-tunnel`
 - pinned Nazar SSH host key
 - `nazar-tunnel.service`
-- local forwards for Code, Terminal, and Hermes WebUI
+- local forward for the Hermes Dashboard
 
 The service is gated by:
 
@@ -55,18 +55,14 @@ The generated command is equivalent to:
 
 ```bash
 ssh -N -T \
-  -L 127.0.0.1:4821:127.0.0.1:4821 \
-  -L 127.0.0.1:8082:127.0.0.1:8082 \
-  -L 127.0.0.1:8787:127.0.0.1:8787 \
+  -L 127.0.0.1:9119:127.0.0.1:9119 \
   nazar-tunnel
 ```
 
 ## Access Services
 
 ```bash
-curl -I http://127.0.0.1:4821/
-curl -I http://127.0.0.1:8082/
-curl -fsS http://127.0.0.1:8787/health
+curl -I http://127.0.0.1:9119/
 ```
 
 ## Troubleshooting
@@ -86,5 +82,5 @@ ssh -v nazar-tunnel true
 Check host services:
 
 ```bash
-systemctl is-active sshd systemd-networkd hermes-agent hermes-webui openvscode-server zellij-web
+systemctl is-active sshd systemd-networkd hermes-agent hermes-dashboard
 ```

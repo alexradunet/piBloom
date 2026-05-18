@@ -8,8 +8,8 @@ let
   hermesWhatsappBridge = pkgs.buildNpmPackage {
     pname = "hermes-whatsapp-bridge";
     version = "1.0.0";
-    src = "${inputs.hermes-agent}/scripts/whatsapp-bridge";
-    npmDepsHash = "sha256-KzZ7O39q/PIUPvLmjOQY1ijbO9is/XWCWOzwd1PAcQ4=";
+    src = ../../../scripts/whatsapp-bridge;
+    npmDepsHash = "sha256-lXdt7t2GaPnEjPkIq5c1stjpzIBeZgjYvpVHiDZriPs=";
     forceGitDeps = true;
     makeCacheWritable = true;
     dontNpmBuild = true;
@@ -26,7 +26,7 @@ let
     WHATSAPP_MODE = "bot";
     WHATSAPP_HOME_CHANNEL = "40724417990@s.whatsapp.net";
     WHATSAPP_HOME_CHANNEL_NAME = "Alex WhatsApp";
-    WHATSAPP_ALLOWED_USERS = "+40724417990,40724417990,40724417990@s.whatsapp.net";
+    WHATSAPP_ALLOWED_USERS = "+407****7990,40724417990,40724417990@s.whatsapp.net,207666014081169,207666014081169@lid";
     WHATSAPP_DM_POLICY = "allowlist";
     WHATSAPP_GROUP_POLICY = "disabled";
   };
@@ -45,7 +45,10 @@ in
 
     # Optional host-local env file for non-OAuth secrets such as API server
     # keys. OpenAI Codex/ChatGPT OAuth persists in $HERMES_HOME/auth.json.
-    environmentFiles = [ "/var/lib/hermes/env" ];
+    environmentFiles = [
+      "/var/lib/hermes/env"
+      "/var/lib/hermes/.hermes/.env"
+    ];
 
     settings = {
       model = {
@@ -73,15 +76,30 @@ in
           bridge_script = "${hermesWhatsappBridge}/bridge.js";
           bridge_port = 3000;
           session_path = "/var/lib/hermes/.hermes/whatsapp/session";
+          dm_policy = "allowlist";
+          allow_from = [
+            "+407****7990"
+            "40724417990"
+            "40724417990@s.whatsapp.net"
+            # WhatsApp/Baileys may surface this DM via Linked Identity (LID)
+            # instead of the classic phone JID. Keep both aliases authorized.
+            "207666014081169"
+            "207666014081169@lid"
+          ];
+          group_policy = "disabled";
         };
       };
 
       whatsapp = {
         dm_policy = "allowlist";
         allow_from = [
-          "+40724417990"
+          "+407****7990"
           "40724417990"
           "40724417990@s.whatsapp.net"
+          # WhatsApp/Baileys may surface this DM via Linked Identity (LID)
+          # instead of the classic phone JID. Keep both aliases authorized.
+          "207666014081169"
+          "207666014081169@lid"
         ];
         group_policy = "disabled";
       };

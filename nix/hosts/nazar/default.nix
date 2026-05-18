@@ -18,9 +18,8 @@
     ../../modules/host/llm-agents.nix
     inputs.hermes-agent.nixosModules.default
     ../../modules/host/hermes-agent.nix
-    ../../modules/host/hermes-webui.nix
-    ../../modules/host/code.nix
-    ../../modules/host/zellij-terminal.nix
+    ../../modules/host/hermes-dashboard.nix
+    ../../modules/host/life-os.nix
     ../../modules/host/backup.nix
     ../../modules/host/monitoring.nix
   ];

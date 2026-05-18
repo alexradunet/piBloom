@@ -3,19 +3,9 @@
   # forwarding from the laptop to these host loopback ports.
 
   host = {
-    code = {
+    hermesDashboard = {
       enable = true;
-      port = 4821;
-    };
-
-    hermesWebui = {
-      enable = true;
-      port = 8787;
-    };
-
-    terminal = {
-      enable = true;
-      port = 8082;
+      port = 9119;
     };
   };
 }

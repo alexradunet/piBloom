@@ -12,14 +12,12 @@ The canonical local checkout on the Nazar VPS is:
 
 This repository has one production Nix surface: the root `flake.nix`. The host and laptop configurations import modules directly from `nix/modules`.
 
-The root flake owns deployment, SSH-only operator access, Code/Terminal/Hermes services, operator switch apps, and the Hermes Agent NixOS module wiring.
+The root flake owns deployment, SSH-only operator access, the Hermes services, operator switch apps, and the Hermes Agent NixOS module wiring.
 
 ## Services
 
-- Host Hermes Agent: `hermes-agent.service` managed declaratively by NixOS; use `hermes` from SSH or the private Code terminal.
-- Hermes WebUI: `http://127.0.0.1:8787/` through the laptop SSH tunnel.
-- Code: `http://127.0.0.1:4821/` through the laptop SSH tunnel.
-- Terminal: `http://127.0.0.1:8082/` through the laptop SSH tunnel, backed by Zellij Web running as `alex`.
+- Host Hermes Agent: `hermes-agent.service` managed declaratively by NixOS; use `hermes` from SSH.
+- Hermes Dashboard: `http://127.0.0.1:9119/` through the laptop SSH tunnel, backed by `hermes-dashboard.service`.
 
 ## Repository map
 
@@ -52,11 +50,9 @@ nix build .#hermes-agent
 ## Quick health checks
 
 ```bash
-systemctl is-active sshd systemd-networkd hermes-agent hermes-webui openvscode-server zellij-web
+systemctl is-active sshd systemd-networkd hermes-agent hermes-dashboard
 systemctl status nazar-tunnel
-curl -I http://127.0.0.1:4821/
-curl -I http://127.0.0.1:8082/
-curl -fsS http://127.0.0.1:8787/health
+curl -I http://127.0.0.1:9119/
 ```
 
 ## Policy

@@ -97,16 +97,8 @@ in
       type = lib.types.listOf forwardType;
       default = [
         {
-          localPort = 4821;
-          remotePort = 4821;
-        }
-        {
-          localPort = 8082;
-          remotePort = 8082;
-        }
-        {
-          localPort = 8787;
-          remotePort = 8787;
+          localPort = 9119;
+          remotePort = 9119;
         }
       ];
       description = "Local TCP forwards opened by nazar-tunnel.service.";
