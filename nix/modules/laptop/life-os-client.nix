@@ -44,13 +44,13 @@ in
 
     kdeApps.enable = lib.mkOption {
       type = lib.types.bool;
-      default = true;
-      description = "Install KDE PIM applications for calendar, contacts, tasks, and reminders.";
+      default = false;
+      description = "Install KDE PIM applications for CalDAV/CardDAV calendars, contacts, tasks, and reminders.";
     };
 
     thunderbird.enable = lib.mkOption {
       type = lib.types.bool;
-      default = true;
+      default = false;
       description = "Install Thunderbird as a reliable CalDAV/CardDAV client and debugging fallback.";
     };
 

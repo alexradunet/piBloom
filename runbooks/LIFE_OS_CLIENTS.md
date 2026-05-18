@@ -17,13 +17,9 @@ Client machines enable `nazar.lifeOs.client`, which provides:
 - Tailscale dependency assertions.
 - `davfs2` support.
 - A lazy WebDAV automount at `/home/alex/LifeOS`.
-- Desktop consumer apps:
-  - Obsidian
-  - Thunderbird
-  - KOrganizer
-  - KAddressBook
-  - Kontact
-  - Merkuro when available in nixpkgs
+- Obsidian for browsing the mounted Markdown/filesystem view.
+
+The current Nazar endpoint is generic WebDAV, not a CalDAV/CardDAV server. KDE PIM apps and Thunderbird are therefore optional debugging/future-sync tools, not installed by default.
 
 ## Enable on a NixOS client
 
@@ -39,6 +35,11 @@ Import the shared modules from the host configuration:
   nazar.lifeOs.client = {
     enable = true;
     davUrl = "http://100.92.138.94/life/";
+    obsidian.enable = true;
+
+    # Only enable these after Nazar exposes real CalDAV/CardDAV collections.
+    kdeApps.enable = false;
+    thunderbird.enable = false;
   };
 }
 ```
@@ -114,11 +115,33 @@ For now this is a direct WebDAV-backed mount. If Obsidian becomes slow or has fi
 
 Use KOrganizer, KAddressBook, Kontact, or Merkuro for human calendar/contact/task UI.
 
-KDE Akonadi DAV account provisioning is not currently generated declaratively. Add DAV accounts manually in the KDE UI if needed.
+These apps need real CalDAV/CardDAV collections. The current `/life/` endpoint is generic WebDAV, so KDE PIM auto-discovery against `/.well-known/caldav`, `/.well-known/carddav`, or `/caldav/` is expected to fail until a CalDAV/CardDAV backend such as Radicale is added.
+
+KDE Akonadi DAV account provisioning is not currently generated declaratively. Add DAV accounts manually in the KDE UI if real CalDAV/CardDAV is enabled later.
 
 ### Thunderbird
 
-Thunderbird is installed as a reliable DAV client and debugging fallback. It can be pointed manually at the same Life OS DAV endpoint.
+Thunderbird is optional as a reliable CalDAV/CardDAV client and debugging fallback. It should not be expected to consume the generic WebDAV `/life/` endpoint as a calendar/address-book source.
+
+## Protocol verification
+
+From the laptop, generic WebDAV is healthy if these checks pass:
+
+```bash
+curl -I http://100.92.138.94/life/
+curl -X OPTIONS -i http://100.92.138.94/life/
+curl -X PROPFIND -H 'Depth: 0' -i http://100.92.138.94/life/
+```
+
+Expected WebDAV result: `PROPFIND` returns `207 Multi-Status`.
+
+CalDAV/CardDAV is not currently exposed. These are expected to return `404` until a real calendar/contact server is added:
+
+```bash
+curl -I http://100.92.138.94/.well-known/caldav
+curl -I http://100.92.138.94/.well-known/carddav
+curl -I http://100.92.138.94/caldav/
+```
 
 ## Security notes
 
