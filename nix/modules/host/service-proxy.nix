@@ -11,6 +11,7 @@ let
   publicIp = hostIdentity.public.ipv4;
   hostSite = exposure.host.site or { };
   hostNixpi = exposure.host.nixpi or { };
+  hostCode = exposure.host.code or { };
   vmExposureConfig = exposure.vms or { };
   microvmUnits = map (name: "microvm@${name}.service") (lib.attrNames fleet.vms);
   perVmNixpiEnabled = lib.filterAttrs (
@@ -181,11 +182,21 @@ let
     stripPrefix = false;
   };
 
+  hostCodeRoute = {
+    name = "host-code";
+    enable = hostCode.enable or false;
+    path = "/";
+    backend = "http://127.0.0.1:${toString (hostCode.port or 4820)}";
+    access = hostCode.access or "private";
+    stripPrefix = false;
+  };
+
   # When nixpi has a dedicated domain, it gets its own vhost.
   # When nixpi uses pathDomains (legacy), it's merged into the host site vhost.
   nixpiOwnDomain = hostNixpi.domain or null;
   nixpiPathDomains = hostNixpi.pathDomains or [ ];
   nixpiTunnelAliases = hostNixpi.localTunnelAliases or [ ];
+  codeOwnDomain = hostCode.domain or null;
 
   # Legacy path-based route (used when pathDomains is set)
   hostNixpiPathRoute = {
@@ -220,10 +231,14 @@ let
       domain: mkDomainVhosts domain [ (hostNixpiRoute // { access = "private"; }) ]
     ) nixpiTunnelAliases
   );
+  codeDomainVhosts = lib.optionals (codeOwnDomain != null && (hostCode.enable or false)) (
+    mkDomainVhosts codeOwnDomain [ hostCodeRoute ]
+  );
   allRouteLists = [
     [
       hostSiteRoute
       hostNixpiRoute
+      hostCodeRoute
     ]
   ]
   ++ (map (name: routesForVm name fleet.vms.${name}) (lib.attrNames fleet.vms));
@@ -239,7 +254,7 @@ in
     recommendedProxySettings = true;
 
     virtualHosts = lib.listToAttrs (
-      hostDomainVhosts ++ nixpiDomainVhosts ++ nixpiTunnelAliasVhosts ++ vmDomainVhosts
+      hostDomainVhosts ++ nixpiDomainVhosts ++ nixpiTunnelAliasVhosts ++ codeDomainVhosts ++ vmDomainVhosts
     );
   };
 
@@ -247,6 +262,7 @@ in
     after = [
       "network-online.target"
       "nixpi-bun.service"
+      "openvscode-server.service"
     ]
     ++ microvmUnits;
     wants = [ "network-online.target" ];

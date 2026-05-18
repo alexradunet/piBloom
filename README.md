@@ -4,7 +4,7 @@ Declarative NixOS configuration for the Hetzner host `nazar`, host services, and
 
 ## Purpose
 
-This repository owns the host configuration, private access model, nginx routing, DAV/NixPi host services, MicroVM composition, and operator switch apps for Nazar. Service code is supplied by small service flakes such as `minecraft` and `dav-server`; the running host remains the deployment authority.
+This repository owns the host configuration, private access model, nginx routing, DAV/NixPi/Code host services, MicroVM composition, and operator switch apps for Nazar. Service code is supplied by small service flakes such as `minecraft` and `dav-server`; the running host remains the deployment authority.
 
 ## Current access model
 
@@ -18,9 +18,10 @@ Default posture: private by default, sshuttle first.
 - Public Minecraft: `mc.nazar.studio` game traffic, `25565/tcp` and `24454/udp`, DNAT to the Minecraft MicroVM.
 - Private Git: `git.nazar.studio` through sshuttle, SSH on the host's standard `22/tcp`.
 - Private NixPi: `http://nixpi.nazar.studio/` through sshuttle and host nginx.
+- Private Code: `http://code.nazar.studio/` through sshuttle and host nginx.
 - Private DAV: `http://dav.nazar.studio/` through sshuttle and host nginx on the Nazar host.
 
-There is intentionally no public Git, DAV, or NixPi exposure.
+There is intentionally no public Git, DAV, NixPi, or Code exposure.
 
 ## Active services
 
@@ -29,6 +30,7 @@ There is intentionally no public Git, DAV, or NixPi exposure.
 | Host dashboard | host `nazar`                        | `http://nazar.studio/`                     | public static site                              |
 | Git            | host `nazar`                        | `git.nazar.studio` over sshuttle           | SSH-only bare repos owned by `alex`             |
 | NixPi          | host `nazar`                        | `http://nixpi.nazar.studio/` over sshuttle | Flake-packaged Bun service; Pi RPC workspace UI |
+| Code           | host `nazar`                        | `http://code.nazar.studio/` over sshuttle  | Native OpenVSCode Server running as `alex`      |
 | DAV Server     | host `nazar`                        | `http://dav.nazar.studio/` over sshuttle   | WebDAV, CalDAV, CardDAV, private data service   |
 | Minecraft      | MicroVM `minecraft` / `10.10.10.30` | `mc.nazar.studio:25565`, voice `24454/udp` | public game service                             |
 
@@ -41,7 +43,7 @@ nix/fleet/private-domains.nix # generated private domain list for host/laptop ho
 nix/fleet/vms.nix            # active MicroVM inventory and service data
 nix/fleet/exposure.nix       # host HTTP route policy
 nix/hosts/                   # host and laptop entrypoints
-nix/modules/host/            # host networking, firewall, nginx, Git, DAV, NixPi, MicroVM host
+nix/modules/host/            # host networking, firewall, nginx, Git, DAV, NixPi, Code, MicroVM host
 nix/modules/guest/           # reusable MicroVM guest baseline
 nix/modules/services/        # thin service identity wrappers
 nix/users/                   # public SSH key material only
@@ -83,7 +85,7 @@ nix run .#switch-host
 nix flake check --no-build
 nix --accept-flake-config build .#nixosConfigurations.nazar.config.system.build.toplevel --no-link --print-build-logs
 nix eval --json .#nixosConfigurations.alex-laptop.config.nazar.access.sshuttle.privateDomains
-systemctl is-active sshd systemd-networkd nginx nixpi-bun radicale
+systemctl is-active sshd systemd-networkd nginx nixpi-bun openvscode-server radicale
 systemctl is-active microvm@minecraft.service
 ip addr show nazar-private
 ```
@@ -92,9 +94,10 @@ From a configured sshuttle laptop:
 
 ```bash
 systemctl status nazar-sshuttle
-getent hosts nazar.studio nixpi.nazar.studio dav.nazar.studio git.nazar.studio
+getent hosts nazar.studio nixpi.nazar.studio code.nazar.studio dav.nazar.studio git.nazar.studio
 curl -I http://nazar.studio/
 curl -I http://nixpi.nazar.studio/
+curl -I http://code.nazar.studio/
 git ls-remote ssh://alex@git.nazar.studio/nazar/nazar.git
 ```
 
@@ -104,7 +107,7 @@ git ls-remote ssh://alex@git.nazar.studio/nazar/nazar.git
 - Add only trusted client public SSH keys to `nix/users/alex-public-ssh-keys.nix`.
 - Keep root SSH disabled.
 - Keep public SSH key-only and `alex`-only because it is the sshuttle control endpoint.
-- Keep Git, DAV, and NixPi private unless there is an explicit hardening decision.
+- Keep Git, DAV, NixPi, and Code private unless there is an explicit hardening decision.
 - Treat sshuttle over OpenSSH as the canonical private access path.
 - The host owns MicroVM lifecycle; service repos export service modules and do not own deployment.
 - Use the host-built `switch-*` apps for service changes; do not add a second guest-local deployment path without an explicit architecture decision.

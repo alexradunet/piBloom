@@ -1,9 +1,9 @@
 {
   # Declarative HTTP exposure policy for host nginx.
   #
-  # This file owns host HTTP exposure metadata and private hostnames. Host site
-  # and NixPi routes are rendered by service-proxy.nix; DAV's nginx vhost is
-  # rendered by host/dav-server.nix but its private hostname is kept here so
+  # This file owns host HTTP exposure metadata and private hostnames. Host site,
+  # NixPi, and Code routes are rendered by service-proxy.nix; DAV's nginx vhost
+  # is rendered by host/dav-server.nix but its private hostname is kept here so
   # host/laptop private-domain generation has one source. VM private service
   # domains are derived from nix/fleet/vms.nix `privateAccess`.
   #
@@ -35,6 +35,13 @@
         "127.0.0.1"
         "localhost"
       ];
+    };
+
+    code = {
+      enable = true;
+      domain = "code.nazar.studio";
+      port = 4820;
+      access = "private";
     };
 
     dav = {
