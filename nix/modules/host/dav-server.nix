@@ -86,7 +86,7 @@ in
 
   systemd.services.nginx.preStart = lib.mkIf enable (
     lib.mkBefore ''
-      ${pkgs.systemd}/bin/systemd-tmpfiles --create
+      ${pkgs.systemd}/bin/systemd-tmpfiles --create --prefix=${stateDir}
     ''
   );
 
