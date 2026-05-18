@@ -9,12 +9,17 @@
     ./hardware-configuration.nix
     ../../modules/laptop/nazar-tunnel.nix
     ../../modules/laptop/tailscale.nix
+    ../../modules/laptop/life-os-client.nix
   ];
 
   networking.hostName = "alex-laptop";
   networking.networkmanager.enable = true;
 
   nazar.access.tunnel.enable = true;
+  nazar.lifeOs.client = {
+    enable = true;
+    davUrl = "http://100.92.138.94/life/";
+  };
 
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;

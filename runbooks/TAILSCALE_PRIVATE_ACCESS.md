@@ -12,8 +12,9 @@ the tailnet unless a separate public-service design explicitly changes that.
 - Tailnet firewall: allow only explicit service ports on `tailscale0`.
 - Secrets: do not place Tailscale auth keys, OAuth credentials, or certificate
   private keys in Nix expressions.
-- Life OS note: Tailscale provides private reachability only. A CalDAV/WebDAV
-  service still needs to be configured separately if it is not already active.
+- Life OS note: Tailscale provides private reachability for the current private
+  WebDAV endpoint at `http://100.92.138.94/life/`. CalDAV/VTODO/CardDAV can be
+  added separately when calendar/task/contact sync is wired end-to-end.
 
 ## Deploy The Declarative Config
 
@@ -98,14 +99,18 @@ Replace `<tailnet>` with the real tailnet DNS name.
 
 ## Human Apps
 
-Suggested clients once CalDAV/WebDAV endpoints exist:
+Suggested clients for the current setup:
 
-- iOS: Apple Calendar and Reminders for CalDAV/VTODO; a WebDAV-capable Files app
-  integration or third-party file client for WebDAV files.
-- Android: DAVx⁵ for sync, Tasks.org for VTODO/reminders, and Etar or Google
-  Calendar for calendar display.
-- Desktop: Thunderbird for CalDAV calendars/tasks; a WebDAV mount, `rclone`, or
-  Obsidian over synced Markdown for notes/journal files.
+- NixOS laptop: `nazar.lifeOs.client` installs Obsidian, Thunderbird, KDE PIM
+  apps, and mounts WebDAV at `/home/alex/LifeOS`.
+- iOS: a WebDAV-capable Files app integration or third-party file client for
+  Life OS files. Calendar/Reminders should wait for CalDAV/VTODO wiring.
+- Android: a WebDAV file client for Life OS files. DAVx⁵ + Tasks.org/Etar can be
+  added after CalDAV/VTODO/CardDAV endpoints exist.
+- Desktop: Obsidian over `/home/alex/LifeOS` for Markdown; Thunderbird/KDE PIM as
+  DAV clients once calendar/contact/task endpoints are added.
+
+See `runbooks/LIFE_OS_CLIENTS.md` for NixOS client setup and verification.
 
 ## HTTPS Certificates
 
@@ -142,14 +147,15 @@ sudo systemctl stop tailscaled
 To remove Tailscale declaratively, revert the Tailscale module/import change and
 switch to the previous or updated NixOS configuration.
 
-## Follow-Up: Life OS DAV Service
+## Follow-Up: CalDAV, CardDAV, And Authentication
 
-The current Life OS host module installs the CLI and creates `/srv/life` data
-directories. A separate private DAV implementation should be added if it is not
-already live. The likely shape is:
+The current private service exposes `/srv/life` as WebDAV files over Tailscale at
+`http://100.92.138.94/life/`.
 
-- `services.radicale` for CalDAV/VTODO.
-- nginx with WebDAV support for files.
-- private-only vhosts reachable over `tailscale0`.
-- explicit authentication/app passwords.
+Still to design separately:
+
+- `services.radicale` or equivalent for CalDAV/VTODO/CardDAV.
+- explicit DAV authentication/app passwords if tailnet-only network trust is not
+  sufficient.
+- private HTTPS using Tailscale certificates.
 - no public TCP/80 or TCP/443 exposure.

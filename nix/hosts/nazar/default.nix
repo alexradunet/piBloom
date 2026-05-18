@@ -21,6 +21,7 @@
     ../../modules/host/hermes-agent.nix
     ../../modules/host/hermes-dashboard.nix
     ../../modules/host/life-os.nix
+    ../../modules/host/life-os-webdav.nix
     ../../modules/host/backup.nix
     ../../modules/host/monitoring.nix
   ];

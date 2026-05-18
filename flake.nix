@@ -153,6 +153,13 @@
           }
           assert_equals hermes-dashboard-restart ${self.nixosConfigurations.nazar.config.systemd.services.hermes-dashboard.serviceConfig.Restart} always
           assert_true tailscale-enabled ${toString self.nixosConfigurations.nazar.config.services.tailscale.enable}
+          assert_true nginx-enabled ${toString self.nixosConfigurations.nazar.config.services.nginx.enable}
+          assert_true life-os-webdav-location ${
+            toString (
+              self.nixosConfigurations.nazar.config.services.nginx.virtualHosts."life-os-private".locations
+              ? "/life/"
+            )
+          }
           assert_true tailscale-open-firewall ${toString self.nixosConfigurations.nazar.config.services.tailscale.openFirewall}
           assert_true tailscale-private-http-allowed ${
             toString (
@@ -231,6 +238,26 @@
           assert_true tailscale-enabled ${toString self.nixosConfigurations.alex-laptop.config.services.tailscale.enable}
           assert_true tailscale-open-firewall ${toString self.nixosConfigurations.alex-laptop.config.services.tailscale.openFirewall}
           assert_equals tailscale-routing-features ${self.nixosConfigurations.alex-laptop.config.services.tailscale.useRoutingFeatures} client
+          assert_true life-os-client-enabled ${toString self.nixosConfigurations.alex-laptop.config.nazar.lifeOs.client.enable}
+          assert_true life-os-client-davfs2-enabled ${toString self.nixosConfigurations.alex-laptop.config.services.davfs2.enable}
+          assert_equals life-os-client-dav-url ${self.nixosConfigurations.alex-laptop.config.nazar.lifeOs.client.davUrl} http://100.92.138.94/life/
+          assert_equals life-os-client-mount-fstype ${
+            self.nixosConfigurations.alex-laptop.config.fileSystems."/home/alex/LifeOS".fsType
+          } davfs
+          assert_true life-os-client-mount-automount ${
+            toString (
+              nixpkgs.lib.elem "x-systemd.automount" (
+                self.nixosConfigurations.alex-laptop.config.fileSystems."/home/alex/LifeOS".options or [ ]
+              )
+            )
+          }
+          assert_true life-os-client-mount-netdev ${
+            toString (
+              nixpkgs.lib.elem "_netdev" (
+                self.nixosConfigurations.alex-laptop.config.fileSystems."/home/alex/LifeOS".options or [ ]
+              )
+            )
+          }
         '';
       };
 
