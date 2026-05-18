@@ -1,6 +1,5 @@
 { fleet, lib }:
 let
-  hostIdentity = import ./host.nix;
   exposure = import ./exposure.nix;
 
   isPrivateAccess =
@@ -40,11 +39,6 @@ let
 in
 lib.subtractLists privateDomainExclusions (
   lib.unique (
-    hostIdentity.git.domains
-    ++ privateServiceDomains
-    ++ hostSiteDomains
-    ++ hostNixpiDomains
-    ++ hostCodeDomains
-    ++ hostDavDomains
+    privateServiceDomains ++ hostSiteDomains ++ hostNixpiDomains ++ hostCodeDomains ++ hostDavDomains
   )
 )

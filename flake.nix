@@ -57,7 +57,6 @@
       nixosModules = {
         microvm-guest = ./nix/modules/host/microvm-guest.nix;
         microvm-host = ./nix/modules/host/microvm-host.nix;
-        host-git-ssh = ./nix/modules/host/git-ssh.nix;
       };
 
       nixosConfigurations = {

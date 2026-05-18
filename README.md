@@ -6,6 +6,10 @@ Declarative NixOS configuration for the Hetzner host `nazar`, host services, and
 
 This repository owns the host configuration, private access model, nginx routing, DAV/NixPi/Code host services, MicroVM composition, operator switch apps, and service code for Nazar. NixPi, Minecraft, and DAV live as local subflakes under `services/`; the running host remains the deployment authority.
 
+## Source repository
+
+Canonical Git hosting is on Codeberg: <https://codeberg.org/NazarStudio/Nazar>. The host no longer runs a Git server; the repository remotes are declared in `nix/fleet/host.nix`.
+
 ## Current access model
 
 Default posture: private by default, sshuttle first.
@@ -16,19 +20,17 @@ Default posture: private by default, sshuttle first.
 - Public host SSH: `22/tcp`, key-only, `alex` only, for administration and sshuttle.
 - Public HTTP: `http://nazar.studio/`, static dashboard only.
 - Public Minecraft: `mc.nazar.studio` game traffic, `25565/tcp` and `24454/udp`, DNAT to the Minecraft MicroVM.
-- Private Git: `git.nazar.studio` through sshuttle, SSH on the host's standard `22/tcp`.
 - Private NixPi: `http://nixpi.nazar.studio/` through sshuttle and host nginx.
 - Private Code: `http://code.nazar.studio/` through sshuttle and host nginx.
 - Private DAV: `http://dav.nazar.studio/` through sshuttle and host nginx on the Nazar host.
 
-There is intentionally no public Git, DAV, NixPi, or Code exposure.
+There is intentionally no public DAV, NixPi, or Code exposure from the Nazar host.
 
 ## Active services
 
 | Service        | Runs on                             | Endpoint                                   | Notes                                           |
 | -------------- | ----------------------------------- | ------------------------------------------ | ----------------------------------------------- |
 | Host dashboard | host `nazar`                        | `http://nazar.studio/`                     | public static site                              |
-| Git            | host `nazar`                        | `git.nazar.studio` over sshuttle           | SSH-only bare repos owned by `alex`             |
 | NixPi          | host `nazar`                        | `http://nixpi.nazar.studio/` over sshuttle | Flake-packaged Bun service; Pi RPC workspace UI |
 | Code           | host `nazar`                        | `http://code.nazar.studio/` over sshuttle  | Native OpenVSCode Server running as `alex`      |
 | DAV Server     | host `nazar`                        | `http://dav.nazar.studio/` over sshuttle   | WebDAV, CalDAV, CardDAV, private data service   |
@@ -43,7 +45,7 @@ nix/fleet/private-domains.nix # generated private domain list for host/laptop ho
 nix/fleet/vms.nix            # active MicroVM inventory and service data
 nix/fleet/exposure.nix       # host HTTP route policy
 nix/hosts/                   # host and laptop entrypoints
-nix/modules/host/            # host networking, firewall, nginx, Git, DAV, NixPi, Code, MicroVM host
+nix/modules/host/            # host networking, firewall, nginx, DAV, NixPi, Code, MicroVM host
 nix/modules/guest/           # reusable MicroVM guest baseline
 nix/modules/services/        # thin service identity wrappers
 nix/users/                   # public SSH key material only
@@ -97,11 +99,11 @@ From a configured sshuttle laptop:
 
 ```bash
 systemctl status nazar-sshuttle
-getent hosts nazar.studio nixpi.nazar.studio code.nazar.studio dav.nazar.studio git.nazar.studio
+getent hosts nazar.studio nixpi.nazar.studio code.nazar.studio dav.nazar.studio
 curl -I http://nazar.studio/
 curl -I http://nixpi.nazar.studio/
 curl -I http://code.nazar.studio/
-git ls-remote ssh://alex@git.nazar.studio/nazar/nazar.git
+git ls-remote https://codeberg.org/NazarStudio/Nazar.git
 ```
 
 ## Constraints
@@ -110,7 +112,8 @@ git ls-remote ssh://alex@git.nazar.studio/nazar/nazar.git
 - Add only trusted client public SSH keys to `nix/users/alex-public-ssh-keys.nix`.
 - Keep root SSH disabled.
 - Keep public SSH key-only and `alex`-only because it is the sshuttle control endpoint.
-- Keep Git, DAV, NixPi, and Code private unless there is an explicit hardening decision.
+- Keep DAV, NixPi, and Code private unless there is an explicit hardening decision.
+- Keep Git hosting on Codeberg; do not reintroduce a host Git server without an explicit architecture decision.
 - Treat sshuttle over OpenSSH as the canonical private access path.
 - The host owns MicroVM lifecycle; service subflakes under `services/` export service modules and do not own deployment.
 - Use the host-built `switch-*` apps for service changes; do not add a second guest-local deployment path without an explicit architecture decision.

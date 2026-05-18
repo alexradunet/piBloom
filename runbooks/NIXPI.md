@@ -80,7 +80,7 @@ From a configured sshuttle laptop:
 
 ```bash
 systemctl status nazar-sshuttle
-getent hosts nazar.studio nixpi.nazar.studio dav.nazar.studio git.nazar.studio
+getent hosts nazar.studio nixpi.nazar.studio dav.nazar.studio
 curl -I http://nixpi.nazar.studio/
 ```
 

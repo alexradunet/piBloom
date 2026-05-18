@@ -2,7 +2,7 @@
 
 DAV Server service module for Nazar's private personal info and data service.
 
-This directory owns the reusable Radicale/WebDAV service module. The monorepo root remains the production orchestrator and owns host lifecycle, private DNS policy, nginx exposure, Git server, and secrets policy.
+This directory owns the reusable Radicale/WebDAV service module. The monorepo root remains the production orchestrator and owns host lifecycle, private DNS policy, nginx exposure, source repository metadata, and secrets policy.
 
 ## Exports
 

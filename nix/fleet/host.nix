@@ -14,5 +14,10 @@
     interfaceName = "nazar-private";
   };
 
-  git.domains = [ "git.nazar.studio" ];
+  repository = {
+    forge = "Codeberg";
+    webUrl = "https://codeberg.org/NazarStudio/Nazar";
+    httpsUrl = "https://codeberg.org/NazarStudio/Nazar.git";
+    sshUrl = "git@codeberg.org:NazarStudio/Nazar.git";
+  };
 }

@@ -21,7 +21,6 @@
     ../../modules/host/code.nix
     ../../modules/host/dav-server.nix
     ../../modules/host/microvm-host.nix
-    ../../modules/host/git-ssh.nix
     ../../modules/host/service-proxy.nix
     ../../modules/host/backup.nix
     ../../modules/host/monitoring.nix

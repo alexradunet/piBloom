@@ -4,7 +4,7 @@
 
 - [x] Rename package, CLI, docs, UI, and environment variables to `nixpi` / `NIXPI_*`.
 - [x] Add a Nix flake package and reusable NixOS service module.
-- [x] Publish the rebranded repo to the Git server as `nazar/nixpi`.
+- [x] Publish NixPi as part of the Nazar monorepo under `services/nixpi`.
 
 ## v2 — Nazar fleet integration
 

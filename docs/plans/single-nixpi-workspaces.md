@@ -18,7 +18,7 @@
 │    └────┬──────────────────────┘                     │
 │         │                                            │
 │  ┌──────┴──────┐ ┌──────────┐ ┌───────────┐        │
-│  │ old git VM  │ │ mc VM    │ │ old dav VM│        │
+│  │old source VM│ │ mc VM    │ │ old dav VM│        │
 │  │ NixPi :4815│ │NixPi:4815│ │NixPi:4815 │        │
 │  │CWD=nazar/  │ │CWD=mc/   │ │CWD=dav/   │        │
 │  └────────────┘ └──────────┘ └───────────┘        │
@@ -79,7 +79,6 @@ A **workspace** is a named profile in nixpi that maps to:
 | nazar      | `/home/alex/nazar`     | local (host)        | Infrastructure repo on the host |
 | minecraft  | `/home/alex/nazar/services/minecraft` | SSH → `10.10.10.30` | Minecraft VM, PaperMC server    |
 | dav-server | `/home/alex`           | local (host)        | DAV host service                |
-| git        | `/home/alex/nazar`     | local/host SSH      | SSH-only Git on host            |
 
 ## Implementation Plan
 

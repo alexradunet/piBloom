@@ -85,11 +85,11 @@ in
     privateDomains = lib.mkOption {
       type = lib.types.listOf lib.types.str;
       default = privateDomains;
-      defaultText = "Nazar private domains from fleet/vms.nix privateAccess, host exposure, and host Git domains";
+      defaultText = "Nazar private domains from fleet/vms.nix privateAccess and host exposure";
       description = ''
         Private service domains mapped to the private service address in
-        /etc/hosts. This lets browsers, curl, git, and other tools use the
-        normal service URLs without per-application SOCKS proxy settings.
+        /etc/hosts. This lets browsers, curl, and other tools use the normal
+        service URLs without per-application SOCKS proxy settings.
       '';
     };
 

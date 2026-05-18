@@ -8,7 +8,6 @@ sshuttle over OpenSSH is the canonical private access path for Nazar.
 - SSH policy: key-only, `alex` only, root login disabled
 - Private service address: `10.44.0.1/32` on host-local dummy interface `nazar-private`
 - Private HTTP entrypoint: host nginx on `10.44.0.1:80`
-- Private Git SSH entrypoint: host sshd on `10.44.0.1:22` (standard SSH as `alex`)
 
 The private address is not assigned to the public NIC. Clients reach it by running sshuttle, which creates local routing/firewall rules and forwards matching TCP connections through SSH.
 
@@ -48,10 +47,10 @@ If the private key has a different filename, override `nazar.access.sshuttle.key
 
 ## First laptop bootstrap
 
-A fresh laptop may not yet have the declarative `/etc/hosts` entries needed to fetch this flake's private Git inputs. For the first rebuild only, start a temporary sshuttle tunnel and temporary hosts entry from an existing checkout:
+A fresh laptop may need temporary private service host entries before the declarative sshuttle configuration is active. For the first rebuild only, start a temporary sshuttle tunnel and temporary hosts entry from an existing checkout:
 
 ```bash
-sudo sh -c 'printf "10.44.0.1 nazar.studio mc.nazar.studio git.nazar.studio dav.nazar.studio\n" >> /etc/hosts'
+sudo sh -c 'printf "10.44.0.1 nazar.studio mc.nazar.studio dav.nazar.studio\n" >> /etc/hosts'
 nix shell nixpkgs#sshuttle -c sudo sshuttle --method=auto \
   -e "ssh -i /home/alex/.ssh/id_ed25519 -o IdentitiesOnly=yes" \
   -r alex@167.235.12.22 \
@@ -66,7 +65,7 @@ Leave that command running in one terminal, run the normal rebuild in another, t
 ```bash
 sudo nixos-rebuild switch --flake .#alex-laptop
 systemctl status nazar-sshuttle
-getent hosts nazar.studio mc.nazar.studio git.nazar.studio dav.nazar.studio
+getent hosts nazar.studio mc.nazar.studio dav.nazar.studio
 ```
 
 The generated command is equivalent to:
@@ -83,7 +82,6 @@ Use normal service URLs; no browser SOCKS configuration is required:
 curl -I http://nazar.studio/
 curl -I http://nixpi.nazar.studio/
 curl -I http://dav.nazar.studio/
-git ls-remote ssh://alex@git.nazar.studio/nazar/nazar.git
 ```
 
 ## Troubleshooting
@@ -105,5 +103,4 @@ Check host private address and services:
 ```bash
 ip addr show nazar-private
 systemctl is-active sshd systemd-networkd nginx nixpi-bun
-git ls-remote ssh://alex@git.nazar.studio/nazar/nazar.git
 ```
