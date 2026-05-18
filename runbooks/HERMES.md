@@ -6,18 +6,22 @@ Hermes Agent is installed through the upstream Hermes NixOS module and runs as `
 
 ```text
 inputs.hermes-agent.nixosModules.default -> nix/modules/host/hermes-agent.nix -> services.hermes-agent
+nix/modules/host/hermes-webui.nix -> hermes-webui.service -> SSH tunnel -> http://127.0.0.1:8787/
 ```
 
-Nazar uses native mode with the service running as `alex`:
+Nazar uses native mode with the services running as `alex`:
 
-- service unit: `hermes-agent.service`
+- agent service unit: `hermes-agent.service`
+- WebUI service unit: `hermes-webui.service`
+- laptop WebUI URL: `http://127.0.0.1:8787/`
 - state directory: `/var/lib/hermes`
 - managed home: `/var/lib/hermes/.hermes`
 - workspace: `/var/lib/hermes/workspace`
+- WebUI state directory: `/var/lib/hermes/webui`
 - CLI: `hermes` is on the system PATH with `HERMES_HOME=/var/lib/hermes/.hermes`
 - main model/provider: `openai-codex` with `gpt-5.5`
 
-Running the service as `alex` keeps this private single-user host simple: OAuth, repo edits, and files created by Hermes behave like normal `alex` shell sessions.
+Running the services as `alex` keeps this private single-user host simple: OAuth, repo edits, and files created by Hermes behave like normal `alex` shell sessions.
 
 ## OAuth and secrets
 
@@ -35,11 +39,20 @@ hermes auth add openai-codex --method browser
 hermes model
 ```
 
-Do not put API keys or OAuth JSON in Nix files. If you later need non-OAuth secrets such as an API server key, seed the optional host-local environment file:
+Do not put API keys, OAuth JSON, or WebUI passwords in Nix files. If you later need non-OAuth secrets such as an API server key, seed the optional host-local environment file:
 
 ```bash
 printf 'API_SERVER_KEY=change-me\n' \
   | sudo install -m 0600 -o alex -g users /dev/stdin /var/lib/hermes/env
+```
+
+The WebUI refuses to start unless its runtime-only password file exists:
+
+```bash
+read -rsp 'Hermes WebUI password: ' HERMES_WEBUI_PASSWORD; echo
+printf 'HERMES_WEBUI_PASSWORD=%s\n' "$HERMES_WEBUI_PASSWORD" \
+  | sudo install -m 0600 -o alex -g users /dev/stdin /var/lib/hermes/webui-env
+unset HERMES_WEBUI_PASSWORD
 ```
 
 The Hermes module merges `/var/lib/hermes/env` into `/var/lib/hermes/.hermes/.env` during `nixos-rebuild switch` when the file exists.
@@ -64,9 +77,12 @@ nix run .#switch-host
 
 ```bash
 systemctl status hermes-agent
+systemctl status hermes-webui
 journalctl -u hermes-agent -n 100 --no-pager
+journalctl -u hermes-webui -n 100 --no-pager
 hermes version
 hermes config
+curl -fsS http://127.0.0.1:8787/health
 ```
 
 If a fresh shell does not see the managed home, open a new login shell and confirm:

@@ -2,13 +2,13 @@
 {
   imports = [
     ./hardware-configuration.nix
-    ../../modules/laptop/nazar-sshuttle.nix
+    ../../modules/laptop/nazar-tunnel.nix
   ];
 
   networking.hostName = "alex-laptop";
   networking.networkmanager.enable = true;
 
-  nazar.access.sshuttle.enable = true;
+  nazar.access.tunnel.enable = true;
 
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;

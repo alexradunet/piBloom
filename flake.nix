@@ -104,9 +104,9 @@
       };
 
       checks.${system} = {
-        dav-server-module-eval = pkgs.runCommand "dav-server-module-eval" { } ''
+        nazar-host-module-eval = pkgs.runCommand "nazar-host-module-eval" { } ''
           mkdir -p $out
-          echo ${toString (mkNixosSystem ./nix/modules/host/dav-server.nix).config.services.radicale.enable} > $out/radicale-enabled
+          echo ${toString self.nixosConfigurations.nazar.config.services.openssh.enable} > $out/openssh-enabled
         '';
       };
 

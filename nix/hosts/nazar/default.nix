@@ -13,15 +13,14 @@
     ../../modules/host/users.nix
     ../../modules/host/ssh.nix
     ../../modules/host/networking.nix
-    ../../modules/host/private-access.nix
     ../../modules/guest/development.nix
     ../../modules/host/firewall.nix
     ../../modules/host/llm-agents.nix
     inputs.hermes-agent.nixosModules.default
     ../../modules/host/hermes-agent.nix
+    ../../modules/host/hermes-webui.nix
     ../../modules/host/code.nix
-    ../../modules/host/dav-server.nix
-    ../../modules/host/service-proxy.nix
+    ../../modules/host/zellij-terminal.nix
     ../../modules/host/backup.nix
     ../../modules/host/monitoring.nix
   ];

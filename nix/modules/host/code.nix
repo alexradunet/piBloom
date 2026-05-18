@@ -1,4 +1,5 @@
 {
+  config,
   inputs,
   lib,
   pkgs,
@@ -20,10 +21,8 @@ in
     host = "127.0.0.1";
     port = hostCode.port or 4821;
 
-    # The nginx route is private-only in nix/fleet/exposure.nix. Keeping the
-    # OpenVSCode connection token disabled keeps mobile browser entry simple,
-    # while the compile-time assertion below prevents accidental public
-    # tokenless exposure.
+    # Browser access is through SSH local forwarding. Keeping the connection
+    # token disabled stays acceptable only while this service remains loopback.
     withoutConnectionToken = true;
     telemetryLevel = "off";
 
@@ -75,8 +74,8 @@ in
 
   assertions = [
     {
-      assertion = !(hostCode.enable or false) || (hostCode.access or "private") != "public";
-      message = "code.nazar.studio runs OpenVSCode tokenless as alex; keep exposure.host.code.access private or add a separate auth/token design first.";
+      assertion = !(hostCode.enable or false) || config.services.openvscode-server.host == "127.0.0.1";
+      message = "OpenVSCode runs tokenless as alex; keep it bound to 127.0.0.1 and access it through SSH local forwarding.";
     }
   ];
 }

@@ -26,7 +26,7 @@ The same locations are declared in `nix/fleet/host.nix` under `repository`.
 - Do not recreate `git.nazar.studio` or `/persist/git` in the NixOS host config.
 - Do not maintain parallel Nazar infrastructure checkouts as active deployment sources.
 - Use Codeberg for pushes, pulls, issues, and repository browsing.
-- Keep host SSH for administration and sshuttle only.
+- Keep host SSH for administration and local service forwarding only.
 
 ## Local remote setup
 

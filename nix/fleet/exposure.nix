@@ -1,25 +1,21 @@
 {
-  # Declarative HTTP exposure policy for host nginx.
-  #
-  # access = "private" serves the route only on the sshuttle-routed private
-  # address, 10.44.0.1.
-  # access = "public" additionally exposes the route on the host public IPv4
-  # and opens TCP/80. Only use after an explicit hardening review.
-
-  privateDomainExclusions = [ ];
+  # Declarative local service ports. Operator browser access is via SSH local
+  # forwarding from the laptop to these host loopback ports.
 
   host = {
     code = {
       enable = true;
-      domain = "code.nazar.studio";
       port = 4821;
-      access = "private";
     };
 
-    dav = {
+    hermesWebui = {
       enable = true;
-      domain = "dav.nazar.studio";
-      access = "private";
+      port = 8787;
+    };
+
+    terminal = {
+      enable = true;
+      port = 8082;
     };
   };
 }

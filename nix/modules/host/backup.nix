@@ -6,7 +6,6 @@ let
     cat <<'EOF'
     Nazar backup roots:
       ${hostIdentity.repository.localPath}
-      /persist/services/dav-server
       /persist/secrets
 
     This host module intentionally does not encode an off-host backup target or

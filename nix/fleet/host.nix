@@ -7,13 +7,6 @@
     nicName = "enp0s31f6";
     nicMac = "90:1b:0e:9e:eb:f6";
   };
-
-  private = {
-    ip = "10.44.0.1";
-    cidr = "10.44.0.1/32";
-    interfaceName = "nazar-private";
-  };
-
   repository = {
     forge = "Codeberg";
     localPath = "/home/alex/repos/nazar";
