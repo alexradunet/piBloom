@@ -5,7 +5,7 @@ Canonical Nazar runtime: host service on `nazar`. The service module remains reu
 ## Ownership
 
 - Orchestrator repo: `/root/nazar`
-- Service repo: `/home/alex/repos/dav-server`
+- Service subflake: `/home/alex/repos/nazar/services/dav-server`
 - Host module: `nazar/nix/modules/host/dav-server.nix`
 - Private endpoint: `dav.nazar.studio` through sshuttle
 - Host NixPi route: `http://nixpi.nazar.studio/` through sshuttle; select host/service workspaces there.
@@ -24,17 +24,16 @@ Nazar reuses the former guest state roots directly on the host:
 Validate service-only edits locally:
 
 ```bash
-cd /home/alex/repos/dav-server
+cd /home/alex/repos/nazar/services/dav-server
 nix flake check --no-build
 git status
-# commit and push durable changes
+# commit durable changes from the monorepo root
 ```
 
-Switch production from the Nazar host after updating the `dav-server` input:
+Switch production from the Nazar host after committing the monorepo change:
 
 ```bash
 cd /root/nazar
-nix flake lock --update-input dav-server
 nix flake check --no-build
 nix run .#switch-dav-server
 ```

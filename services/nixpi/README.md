@@ -85,7 +85,7 @@ Set `sourceDir` to point at your local `nixpi-bun` checkout. The service will ru
     group = "users";
     home = "/home/alex";
     workingDirectory = "/home/alex";
-    sourceDir = "/home/alex/repos/nixpi-bun";
+    sourceDir = "/home/alex/repos/nazar/services/nixpi";
     host = "0.0.0.0";
     port = 4816;
     piBinary = "/run/current-system/sw/bin/pi";

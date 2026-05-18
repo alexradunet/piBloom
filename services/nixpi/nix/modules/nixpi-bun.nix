@@ -111,7 +111,7 @@ in
     sourceDir = mkOption {
       type = types.nullOr types.path;
       default = null;
-      example = literalExpression ''"''${config.users.users.alex.home}/repos/nixpi-bun"'';
+      example = literalExpression ''"''${config.users.users.alex.home}/repos/nazar/services/nixpi"'';
       description = ''
         Absolute path to a live-source checkout. When set, the service runs
         directly from this directory with Bun instead of the nix store package,
@@ -172,7 +172,7 @@ in
             context = "Nazar infrastructure (host)";
           };
           minecraft = {
-            cwd = "/home/alex/minecraft";
+            cwd = "/home/alex/nazar/services/minecraft";
             mode = "ssh";
             sshHost = "10.10.10.30";
             context = "Minecraft PaperMC server VM";

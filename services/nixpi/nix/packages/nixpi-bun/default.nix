@@ -42,7 +42,7 @@ stdenvNoCC.mkDerivation {
 
   meta = {
     description = "Experimental Bun-native private web interface for Pi Coding Agent";
-    homepage = "https://git.nazar.studio/nazar/nixpi-bun";
+    homepage = "https://codeberg.org/NazarStudio/Nazar/src/branch/main/services/nixpi";
     license = lib.licenses.mit;
     platforms = bun.meta.platforms;
     mainProgram = "nixpi-bun";

@@ -1,8 +1,8 @@
 # minecraft
 
-Nazar-owned PaperMC Minecraft MicroVM service repository.
+Nazar-owned PaperMC Minecraft MicroVM service subflake.
 
-This repository owns the Minecraft service modules used by the canonical Nazar MicroVM fleet. The `/root/nazar` repository remains the fleet orchestrator and owns MicroVM lifecycle, IDs, IP/MAC/DNS/resources, host forwarding/firewall policy, host switch apps, and secrets policy.
+This directory owns the Minecraft service modules used by the canonical Nazar MicroVM fleet. The monorepo root remains the fleet orchestrator and owns MicroVM lifecycle, IDs, IP/MAC/DNS/resources, host forwarding/firewall policy, host switch apps, and secrets policy.
 
 ## Exports
 
@@ -12,7 +12,7 @@ This repository owns the Minecraft service modules used by the canonical Nazar M
 
 ## Integration contract
 
-Production evaluation is done by `/root/nazar`. Nazar composes this service module with the shared MicroVM guest baseline and `specialArgs` containing `vm`, `fleet`, and `inputs`. This repo defines only MicroVM service modules.
+Production evaluation is done by the Nazar monorepo root (`/root/nazar` on the host). Nazar composes this service module with the shared MicroVM guest baseline and `specialArgs` containing `vm`, `fleet`, and `inputs`. This subflake defines only MicroVM service modules.
 
 ## VM-local Pi workflow
 
@@ -21,17 +21,16 @@ Use the guest for editing and validation only:
 ```bash
 ssh alex@minecraft
 nazar-vm-repo-bootstrap
-cd ~/minecraft
+cd ~/nazar/services/minecraft
 pi
 nix flake check --no-build
-# commit and push to the Git server
+# commit and push from ~/nazar
 ```
 
-Production switching is host-driven from Nazar after updating the service input:
+Production switching is host-driven from Nazar after committing the monorepo change:
 
 ```bash
 cd /root/nazar
-nix flake lock --update-input minecraft
 nix flake check --no-build
 nix run .#switch-minecraft
 ```

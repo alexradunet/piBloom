@@ -66,18 +66,14 @@
         ]
       },
       "locked": {
-        "lastModified": 1779042201,
-        "narHash": "sha256-u3rz7aFmsV2aqm107fOgYmjSkNaYZ6WuIGo8GTvF0+g=",
-        "ref": "refs/heads/main",
-        "rev": "4ec93fbc82516723f8a4d885b1c4fdf597a0df6c",
-        "revCount": 10,
-        "type": "git",
-        "url": "ssh://alex@git.nazar.studio/nazar/dav-server.git"
+        "path": "./services/dav-server",
+        "type": "path"
       },
       "original": {
-        "type": "git",
-        "url": "ssh://alex@git.nazar.studio/nazar/dav-server.git"
-      }
+        "path": "./services/dav-server",
+        "type": "path"
+      },
+      "parent": []
     },
     "disko": {
       "inputs": {
@@ -171,18 +167,14 @@
         ]
       },
       "locked": {
-        "lastModified": 1779036519,
-        "narHash": "sha256-Elb/bKlhkV06mptgfrA3HG67BWOS82BRc4JxBUSG5Fo=",
-        "ref": "refs/heads/main",
-        "rev": "5ed19087cbb29e76b00791c69bd169b5dddde01c",
-        "revCount": 4,
-        "type": "git",
-        "url": "ssh://alex@git.nazar.studio/nazar/minecraft.git"
+        "path": "./services/minecraft",
+        "type": "path"
       },
       "original": {
-        "type": "git",
-        "url": "ssh://alex@git.nazar.studio/nazar/minecraft.git"
-      }
+        "path": "./services/minecraft",
+        "type": "path"
+      },
+      "parent": []
     },
     "nixpi": {
       "inputs": {
@@ -191,18 +183,14 @@
         ]
       },
       "locked": {
-        "lastModified": 1779040453,
-        "narHash": "sha256-MrhbR/m4ReMqNOt6bFmHP8zOyCGs9Fwv+Ke+aWnf0PI=",
-        "ref": "refs/heads/main",
-        "rev": "008be2b0898ef3e35d2adf95106621beb7c91ea4",
-        "revCount": 87,
-        "type": "git",
-        "url": "ssh://alex@git.nazar.studio/nazar/nixpi-bun.git"
+        "path": "./services/nixpi",
+        "type": "path"
       },
       "original": {
-        "type": "git",
-        "url": "ssh://alex@git.nazar.studio/nazar/nixpi-bun.git"
-      }
+        "path": "./services/nixpi",
+        "type": "path"
+      },
+      "parent": []
     },
     "nixpkgs": {
       "locked": {

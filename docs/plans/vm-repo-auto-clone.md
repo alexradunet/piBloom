@@ -10,9 +10,9 @@ For active MicroVM services, guest repositories should be exposed through explic
 2. Mount it at `/home/alex/<repo>` in the guest.
 3. Keep ownership/mode in the same share declaration.
 4. Let guest tooling initialize or repair the checkout when needed.
-5. Validate in the guest if useful, commit and push, then switch production from `/root/nazar` with the appropriate host app after updating the service input.
+5. Validate in the guest if useful, commit and push the monorepo, then switch production from `/root/nazar` with the appropriate host app.
 
-For DAV, update the `dav-server` flake input in `/root/nazar` and run `nix run .#switch-dav-server`; it switches the host service, not a guest.
+For DAV, edit and commit `services/dav-server` in the monorepo and run `nix run .#switch-dav-server`; it switches the host service, not a guest.
 
 ## Policy
 

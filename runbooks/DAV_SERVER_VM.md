@@ -5,7 +5,7 @@ Canonical runtime: host service on `nazar`. DAV is private-only and served by ho
 ## Identity
 
 - Host module: `nix/modules/host/dav-server.nix`
-- Service module source: `inputs.dav-server.nixosModules.dav-server-service`
+- Service module source: `services/dav-server` via `inputs.dav-server.nixosModules.dav-server-service`
 - DNS: `dav.nazar.studio`
 - Private access: sshuttle to `10.44.0.1`, then host nginx serves DAV directly on the private listener
 - State roots reused from the former guest:
@@ -20,10 +20,9 @@ nix flake check --no-build
 nix run .#switch-dav-server
 ```
 
-For service-repo updates:
+For DAV service updates, edit and commit `services/dav-server` in this monorepo, then switch:
 
 ```bash
-nix flake lock --update-input dav-server
 nix flake check --no-build
 nix run .#switch-dav-server
 ```

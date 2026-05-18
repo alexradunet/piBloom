@@ -4,7 +4,7 @@ Declarative NixOS configuration for the Hetzner host `nazar`, host services, and
 
 ## Purpose
 
-This repository owns the host configuration, private access model, nginx routing, DAV/NixPi/Code host services, MicroVM composition, and operator switch apps for Nazar. Service code is supplied by small service flakes such as `minecraft` and `dav-server`; the running host remains the deployment authority.
+This repository owns the host configuration, private access model, nginx routing, DAV/NixPi/Code host services, MicroVM composition, operator switch apps, and service code for Nazar. NixPi, Minecraft, and DAV live as local subflakes under `services/`; the running host remains the deployment authority.
 
 ## Current access model
 
@@ -47,6 +47,9 @@ nix/modules/host/            # host networking, firewall, nginx, Git, DAV, NixPi
 nix/modules/guest/           # reusable MicroVM guest baseline
 nix/modules/services/        # thin service identity wrappers
 nix/users/                   # public SSH key material only
+services/nixpi/              # NixPi Bun web interface subflake
+services/minecraft/          # Minecraft MicroVM service subflake
+services/dav-server/         # DAV/Radicale/WebDAV host service subflake
 runbooks/                    # operational runbooks
 www/                         # static public dashboard
 ```
@@ -64,16 +67,16 @@ nix run .#switch-dav-server
 nix run .#switch-fleet
 ```
 
-For service repo updates, update the corresponding flake input first, then run the service switch app:
+For service changes, edit the corresponding `services/` subflake in this monorepo, commit the change, then run the service switch app:
 
 ```bash
-nix flake lock --update-input minecraft
+# after editing services/minecraft/
 nix run .#switch-minecraft
 
-nix flake lock --update-input dav-server
+# after editing services/dav-server/
 nix run .#switch-dav-server
 
-nix flake lock --update-input nixpi
+# after editing services/nixpi/
 nix run .#switch-host
 ```
 
@@ -109,6 +112,6 @@ git ls-remote ssh://alex@git.nazar.studio/nazar/nazar.git
 - Keep public SSH key-only and `alex`-only because it is the sshuttle control endpoint.
 - Keep Git, DAV, NixPi, and Code private unless there is an explicit hardening decision.
 - Treat sshuttle over OpenSSH as the canonical private access path.
-- The host owns MicroVM lifecycle; service repos export service modules and do not own deployment.
+- The host owns MicroVM lifecycle; service subflakes under `services/` export service modules and do not own deployment.
 - Use the host-built `switch-*` apps for service changes; do not add a second guest-local deployment path without an explicit architecture decision.
 - Avoid new deploy frameworks or route abstractions while the fleet remains one host and one active MicroVM.

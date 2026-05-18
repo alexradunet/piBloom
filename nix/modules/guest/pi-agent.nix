@@ -6,12 +6,13 @@
 }:
 let
   repoName = vm.repoName or vm.hostname;
-  repoRoot = "/home/alex/${repoName}";
+  repoRoot = vm.piAgent.repoRoot or "/home/alex/${repoName}";
+  workingDirectory = vm.piAgent.workingDirectory or repoRoot;
   bootstrap = pkgs.writeShellScriptBin "nazar-vm-repo-bootstrap" ''
     set -euo pipefail
 
-    repo_name=${lib.escapeShellArg repoName}
     repo_root=${lib.escapeShellArg repoRoot}
+    working_directory=${lib.escapeShellArg workingDirectory}
 
     if [ ! -d "$repo_root" ]; then
       echo "Repo directory $repo_root does not exist." >&2
@@ -23,15 +24,20 @@ let
 
     if [ ! -d .git ]; then
       echo "Repo not initialized at $repo_root." >&2
-      echo "The host should provision this directory via:" >&2
-      echo "  nazar-git-init $repo_name" >&2
+      echo "The host should provision a clone of the Nazar monorepo at this virtiofs mount." >&2
+      exit 1
+    fi
+
+    if [ ! -d "$working_directory" ]; then
+      echo "Workspace directory $working_directory does not exist inside $repo_root." >&2
       exit 1
     fi
 
     echo "VM repo ready: $repo_root"
+    echo "Service workspace: $working_directory"
     echo "Pi is available as: pi"
     echo "You may edit, test, and commit here. To deploy, push and request a rebuild from the Nazar host."
-    echo "Next: cd $repo_root && pi"
+    echo "Next: cd $working_directory && pi"
   '';
   agentsMarkdown = pkgs.writeText "nazar-vm-agents.md" ''
     # Nazar VM Agent Instructions
@@ -41,15 +47,17 @@ let
     VM identity:
 
     - Hostname: `${vm.hostname}`
-    - Service repo: `${repoRoot}` (virtiofs mount from host, no SSH needed)
+    - Monorepo root: `${repoRoot}` (virtiofs mount from host, no SSH needed)
+    - Service workspace: `${workingDirectory}`
     - NAT IP: `${vm.ip}`
 
     Critical rules:
 
-    - The VM-owned repo at `${repoRoot}` is editable from this VM.
+    - The VM-owned monorepo checkout at `${repoRoot}` is editable from this VM.
+    - Make service changes in `${workingDirectory}`.
     - Commit and push durable service changes from `${repoRoot}`.
     - To deploy changes, push to the remote and request a rebuild from the Nazar host:
-      `nix run github:nazar/nazar#switch-${vm.hostname}` (run on the host).
+      `cd /root/nazar && nix run .#switch-${vm.hostname}` (run on the host).
     - Nazar owns infrastructure and networking: host VM lifecycle, VMID/IP/MAC,
       sizing, NAT/forwarding, public exposure, and shared network policy.
     - Do not create public exposure, firewall, VMID/IP/MAC, or host
@@ -61,9 +69,9 @@ let
   #   vm.piAgent.lspServers = [ pkgs.gopls ];
   # or add to the defaults below.
   defaultLspServers = [
-    pkgs.nixd                       # Nix
-    pkgs.typescript-language-server  # TypeScript/JavaScript
-    pkgs.pyright                    # Python
+    pkgs.nixd # Nix
+    pkgs.typescript-language-server # TypeScript/JavaScript
+    pkgs.pyright # Python
   ];
 
   # Per-VM language runtimes + extra LSP servers.
@@ -71,16 +79,16 @@ let
   vmExtraPackages =
     {
       minecraft = [
-        pkgs.jdk21                     # Java runtime
-        pkgs.jdt-language-server        # Java LSP
+        pkgs.jdk21 # Java runtime
+        pkgs.jdt-language-server # Java LSP
       ];
     }
-    .${vm.hostname} or [];
+    .${vm.hostname} or [ ];
 in
 {
   imports = [ ./pi-default-packages.nix ];
 
-  # Allow Git operations in the VM service repo without ownership warnings.
+  # Allow Git operations in the VM monorepo checkout without ownership warnings.
   programs.git = {
     enable = true;
     config.safe.directory = repoRoot;
@@ -90,12 +98,15 @@ in
     pi
     pkgs.nodejs
     bootstrap
-  ] ++ defaultLspServers ++ vmExtraPackages;
+  ]
+  ++ defaultLspServers
+  ++ vmExtraPackages;
 
   environment.sessionVariables = {
     PI_TELEMETRY = "0";
     PI_SKIP_VERSION_CHECK = "1";
     NAZAR_VM_REPO = repoRoot;
+    NAZAR_VM_WORKDIR = workingDirectory;
   };
 
   systemd.tmpfiles.rules = [

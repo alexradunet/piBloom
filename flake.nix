@@ -24,17 +24,17 @@
     };
 
     minecraft = {
-      url = "git+ssh://alex@git.nazar.studio/nazar/minecraft.git";
+      url = "path:./services/minecraft";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
     dav-server = {
-      url = "git+ssh://alex@git.nazar.studio/nazar/dav-server.git";
+      url = "path:./services/dav-server";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
     nixpi = {
-      url = "git+ssh://alex@git.nazar.studio/nazar/nixpi-bun.git";
+      url = "path:./services/nixpi";
       inputs.nixpkgs.follows = "nixpkgs";
     };
   };
@@ -173,7 +173,7 @@
           pkgs.nixfmt
         ];
         text = ''
-          find flake.nix nix -type f -name '*.nix' -print0             | xargs -0 --no-run-if-empty nixfmt
+          find flake.nix nix services -type f -name '*.nix' -print0             | xargs -0 --no-run-if-empty nixfmt
         '';
       };
     };

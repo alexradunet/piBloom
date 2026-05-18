@@ -28,9 +28,10 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "ssh://alex@git.nazar.studio/nazar/nixpi-bun.git"
+    "url": "https://codeberg.org/NazarStudio/Nazar.git",
+    "directory": "services/nixpi"
   },
-  "homepage": "https://git.nazar.studio/nazar/nixpi-bun",
+  "homepage": "https://codeberg.org/NazarStudio/Nazar/src/branch/main/services/nixpi",
   "devDependencies": {
     "playwright": "^1.60.0"
   }

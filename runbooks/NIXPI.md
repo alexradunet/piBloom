@@ -27,10 +27,10 @@ Do not set `access = "public"` for NixPi unless the operator surface has had a s
 
 ## Runtime shape
 
-The active NixPi implementation is the `nixpi` flake input consumed by Nazar:
+The active NixPi implementation lives in this monorepo at `services/nixpi` and is consumed through the local `nixpi` flake input:
 
 ```text
-nazar flake input -> inputs.nixpi.nixosModules.nixpi-bun -> systemd.services.nixpi-bun
+services/nixpi -> inputs.nixpi.nixosModules.nixpi-bun -> systemd.services.nixpi-bun
 ```
 
 Nazar configures the reusable module in `nix/modules/host/nixpi.nix`:
@@ -53,14 +53,13 @@ sudo nix --accept-flake-config build .#nixosConfigurations.nazar.config.system.b
 sudo nixos-rebuild switch --flake .#nazar
 ```
 
-After NixPi app changes, update the flake input and switch the host:
+After NixPi app changes, commit the `services/nixpi` changes in the monorepo and switch the host:
 
 ```bash
-nix flake lock --update-input nixpi
 nix run .#switch-host
 ```
 
-Then switch services as usual if a service input changed:
+Then switch services as usual if another service changed:
 
 ```bash
 nix run .#switch-minecraft   # host switch + Minecraft MicroVM restart
@@ -108,17 +107,15 @@ Host rollback:
 sudo nixos-rebuild switch --rollback
 ```
 
-If a NixPi app change needs rollback, roll back or update the `nixpi` flake input from `/root/nazar`, then switch the host:
+If a NixPi app change needs rollback, revert the relevant monorepo commit or use a previous host system generation, then switch the host:
 
 ```bash
-nix flake lock --update-input nixpi
 nix run .#switch-host
 ```
 
-If a MicroVM service change needs rollback, roll back or update the host flake input from `/root/nazar`, then use the host-driven switch app for that VM:
+If a MicroVM service change needs rollback, revert the relevant `services/<name>` monorepo commit or use a previous host system generation, then use the host-driven switch app for that VM:
 
 ```bash
-nix flake lock --update-input <service-input>
 nix run .#switch-<vm>
 ```
 

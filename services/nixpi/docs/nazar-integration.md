@@ -1,10 +1,10 @@
 # Nazar reproducible integration
 
-NixPi is integrated into Nazar as a private, sshuttle-routed Pi web surface. Nazar production consumes this repository as a flake input and runs the reusable `services.nixpi-bun` NixOS module/package.
+NixPi is integrated into Nazar as a private, sshuttle-routed Pi web surface. Nazar production consumes this monorepo subflake as a local flake input and runs the reusable `services.nixpi-bun` NixOS module/package.
 
 ## Current production shape
 
-- Source of truth: Nazar flake input `nixpi` (`git+ssh://alex@git.nazar.studio/nazar/nixpi-bun.git`).
+- Source of truth: monorepo subflake `services/nixpi`, wired as Nazar flake input `nixpi`.
 - Host module: `nazar/nix/modules/host/nixpi.nix` configures `inputs.nixpi.nixosModules.nixpi-bun`.
 - Runtime package: flake-built `nixpi-bun` package in the Nix store.
 - Service unit: `nixpi-bun.service`.
@@ -43,11 +43,10 @@ VM private service domains come from `nix/fleet/vms.nix` `privateAccess`. Keep N
 
 ## Deployment flow
 
-After changes to this repository, push them and update Nazar's flake input:
+After changes to this subflake, commit and push the monorepo, then switch Nazar:
 
 ```bash
 cd /root/nazar
-nix flake lock --update-input nixpi
 nix run .#switch-host
 ```
 
@@ -57,14 +56,14 @@ NixPi is an operator surface: it can drive Pi tools as `alex` in configured work
 
 ## Validation checklist
 
-From `/root/nazar` after changes to the host module, route policy, or `nixpi` flake input:
+From `/root/nazar` after changes to the host module, route policy, or `services/nixpi` subflake:
 
 ```bash
 nix flake check --no-build
 nix run .#switch-host
 ```
 
-From `/home/alex/repos/nixpi` after app changes:
+From `/home/alex/repos/nazar/services/nixpi` after app changes:
 
 ```bash
 node --check server.js

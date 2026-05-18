@@ -5,7 +5,8 @@ Canonical runtime: Nazar MicroVM only. Do not create alternate VM variants for M
 ## Ownership
 
 - Orchestrator repo: `/root/nazar`
-- Service repo in guest: `/home/alex/minecraft`
+- Monorepo checkout in guest: `/home/alex/nazar`
+- Service workspace in guest: `/home/alex/nazar/services/minecraft`
 - Guest hostname: `minecraft`
 - Guest IP: `10.10.10.30`
 - Public game endpoint: `mc.nazar.studio:25565/tcp`
@@ -17,7 +18,7 @@ Canonical runtime: Nazar MicroVM only. Do not create alternate VM variants for M
 State is declarative at the OS/service layer and persistent through MicroVM virtiofs shares declared in `nazar/nix/fleet/vms.nix`:
 
 - `/var/lib/minecraft` from `/persist/microvms/minecraft/state`
-- `/home/alex/minecraft` from `/persist/microvms/minecraft/repo`
+- `/home/alex/nazar` from `/persist/microvms/minecraft/repo` (monorepo checkout; service workspace is `services/minecraft`)
 - guest SSH host keys from `/persist/microvms/minecraft/ssh`
 
 ## Deploy
@@ -26,17 +27,17 @@ From the guest for service-only edits and validation:
 
 ```bash
 ssh alex@minecraft
-cd ~/minecraft
+nazar-vm-repo-bootstrap
+cd ~/nazar/services/minecraft
 nix flake check --no-build
-git status
-# commit and push durable changes
+git -C ~/nazar status
+# commit and push durable changes from ~/nazar
 ```
 
-Switch production from the Nazar host after updating the `minecraft` input:
+Switch production from the Nazar host after committing the monorepo change:
 
 ```bash
 cd /root/nazar
-nix flake lock --update-input minecraft
 nix flake check --no-build
 nix run .#switch-minecraft
 ```

@@ -16,7 +16,7 @@
       vmid = 110;
       hostname = "minecraft";
       service = "minecraft";
-      repoName = "minecraft";
+      repoName = "nazar";
       privateAccess = false;
       ip = "10.10.10.30";
       microvm = {
@@ -37,7 +37,7 @@
           {
             tag = "minecraft-repo";
             source = "/persist/microvms/minecraft/repo";
-            mountPoint = "/home/alex/minecraft";
+            mountPoint = "/home/alex/nazar";
             proto = "virtiofs";
             owner = "alex";
             group = "users";
@@ -52,7 +52,7 @@
       role = "small PaperMC Minecraft server";
       piAgent = {
         enable = true;
-        workingDirectory = "/home/alex/minecraft";
+        workingDirectory = "/home/alex/nazar/services/minecraft";
       };
 
       minecraft = {

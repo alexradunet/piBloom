@@ -7,6 +7,7 @@ The module in this directory is intentionally service-only. The `/root/nazar` fl
 Important paths:
 
 - Service state: `/var/lib/minecraft` from the `minecraft-state` virtiofs share.
-- Service repo: `/home/alex/minecraft` from the `minecraft-repo` virtiofs share.
+- Monorepo checkout: `/home/alex/nazar` from the `minecraft-repo` virtiofs share.
+- Service workspace: `/home/alex/nazar/services/minecraft`.
 
-Validate service changes in the guest with `nix flake check --no-build`, then commit and push. Production switching happens from `/root/nazar` with `nix flake lock --update-input minecraft`, `nix flake check --no-build`, and `nix run .#switch-minecraft`.
+Validate service changes in the guest with `nix flake check --no-build` from the service workspace, then commit and push from the monorepo root. Production switching happens from `/root/nazar` with `nix flake check --no-build` and `nix run .#switch-minecraft`.

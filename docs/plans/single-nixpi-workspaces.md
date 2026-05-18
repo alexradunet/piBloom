@@ -77,7 +77,7 @@ A **workspace** is a named profile in nixpi that maps to:
 | Workspace  | CWD                    | Connection          | Context                         |
 | ---------- | ---------------------- | ------------------- | ------------------------------- |
 | nazar      | `/home/alex/nazar`     | local (host)        | Infrastructure repo on the host |
-| minecraft  | `/home/alex/minecraft` | SSH → `10.10.10.30` | Minecraft VM, PaperMC server    |
+| minecraft  | `/home/alex/nazar/services/minecraft` | SSH → `10.10.10.30` | Minecraft VM, PaperMC server    |
 | dav-server | `/home/alex`           | local (host)        | DAV host service                |
 | git        | `/home/alex/nazar`     | local/host SSH      | SSH-only Git on host            |
 
@@ -103,7 +103,7 @@ Add a workspace config file at `~/.pi/workspaces.json`:
       "thinkingLevel": "medium"
     },
     "minecraft": {
-      "cwd": "/home/alex/minecraft",
+      "cwd": "/home/alex/nazar/services/minecraft",
       "mode": "ssh",
       "sshHost": "10.10.10.30",
       "sshUser": "alex",
@@ -178,7 +178,7 @@ services.nixpi = {
       context = "Nazar infrastructure (host)";
     };
     minecraft = {
-      cwd = "/home/alex/minecraft";
+      cwd = "/home/alex/nazar/services/minecraft";
       mode = "ssh";
       sshHost = "10.10.10.30";
       context = "Minecraft PaperMC server VM";
