@@ -63,18 +63,6 @@ let
     '';
   };
 
-  passwordCheck = pkgs.writeShellScript "hermes-webui-password-check" ''
-    set -euo pipefail
-    if [ ! -r ${lib.escapeShellArg envFile} ]; then
-      echo "Missing ${envFile}; refusing to expose Hermes WebUI without password protection." >&2
-      echo "Create it with: sudo install -m 0600 -o alex -g users /dev/stdin ${envFile}" >&2
-      exit 1
-    fi
-    if ! grep -Eq '^HERMES_WEBUI_PASSWORD=.+$' ${lib.escapeShellArg envFile}; then
-      echo "${envFile} must contain a non-empty HERMES_WEBUI_PASSWORD=... entry." >&2
-      exit 1
-    fi
-  '';
 in
 {
   systemd.services.hermes-webui = lib.mkIf enable {
@@ -121,8 +109,7 @@ in
       User = "alex";
       Group = "users";
       WorkingDirectory = "${hermesWebui}/share/hermes-webui";
-      EnvironmentFile = envFile;
-      ExecStartPre = passwordCheck;
+      EnvironmentFile = "-${envFile}";
       ExecStart = "${launcher}/bin/hermes-webui";
       Restart = "on-failure";
       RestartSec = "5s";

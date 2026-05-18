@@ -46,7 +46,7 @@ printf 'API_SERVER_KEY=change-me\n' \
   | sudo install -m 0600 -o alex -g users /dev/stdin /var/lib/hermes/env
 ```
 
-The WebUI refuses to start unless its runtime-only password file exists:
+The WebUI can optionally read a runtime-only password file:
 
 ```bash
 read -rsp 'Hermes WebUI password: ' HERMES_WEBUI_PASSWORD; echo

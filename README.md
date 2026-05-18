@@ -17,7 +17,7 @@ The root flake owns deployment, SSH-only operator access, Code/Terminal/Hermes s
 ## Services
 
 - Host Hermes Agent: `hermes-agent.service` managed declaratively by NixOS; use `hermes` from SSH or the private Code terminal.
-- Hermes WebUI: `http://127.0.0.1:8787/` through the laptop SSH tunnel, with runtime-only password protection from `/var/lib/hermes/webui-env`.
+- Hermes WebUI: `http://127.0.0.1:8787/` through the laptop SSH tunnel.
 - Code: `http://127.0.0.1:4821/` through the laptop SSH tunnel.
 - Terminal: `http://127.0.0.1:8082/` through the laptop SSH tunnel, backed by Zellij Web running as `alex`.
 
