@@ -23,12 +23,11 @@ nix/hosts/nazar/              # production host composition, hardware, and disk 
 nix/hosts/alex-laptop/        # client/laptop composition and hardware config
 nix/modules/host/             # host baseline, networking, service adapters, monitoring
 nix/modules/laptop/           # client-side access modules
-nix/modules/guest/            # legacy guest helpers; not imported by the production host
+nix/modules/guest/            # shared guest VM helpers
 nix/modules/services/         # small shared service identity modules
 nix/fleet/                    # host identity, exposure policy, service metadata
 services/minecraft/           # Minecraft source and reusable NixOS module
 services/dav-server/          # DAV/Radicale/WebDAV reusable NixOS module
-services/nixpi/               # legacy NixPi source; not imported by the production host
 runbooks/                     # operational notes
 ```
 
@@ -59,6 +58,6 @@ curl -I http://dav.nazar.studio/files/
 
 - Keep deployment authority in the root flake.
 - Keep private HTTP services bound to the host private address and reachable through sshuttle.
-- Keep Hermes configured through NixOS and secrets files, not ad-hoc Pi/NixPi host services.
+- Keep Hermes configured through NixOS and secrets files, not ad-hoc host services.
 - Keep service code in `services/`, but compose production from the root host configuration.
 - Prefer explicit direct imports over generated module discovery or wrapper layers.

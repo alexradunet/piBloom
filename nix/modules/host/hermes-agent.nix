@@ -1,6 +1,6 @@
 { config, pkgs, ... }:
 {
-  # Hermes replaces the host Pi/NixPi stack. The upstream NixOS module owns
+  # The upstream Hermes NixOS module owns
   # the hermes user, state directory, generated config, and gateway service.
   services.hermes-agent = {
     enable = true;

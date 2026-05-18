@@ -25,7 +25,7 @@ nix/
     alex-laptop/hardware-configuration.nix
   modules/
     host/                       # host baseline, networking, service adapters, monitoring
-    guest/                      # legacy guest helpers; not imported by the production host
+    guest/                      # shared guest VM helpers
     laptop/                     # client-side access modules
     services/                   # small shared service identity modules
   fleet/
@@ -33,12 +33,10 @@ nix/
     exposure.nix
     private-domains.nix
     services.nix                # service metadata/context
-  packages/pi/                 # legacy Pi package expression; not exported by the root flake
   users/
 services/
   dav-server/                   # DAV module source
   minecraft/                    # Minecraft module source
-  nixpi/                        # legacy NixPi source; not imported by the production host
 runbooks/
 ```
 

@@ -6,7 +6,7 @@
   # Current VM admin key.
   "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFsu7Hnoau1ZhPURBohcTDx0aa/BihqnaQWS9pNK80Dg vm-admin"
 
-  # Host alex key for NixPi workspace SSH connections (pi --mode rpc over SSH).
+  # Host alex key retained for internal administration.
   "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGAUXo4tVZqoDmGi1M6oTuzcXiSh+icDMnr5/N4fh2yJ alex@nazar"
 
   # Host root key for emergency VM maintenance from nazar only.

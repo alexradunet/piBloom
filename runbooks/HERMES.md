@@ -1,6 +1,6 @@
 # Hermes Agent Runbook
 
-Hermes Agent replaces the host Pi/NixPi stack on Nazar. It is installed through the upstream Hermes NixOS module and runs as `hermes-agent.service`.
+Hermes Agent is installed through the upstream Hermes NixOS module and runs as `hermes-agent.service`.
 
 ## Runtime shape
 

@@ -69,7 +69,7 @@
               exec sudo "$0" "$@"
             fi
 
-            if [ "''${NAZAR_SWITCH_SYSTEMD_RUN:-0}" != "1" ] && grep -Eq '(nixpi(-bun)?|hermes-agent)\.service' /proc/self/cgroup; then
+            if [ "''${NAZAR_SWITCH_SYSTEMD_RUN:-0}" != "1" ] && grep -Eq 'hermes-agent\.service' /proc/self/cgroup; then
               unit="nazar-switch-${name}-$(date +%s)"
               echo "==> detected agent service context; continuing rebuild in transient systemd unit $unit"
               exec systemd-run \
