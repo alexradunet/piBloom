@@ -254,7 +254,11 @@ in
     recommendedProxySettings = true;
 
     virtualHosts = lib.listToAttrs (
-      hostDomainVhosts ++ nixpiDomainVhosts ++ nixpiTunnelAliasVhosts ++ codeDomainVhosts ++ vmDomainVhosts
+      hostDomainVhosts
+      ++ nixpiDomainVhosts
+      ++ nixpiTunnelAliasVhosts
+      ++ codeDomainVhosts
+      ++ vmDomainVhosts
     );
   };
 
