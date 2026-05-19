@@ -6,7 +6,7 @@ This repository is organized by server/platform area.
 
 ```text
 proxmox/  # Proxmox VE host documentation, runbooks, and future host automation
-nazar/    # Previous Nazar NixOS flake, modules, service code, docs, and runbooks
+nazar_backup/  # Previous Nazar NixOS flake, modules, service code, docs, and runbooks
 ```
 
 ## Proxmox
@@ -17,6 +17,15 @@ Start here:
 
 ```text
 proxmox/runbooks/PROXMOX_INSTALLATION.md
+proxmox/runbooks/PHASE_1_COMPLETION.md
+proxmox/runbooks/PHASE_2_EDGE_REVERSE_PROXY.md
+proxmox/runbooks/PHASE_3_DNS_HTTPS_CUTOVER.md
+```
+
+Current public edge endpoint:
+
+```text
+https://nazar.studio/
 ```
 
 Preferred SSH access from this laptop:
@@ -31,18 +40,18 @@ Break-glass root access:
 ssh proxmox-root
 ```
 
-## Nazar NixOS archive/configuration
+## Nazar NixOS backup/configuration
 
 The prior NixOS configuration has been moved under:
 
 ```text
-nazar/
+nazar_backup/
 ```
 
 Use the flake from that directory:
 
 ```bash
-cd nazar
+cd nazar_backup
 nix flake check
 nix run .#switch-host
 ```

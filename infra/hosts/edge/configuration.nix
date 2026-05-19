@@ -32,12 +32,11 @@
 
   services.caddy = {
     enable = true;
-    virtualHosts.":80".extraConfig = ''
+    virtualHosts."nazar.studio".extraConfig = ''
       respond "Nazar edge is online\n"
     '';
-    virtualHosts.":443".extraConfig = ''
-      tls internal
-      respond "Nazar edge is online\n"
+    virtualHosts."www.nazar.studio".extraConfig = ''
+      redir https://nazar.studio{uri} permanent
     '';
   };
 

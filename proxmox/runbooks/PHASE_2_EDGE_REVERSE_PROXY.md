@@ -555,7 +555,8 @@ Completed:
 
 Pending domain/TLS finalization:
 
-- [ ] Choose production domain/subdomains.
-- [ ] Add DNS records.
-- [ ] Replace placeholder TLS config with named Caddy virtual hosts.
-- [ ] Verify trusted HTTPS certificate.
+- [x] Choose production domain/subdomains: `nazar.studio` and `www.nazar.studio`.
+- [x] Add DNS records.
+- [x] Complete DNS-backed HTTPS cutover. See `/home/alex/repos/ownloom/proxmox/runbooks/PHASE_3_DNS_HTTPS_CUTOVER.md`.
+- [x] Replace placeholder TLS config with named Caddy virtual hosts.
+- [x] Verify trusted HTTPS certificate.
