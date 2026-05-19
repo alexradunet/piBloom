@@ -20,6 +20,8 @@ proxmox/runbooks/PROXMOX_INSTALLATION.md
 proxmox/runbooks/PHASE_1_COMPLETION.md
 proxmox/runbooks/PHASE_2_EDGE_REVERSE_PROXY.md
 proxmox/runbooks/PHASE_3_DNS_HTTPS_CUTOVER.md
+proxmox/runbooks/PHASE_4_PRIVATE_ACCESS_RESEARCH.md
+proxmox/runbooks/PHASE_4_HEADSCALE_INTEGRATION.md
 ```
 
 Current public edge endpoint:

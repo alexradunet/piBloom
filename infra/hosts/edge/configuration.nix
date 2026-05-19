@@ -38,6 +38,9 @@
     virtualHosts."www.nazar.studio".extraConfig = ''
       redir https://nazar.studio{uri} permanent
     '';
+    virtualHosts."headscale.nazar.studio".extraConfig = ''
+      reverse_proxy 10.10.10.11:8080
+    '';
   };
 
   system.stateVersion = "25.11";

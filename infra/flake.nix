@@ -20,6 +20,13 @@
             ./hosts/edge/configuration.nix
           ];
         };
+
+        headscale = lib.nixosSystem {
+          inherit system;
+          modules = [
+            ./hosts/headscale/configuration.nix
+          ];
+        };
       };
 
       packages.${system} = {
@@ -31,8 +38,20 @@
             ./modules/proxmox-image.nix
           ];
         };
+
+        headscale-qcow = nixos-generators.nixosGenerate {
+          inherit system;
+          format = "qcow";
+          modules = [
+            ./hosts/headscale/configuration.nix
+            ./modules/proxmox-image.nix
+          ];
+        };
       };
 
-      checks.${system}.edge-toplevel = self.nixosConfigurations.edge.config.system.build.toplevel;
+      checks.${system} = {
+        edge-toplevel = self.nixosConfigurations.edge.config.system.build.toplevel;
+        headscale-toplevel = self.nixosConfigurations.headscale.config.system.build.toplevel;
+      };
     };
 }
